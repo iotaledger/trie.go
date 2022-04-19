@@ -5,6 +5,7 @@ import (
 	"fmt"
 	trie_go "github.com/iotaledger/trie.go"
 	"github.com/iotaledger/trie.go/trie256p"
+	"go.dedis.ch/kyber/v3"
 	"golang.org/x/xerrors"
 	"io"
 )

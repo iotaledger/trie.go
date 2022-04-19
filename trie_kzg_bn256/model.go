@@ -3,6 +3,7 @@ package trie_kzg_bn256
 import (
 	trie_go "github.com/iotaledger/trie.go"
 	"github.com/iotaledger/trie.go/trie256p"
+	"go.dedis.ch/kyber/v3"
 	"go.dedis.ch/kyber/v3/pairing/bn256"
 	"golang.org/x/crypto/blake2b"
 	"io"
