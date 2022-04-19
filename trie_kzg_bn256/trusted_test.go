@@ -2,14 +2,14 @@ package trie_kzg_bn256
 
 import (
 	"encoding/hex"
-	trie_go "github.com/lunfardo314/trie.go"
-	"github.com/lunfardo314/trie.go/trie256p"
+	trie_go "github.com/iotaledger/trie.go"
+	"github.com/iotaledger/trie.go/trie256p"
+	"go.dedis.ch/kyber/v3"
 	"math/big"
 	"runtime"
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"go.dedis.ch/kyber/v3"
 	"go.dedis.ch/kyber/v3/pairing/bn256"
 	"go.dedis.ch/kyber/v3/util/random"
 	"golang.org/x/crypto/blake2b"
