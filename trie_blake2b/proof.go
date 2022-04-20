@@ -115,9 +115,9 @@ func (p *Proof) MustKeyWithTerminal() ([]byte, []byte, bool) {
 	panic("wrong lastElem.ChildIndex")
 }
 
-// MustIsProofOfAbsence checks if it is proof of absense. Proof that the trie commits to something else in the place
+// IsProofOfAbsence checks if it is proof of absense. Proof that the trie commits to something else in the place
 // where it would commit to the key if it would be present
-func (p *Proof) MustIsProofOfAbsence() bool {
+func (p *Proof) IsProofOfAbsence() bool {
 	_, r, _ := p.MustKeyWithTerminal()
 	return r == nil
 }

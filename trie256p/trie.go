@@ -55,9 +55,8 @@ func (tr *Trie) CommitNode(key []byte, update *trie_go.VCommitment) {
 	}
 	childUpdates := make(map[byte]trie_go.VCommitment)
 	for childIndex := range n.modifiedChildren {
-		childKey := childKey(n, childIndex)
 		curCommitment := mutate.ChildCommitments[childIndex] // may be nil
-		tr.CommitNode(childKey, &curCommitment)
+		tr.CommitNode(childKey(n, childIndex), &curCommitment)
 		childUpdates[childIndex] = curCommitment
 	}
 

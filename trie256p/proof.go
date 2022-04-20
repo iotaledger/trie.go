@@ -92,14 +92,13 @@ func proofPath(trieAccess NodeStore, finalKey []byte) ([][]byte, []byte, ProofEn
 		childIndexPosition := len(key) + len(prefix)
 		trie_go.Assert(childIndexPosition < len(finalKey), "childIndexPosition<len(finalKey)")
 
-		childKey := childKey(n, finalKey[childIndexPosition])
+		key = childKey(n, finalKey[childIndexPosition])
 
-		n, ok = trieAccess.GetNode(childKey)
+		n, ok = trieAccess.GetNode(key)
 		if !ok {
 			// if there are no commitment to the child at the position, it means trie must be extended at this point
 			return proof, prefix, EndingExtend
 		}
-		key = childKey
 	}
 }
 

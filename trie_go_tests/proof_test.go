@@ -48,7 +48,7 @@ func TestTrieProofBlake2b(t *testing.T) {
 		rootC = trie256p.RootCommitment(tr)
 		err = proof.Validate(rootC)
 		require.NoError(t, err)
-		require.True(t, proof.MustIsProofOfAbsence())
+		require.True(t, proof.IsProofOfAbsence())
 		t.Logf("proof absence size = %d bytes", trie_go.MustSize(proof))
 	})
 	t.Run("proof one entry 2", func(t *testing.T) {
@@ -63,14 +63,14 @@ func TestTrieProofBlake2b(t *testing.T) {
 		rootC := trie256p.RootCommitment(tr)
 		err := proof.Validate(rootC)
 		require.NoError(t, err)
-		require.True(t, proof.MustIsProofOfAbsence())
+		require.True(t, proof.IsProofOfAbsence())
 
 		proof = Model.Proof([]byte("1"), tr)
 		require.EqualValues(t, 1, len(proof.Path))
 
 		err = proof.Validate(rootC)
 		require.NoError(t, err)
-		require.False(t, proof.MustIsProofOfAbsence())
+		require.False(t, proof.IsProofOfAbsence())
 
 		_, term, isHash := proof.MustKeyWithTerminal()
 		require.False(t, isHash)
@@ -107,7 +107,7 @@ func TestTrieProofWithDeletesBlake2b(t *testing.T) {
 		rootC = commitTrie()
 		for _, s := range data {
 			proof := Model.Proof([]byte(s), tr1)
-			require.False(t, proof.MustIsProofOfAbsence())
+			require.False(t, proof.IsProofOfAbsence())
 			err := proof.Validate(rootC)
 			require.NoError(t, err)
 			t.Logf("key: '%s', proof len: %d", s, len(proof.Path))
@@ -124,7 +124,7 @@ func TestTrieProofWithDeletesBlake2b(t *testing.T) {
 			proof := Model.Proof([]byte(s), tr1)
 			err := proof.Validate(rootC)
 			require.NoError(t, err)
-			require.False(t, proof.MustIsProofOfAbsence())
+			require.False(t, proof.IsProofOfAbsence())
 			//t.Logf("key: '%s', proof presence lenPlus1: %d", s, len(proof.Path))
 			//t.Logf("proof presence size = %d bytes", trie_go.MustSize(proof))
 		}
@@ -132,7 +132,7 @@ func TestTrieProofWithDeletesBlake2b(t *testing.T) {
 			proof := Model.Proof([]byte(s), tr1)
 			err := proof.Validate(rootC)
 			require.NoError(t, err)
-			require.True(t, proof.MustIsProofOfAbsence())
+			require.True(t, proof.IsProofOfAbsence())
 			//t.Logf("key: '%s', proof absence lenPlus1: %d", s, len(proof.Path))
 			//t.Logf("proof absence size = %d bytes", trie_go.MustSize(proof))
 		}
@@ -150,7 +150,7 @@ func TestTrieProofWithDeletesBlake2b(t *testing.T) {
 			proof := Model.Proof([]byte(s), tr1)
 			err := proof.Validate(rootC)
 			require.NoError(t, err)
-			require.False(t, proof.MustIsProofOfAbsence())
+			require.False(t, proof.IsProofOfAbsence())
 			t.Logf("key: '%s', proof presence lenPlus1: %d", s, len(proof.Path))
 			sz := trie_go.MustSize(proof)
 			t.Logf("proof presence size = %d bytes", sz)
@@ -162,13 +162,13 @@ func TestTrieProofWithDeletesBlake2b(t *testing.T) {
 			err = proofBack.Validate(rootC)
 			require.NoError(t, err)
 			require.EqualValues(t, proof.Key, proofBack.Key)
-			require.False(t, proofBack.MustIsProofOfAbsence())
+			require.False(t, proofBack.IsProofOfAbsence())
 		}
 		for _, s := range delKeys {
 			proof := Model.Proof([]byte(s), tr1)
 			err := proof.Validate(rootC)
 			require.NoError(t, err)
-			require.True(t, proof.MustIsProofOfAbsence())
+			require.True(t, proof.IsProofOfAbsence())
 			t.Logf("key: '%s', proof absence lenPlus1: %d", s, len(proof.Path))
 			sz := trie_go.MustSize(proof)
 			t.Logf("proof absence size = %d bytes", sz)
@@ -180,7 +180,7 @@ func TestTrieProofWithDeletesBlake2b(t *testing.T) {
 			err = proofBack.Validate(rootC)
 			require.NoError(t, err)
 			require.EqualValues(t, proof.Key, proofBack.Key)
-			require.True(t, proofBack.MustIsProofOfAbsence())
+			require.True(t, proofBack.IsProofOfAbsence())
 		}
 	})
 	t.Run("proof many entries rnd", func(t *testing.T) {
@@ -199,7 +199,7 @@ func TestTrieProofWithDeletesBlake2b(t *testing.T) {
 			proof := Model.Proof([]byte(s), tr1)
 			err := proof.Validate(rootC)
 			require.NoError(t, err)
-			require.False(t, proof.MustIsProofOfAbsence())
+			require.False(t, proof.IsProofOfAbsence())
 			lenP := len(proof.Path)
 			sizeP100 := trie_go.MustSize(proof) / 100
 			//t.Logf("key: '%s', proof presence lenPlus1: %d", s, )
@@ -214,7 +214,7 @@ func TestTrieProofWithDeletesBlake2b(t *testing.T) {
 			proof := Model.Proof([]byte(s), tr1)
 			err := proof.Validate(rootC)
 			require.NoError(t, err)
-			require.True(t, proof.MustIsProofOfAbsence())
+			require.True(t, proof.IsProofOfAbsence())
 			//t.Logf("key: '%s', proof absence len: %d", s, len(proof.Path))
 			//t.Logf("proof absence size = %d bytes", trie_go.MustSize(proof))
 		}
