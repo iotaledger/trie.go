@@ -1,17 +1,33 @@
-// Package trie_go contains key/value related functions used for testing (otherwise of general nature)
 package trie_go
 
 import (
 	"bytes"
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"io"
 	"math"
-	"math/rand"
 	"os"
-	"time"
 )
 
+// MustBytes most common way of serialization
+func MustBytes(o interface{ Write(w io.Writer) error }) []byte {
+	var buf bytes.Buffer
+	if err := o.Write(&buf); err != nil {
+		panic(err)
+	}
+	return buf.Bytes()
+}
+
+// byteCounter simple byte counter as io.Writer
+type byteCounter int
+
+func (b *byteCounter) Write(p []byte) (n int, err error) {
+	*b = byteCounter(int(*b) + len(p))
+	return 0, nil
+}
+
+// Size calculates byte size of the serializable object
 func Size(o interface{ Write(w io.Writer) error }) (int, error) {
 	var ret byteCounter
 	if err := o.Write(&ret); err != nil {
@@ -20,6 +36,7 @@ func Size(o interface{ Write(w io.Writer) error }) (int, error) {
 	return int(ret), nil
 }
 
+// MustSize calculates byte size of the serializable object
 func MustSize(o interface{ Write(w io.Writer) error }) int {
 	ret, err := Size(o)
 	if err != nil {
@@ -28,12 +45,14 @@ func MustSize(o interface{ Write(w io.Writer) error }) int {
 	return ret
 }
 
+// Assert simple assertion with message formatting
 func Assert(cond bool, format string, p ...interface{}) {
 	if !cond {
 		panic(fmt.Sprintf(format, p...))
 	}
 }
 
+// Concat concatenates bytes of byte-able objects
 func Concat(par ...interface{}) []byte {
 	var buf bytes.Buffer
 	for _, p := range par {
@@ -53,15 +72,18 @@ func Concat(par ...interface{}) []byte {
 	return buf.Bytes()
 }
 
+// ByteSize computes byte size of the serialized key/value iterator
+// assumes 2 bytes per key length and 4 bytes per value length
 func ByteSize(s KVIterator) int {
 	accLen := 0
 	s.Iterate(func(k, v []byte) bool {
-		accLen += len(k) + len(v)
+		accLen += len(k) + 2 + len(v) + 4
 		return true
 	})
 	return accLen
 }
 
+// NumEntries calculates number of key/value pair in the iterator
 func NumEntries(s KVIterator) int {
 	ret := 0
 	s.Iterate(func(_, _ []byte) bool {
@@ -71,6 +93,8 @@ func NumEntries(s KVIterator) int {
 	return ret
 }
 
+// DumpToFile serializes iterator to the file in binary form.
+// The content of the file in general is non-deterministic due to the random order of iteration
 func DumpToFile(r KVIterator, fname string) (int, error) {
 	file, err := os.Create(fname)
 	if err != nil {
@@ -91,6 +115,7 @@ func DumpToFile(r KVIterator, fname string) (int, error) {
 	return bytesTotal, err
 }
 
+// UnDumpFromFile restores dumped set of key/value pairs into the key/value writer
 func UnDumpFromFile(w KVWriter, fname string) (int, error) {
 	file, err := os.Open(fname)
 	if err != nil {
@@ -111,6 +136,7 @@ func UnDumpFromFile(w KVWriter, fname string) (int, error) {
 	return n, nil
 }
 
+// writeKV serializes key/value pair into the io.Writer. 2 and 4 little endian bytes for respectively key length and value length
 func writeKV(w io.Writer, k, v []byte) (int, error) {
 	if err := WriteBytes16(w, k); err != nil {
 		return 0, err
@@ -121,6 +147,7 @@ func writeKV(w io.Writer, k, v []byte) (int, error) {
 	return len(k) + len(v) + 6, nil
 }
 
+// readKV deserializes key/value pair from io.Reader. Returns key/value pair and an error flag if not enough data
 func readKV(r io.Reader) ([]byte, []byte, bool) {
 	k, err := ReadBytes16(r)
 	if errors.Is(err, io.EOF) {
@@ -133,49 +160,178 @@ func readKV(r io.Reader) ([]byte, []byte, bool) {
 	return k, v, false
 }
 
-type randStreamIterator struct {
-	rnd   *rand.Rand
-	par   RandStreamParams
-	count int
+// ---------------------------------------------------------------------------
+// r/w utility functions
+// TODO rewrite with generics when switch to 1.18
+
+func ReadBytes16(r io.Reader) ([]byte, error) {
+	var length uint16
+	err := ReadUint16(r, &length)
+	if err != nil {
+		return nil, err
+	}
+	if length == 0 {
+		return []byte{}, nil
+	}
+	ret := make([]byte, length)
+	_, err = r.Read(ret)
+	if err != nil {
+		return nil, err
+	}
+	return ret, nil
 }
 
-type RandStreamParams struct {
-	Seed       int64
-	NumKVPairs int // 0 means infinite
-	MaxKey     int // max length of key
-	MaxValue   int // max length of value
+func WriteBytes16(w io.Writer, data []byte) error {
+	if len(data) > math.MaxUint16 {
+		panic(fmt.Sprintf("WriteBytes16: too long data (%v)", len(data)))
+	}
+	err := WriteUint16(w, uint16(len(data)))
+	if err != nil {
+		return err
+	}
+	if len(data) != 0 {
+		_, err = w.Write(data)
+	}
+	return err
 }
 
-func NewRandStreamIterator(p ...RandStreamParams) *randStreamIterator {
-	ret := &randStreamIterator{
-		par: RandStreamParams{
-			Seed:       time.Now().UnixNano(),
-			NumKVPairs: 0, // infinite
-			MaxKey:     64,
-			MaxValue:   128,
-		},
+func ReadUint16(r io.Reader, pval *uint16) error {
+	var tmp2 [2]byte
+	_, err := r.Read(tmp2[:])
+	if err != nil {
+		return err
 	}
-	if len(p) > 0 {
-		ret.par = p[0]
+	*pval = binary.LittleEndian.Uint16(tmp2[:])
+	return nil
+}
+
+func WriteUint16(w io.Writer, val uint16) error {
+	_, err := w.Write(Uint16To2Bytes(val))
+	return err
+}
+
+func Uint16To2Bytes(val uint16) []byte {
+	var tmp2 [2]byte
+	binary.LittleEndian.PutUint16(tmp2[:], val)
+	return tmp2[:]
+}
+
+func Uint16From2Bytes(b []byte) (uint16, error) {
+	if len(b) != 2 {
+		return 0, errors.New("len(b) != 2")
 	}
-	ret.rnd = rand.New(rand.NewSource(ret.par.Seed))
+	return binary.LittleEndian.Uint16(b), nil
+}
+
+func ReadByte(r io.Reader) (byte, error) {
+	var b [1]byte
+	_, err := r.Read(b[:])
+	if err != nil {
+		return 0, err
+	}
+	return b[0], nil
+}
+
+func WriteByte(w io.Writer, val byte) error {
+	b := []byte{val}
+	_, err := w.Write(b)
+	return err
+}
+
+func ReadBytes32(r io.Reader) ([]byte, error) {
+	var length uint32
+	err := ReadUint32(r, &length)
+	if err != nil {
+		return nil, err
+	}
+	if length == 0 {
+		return []byte{}, nil
+	}
+	ret := make([]byte, length)
+	_, err = r.Read(ret)
+	if err != nil {
+		return nil, err
+	}
+	return ret, nil
+}
+
+func WriteBytes32(w io.Writer, data []byte) error {
+	if len(data) > math.MaxUint32 {
+		panic(fmt.Sprintf("WriteBytes32: too long data (%v)", len(data)))
+	}
+	err := WriteUint32(w, uint32(len(data)))
+	if err != nil {
+		return err
+	}
+	_, err = w.Write(data)
+	return err
+}
+
+func Uint32To4Bytes(val uint32) []byte {
+	var tmp4 [4]byte
+	binary.LittleEndian.PutUint32(tmp4[:], val)
+	return tmp4[:]
+}
+
+func Uint32From4Bytes(b []byte) (uint32, error) {
+	if len(b) != 4 {
+		return 0, errors.New("len(b) != 4")
+	}
+	return binary.LittleEndian.Uint32(b), nil
+}
+
+func MustUint32From4Bytes(b []byte) uint32 {
+	ret, err := Uint32From4Bytes(b)
+	if err != nil {
+		panic(err)
+	}
 	return ret
 }
 
-func (r *randStreamIterator) Iterate(fun func(k []byte, v []byte) bool) error {
-	max := r.par.NumKVPairs
-	if max <= 0 {
-		max = math.MaxInt
+func ReadUint32(r io.Reader, pval *uint32) error {
+	var tmp4 [4]byte
+	_, err := r.Read(tmp4[:])
+	if err != nil {
+		return err
 	}
-	for r.count < max {
-		k := make([]byte, r.rnd.Intn(r.par.MaxKey-1)+1)
-		r.rnd.Read(k)
-		v := make([]byte, r.rnd.Intn(r.par.MaxValue-1)+1)
-		r.rnd.Read(v)
-		if !fun(k, v) {
-			return nil
-		}
-		r.count++
-	}
+	*pval = MustUint32From4Bytes(tmp4[:])
 	return nil
+}
+
+func WriteUint32(w io.Writer, val uint32) error {
+	_, err := w.Write(Uint32To4Bytes(val))
+	return err
+}
+
+// in memory KVStore implementation. Mostly used for testing
+
+type inMemoryKVStore map[string][]byte
+
+func NewInMemoryKVStore() KVStore {
+	return make(inMemoryKVStore)
+}
+
+func (i inMemoryKVStore) Get(k []byte) []byte {
+	return i[string(k)]
+}
+
+func (i inMemoryKVStore) Has(k []byte) bool {
+	_, ok := i[string(k)]
+	return ok
+}
+
+func (i inMemoryKVStore) Iterate(f func(k []byte, v []byte) bool) {
+	for k, v := range i {
+		if !f([]byte(k), v) {
+			return
+		}
+	}
+}
+
+func (i inMemoryKVStore) Set(k, v []byte) {
+	if len(v) != 0 {
+		i[string(k)] = v
+	} else {
+		delete(i, string(k))
+	}
 }

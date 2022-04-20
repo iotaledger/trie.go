@@ -13,7 +13,7 @@ type NodeStore interface {
 	Model() CommitmentModel
 }
 
-// RootCommitment is defined on NodeStore
+// RootCommitment computes root commitment from the root node of the trie
 func RootCommitment(tr NodeStore) trie_go.VCommitment {
 	n, ok := tr.GetNode(nil)
 	if !ok {
@@ -43,16 +43,16 @@ func NewNodeStoreReader(store trie_go.KVReader, model CommitmentModel) *NodeStor
 }
 
 func (sr *NodeStoreReader) GetNode(key []byte) (Node, bool) {
-	return sr.getNode(key)
+	return sr.getNodeIntern(key)
 }
 
-func (sr *NodeStoreReader) getNode(key []byte) (*nodeReadOnly, bool) {
+func (sr *NodeStoreReader) getNodeIntern(key []byte) (*nodeReadOnly, bool) {
 	nodeBin := sr.store.Get(key)
 	if nodeBin == nil {
 		return nil, false
 	}
 	node, err := nodeReadOnlyFromBytes(sr.model, nodeBin, key)
-	trie_go.Assert(err == nil, "getNode: %v", err)
+	trie_go.Assert(err == nil, "getNodeIntern: %v", err)
 	return node, true
 
 }
@@ -100,17 +100,17 @@ func (tr *Trie) Clone() *Trie {
 	return ret
 }
 
-// GetNode fetches node from the trie
-func (tr *Trie) GetNode(key []byte) (Node, bool) {
-	return tr.getNode(key)
-}
-
 func (tr *Trie) Model() CommitmentModel {
 	return tr.nodeStoreReader.model
 }
 
-// getNode takes node form the cache or fetches it from stored tries
-func (tr *Trie) getNode(key []byte) (*bufferedNode, bool) {
+// GetNode fetches node from the trie
+func (tr *Trie) GetNode(key []byte) (Node, bool) {
+	return tr.getNodeIntern(key)
+}
+
+// getNodeIntern takes node form the cache or fetches it from stored tries
+func (tr *Trie) getNodeIntern(key []byte) (*bufferedNode, bool) {
 	if _, isDeleted := tr.deleted[string(key)]; isDeleted {
 		return nil, false
 	}
@@ -118,7 +118,7 @@ func (tr *Trie) getNode(key []byte) (*bufferedNode, bool) {
 	if ok {
 		return ret, true
 	}
-	n, ok := tr.nodeStoreReader.getNode(key)
+	n, ok := tr.nodeStoreReader.getNodeIntern(key)
 	if !ok {
 		return nil, false
 	}
@@ -130,7 +130,7 @@ func (tr *Trie) getNode(key []byte) (*bufferedNode, bool) {
 }
 
 func (tr *Trie) mustGetNode(key []byte) *bufferedNode {
-	ret, ok := tr.getNode(key)
+	ret, ok := tr.getNodeIntern(key)
 	trie_go.Assert(ok, "mustGetNode: not found key '%x'", key)
 	return ret
 }

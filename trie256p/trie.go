@@ -38,7 +38,7 @@ func (tr *Trie) Commit() {
 // calcDelta = true if node's commitment can be updated incrementally. The implementation
 // of UpdateNodeCommitment may use this parameter to optimize underlying cryptography
 func (tr *Trie) CommitNode(key []byte, update *trie_go.VCommitment) {
-	n, ok := tr.getNode(key)
+	n, ok := tr.getNodeIntern(key)
 	if !ok {
 		if update != nil {
 			*update = nil
@@ -55,7 +55,7 @@ func (tr *Trie) CommitNode(key []byte, update *trie_go.VCommitment) {
 	}
 	childUpdates := make(map[byte]trie_go.VCommitment)
 	for childIndex := range n.modifiedChildren {
-		childKey := ChildKey(n, childIndex)
+		childKey := childKey(n, childIndex)
 		curCommitment := mutate.ChildCommitments[childIndex] // may be nil
 		tr.CommitNode(childKey, &curCommitment)
 		childUpdates[childIndex] = curCommitment
@@ -158,7 +158,7 @@ func (tr *Trie) Delete(key []byte) {
 		return
 	}
 	lastKey := proof[len(proof)-1]
-	lastNode, ok := tr.getNode(lastKey)
+	lastNode, ok := tr.getNodeIntern(lastKey)
 	if !ok {
 		return
 	}
@@ -189,7 +189,7 @@ func (tr *Trie) Delete(key []byte) {
 // mergeNode merges nodes when it is possible, i.e. first node does not contain Terminal commitment and has only one
 // child commitment. In this case pathFragments can be merged in one resulting node
 func (tr *Trie) mergeNode(key []byte, n *bufferedNode, childIndex byte) {
-	nextKey := ChildKey(n, childIndex)
+	nextKey := childKey(n, childIndex)
 	nextNode := tr.mustGetNode(nextKey)
 
 	tr.unDelete(key)
@@ -213,7 +213,7 @@ func (tr *Trie) markModifiedCommitmentsBackToRoot(proof [][]byte) {
 
 // hasCommitment returns if trie will contain commitment to the key in the (future) committed state
 func (tr *Trie) hasCommitment(key []byte) bool {
-	n, ok := tr.getNode(key)
+	n, ok := tr.getNodeIntern(key)
 	if !ok {
 		return false
 	}
@@ -222,7 +222,7 @@ func (tr *Trie) hasCommitment(key []byte) bool {
 		return true
 	}
 	for childIndex := range n.modifiedChildren {
-		if tr.hasCommitment(ChildKey(n, childIndex)) {
+		if tr.hasCommitment(childKey(n, childIndex)) {
 			// modified child commits to something
 			return true
 		}
@@ -254,7 +254,7 @@ func (tr *Trie) checkReorg(n *bufferedNode) (reorgStatus, byte) {
 		toCheck[c] = struct{}{}
 	}
 	for c := range n.modifiedChildren {
-		if tr.hasCommitment(ChildKey(n, c)) {
+		if tr.hasCommitment(childKey(n, c)) {
 			toCheck[c] = struct{}{}
 		} else {
 			delete(toCheck, c)

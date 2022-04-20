@@ -6,11 +6,11 @@ import (
 
 // CommitmentModel abstracts 256+ Trie logic from the commitment logic/cryptography
 type CommitmentModel interface {
-	// NewVectorCommitment creates empty VCommitment
+	// NewVectorCommitment creates empty trie_go.VCommitment
 	NewVectorCommitment() trie_go.VCommitment
-	// NewTerminalCommitment creates empty TCommitment
+	// NewTerminalCommitment creates empty trie_go.TCommitment
 	NewTerminalCommitment() trie_go.TCommitment
-	// CommitToData calculates terminal commitment to data
+	// CommitToData calculates terminal commitment to an arbitrary data
 	CommitToData([]byte) trie_go.TCommitment
 	// CalcNodeCommitment calculates commitment of the node data
 	CalcNodeCommitment(*NodeData) trie_go.VCommitment

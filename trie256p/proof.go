@@ -92,7 +92,7 @@ func proofPath(trieAccess NodeStore, finalKey []byte) ([][]byte, []byte, ProofEn
 		childIndexPosition := len(key) + len(prefix)
 		trie_go.Assert(childIndexPosition < len(finalKey), "childIndexPosition<len(finalKey)")
 
-		childKey := ChildKey(n, finalKey[childIndexPosition])
+		childKey := childKey(n, finalKey[childIndexPosition])
 
 		n, ok = trieAccess.GetNode(childKey)
 		if !ok {
