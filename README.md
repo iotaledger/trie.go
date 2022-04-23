@@ -33,7 +33,7 @@ The generic implementation of `256+ trie` can be used to implement different com
 `CommitmentModel` interface.  
 
 ### Package `trie_blake2b`
-Contains implementation of the `CommitmentModel` as the Merkle tree on the `256+ trie` with data commitment via `blake2b` hash function. 
+Contains implementation of the `CommitmentModel` as a Merkle tree on the `256+ trie` with data commitment via `blake2b` hash function. 
 
 The implementation is fast and optimized. It can be used in various project. It is used in the `Wasp` node.
 

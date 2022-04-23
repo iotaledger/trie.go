@@ -162,7 +162,7 @@ func readKV(r io.Reader) ([]byte, []byte, bool) {
 
 // ---------------------------------------------------------------------------
 // r/w utility functions
-// TODO rewrite with generics when switch to 1.18
+// TODO rewrite with generics when switch to Go 1.18
 
 func ReadBytes16(r io.Reader) ([]byte, error) {
 	var length uint16
@@ -301,37 +301,4 @@ func ReadUint32(r io.Reader, pval *uint32) error {
 func WriteUint32(w io.Writer, val uint32) error {
 	_, err := w.Write(Uint32To4Bytes(val))
 	return err
-}
-
-// in memory KVStore implementation. Mostly used for testing
-
-type inMemoryKVStore map[string][]byte
-
-func NewInMemoryKVStore() KVStore {
-	return make(inMemoryKVStore)
-}
-
-func (i inMemoryKVStore) Get(k []byte) []byte {
-	return i[string(k)]
-}
-
-func (i inMemoryKVStore) Has(k []byte) bool {
-	_, ok := i[string(k)]
-	return ok
-}
-
-func (i inMemoryKVStore) Iterate(f func(k []byte, v []byte) bool) {
-	for k, v := range i {
-		if !f([]byte(k), v) {
-			return
-		}
-	}
-}
-
-func (i inMemoryKVStore) Set(k, v []byte) {
-	if len(v) != 0 {
-		i[string(k)] = v
-	} else {
-		delete(i, string(k))
-	}
 }

@@ -44,33 +44,3 @@ func EqualCommitments(c1, c2 Serializable) bool {
 	}
 	return bytes.Equal(c1.Bytes(), c2.Bytes())
 }
-
-// abstraction interfaces of key/value storage
-
-// KVReader is a key/value reader
-type KVReader interface {
-	// Get retrieves value by key. Returned nil means absence of the key
-	Get(key []byte) []byte
-	// Has checks presence of the key in the key/value store
-	Has(key []byte) bool // for performance
-}
-
-// KVWriter is a key/value writer
-type KVWriter interface {
-	// Set writes new or updates existing key with the value.
-	// value == nil means deletion of the key from the store
-	Set(key, value []byte)
-}
-
-// KVIterator is an interface to iterate through a set of key/value pairs.
-// Order of iteration is NON-DETERMINISTIC
-type KVIterator interface {
-	Iterate(func(k, v []byte) bool)
-}
-
-// KVStore is a compound interface
-type KVStore interface {
-	KVReader
-	KVWriter
-	KVIterator
-}

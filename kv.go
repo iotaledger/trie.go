@@ -9,24 +9,95 @@ import (
 	"time"
 )
 
-// Interfaces and implementations for writing/reading persistent streams of key/values
+//----------------------------------------------------------------------------
+// abstraction interfaces of key/value storage
 
-// StreamWriter represents an interface to write a sequence of key/value pairs
-type StreamWriter interface {
+// KVReader is a key/value reader
+type KVReader interface {
+	// Get retrieves value by key. Returned nil means absence of the key
+	Get(key []byte) []byte
+	// Has checks presence of the key in the key/value store
+	Has(key []byte) bool // for performance
+}
+
+// KVWriter is a key/value writer
+type KVWriter interface {
+	// Set writes new or updates existing key with the value.
+	// value == nil means deletion of the key from the store
+	Set(key, value []byte)
+}
+
+// KVIterator is an interface to iterate through a set of key/value pairs.
+// Order of iteration is NON-DETERMINISTIC in general
+type KVIterator interface {
+	Iterate(func(k, v []byte) bool)
+}
+
+// KVStore is a compound interface
+type KVStore interface {
+	KVReader
+	KVWriter
+	KVIterator
+}
+
+// inMemoryKVStore is a KVStore implementation. Mostly used for testing
+var _ KVStore = inMemoryKVStore{}
+
+type inMemoryKVStore map[string][]byte
+
+func NewInMemoryKVStore() KVStore {
+	return make(inMemoryKVStore)
+}
+
+func (im inMemoryKVStore) Get(k []byte) []byte {
+	return im[string(k)]
+}
+
+func (im inMemoryKVStore) Has(k []byte) bool {
+	_, ok := im[string(k)]
+	return ok
+}
+
+func (im inMemoryKVStore) Iterate(f func(k []byte, v []byte) bool) {
+	for k, v := range im {
+		if !f([]byte(k), v) {
+			return
+		}
+	}
+}
+
+func (im inMemoryKVStore) Set(k, v []byte) {
+	if len(v) != 0 {
+		im[string(k)] = v
+	} else {
+		delete(im, string(k))
+	}
+}
+
+//----------------------------------------------------------------------------
+// interfaces for writing/reading persistent streams of key/value pairs
+
+// KVStreamWriter represents an interface to write a sequence of key/value pairs
+type KVStreamWriter interface {
 	// Write writes key/value pair
 	Write(key, value []byte) error
 	// Stats return num k/v pairs and num bytes so far
 	Stats() (int, int)
 }
 
-// StreamIterator is an interface to iterate stream
+// KVStreamIterator is an interface to iterate stream
 // In general, order is non-deterministic
-type StreamIterator interface {
+type KVStreamIterator interface {
 	Iterate(func(k, v []byte) bool) error
 }
 
-// BinaryStreamWriter writes stream of k/v pairs in binary format.
-var _ StreamWriter = &BinaryStreamWriter{}
+//----------------------------------------------------------------------------
+// implementations of writing/reading persistent streams of key/value pairs
+
+// BinaryStreamWriter writes stream of k/v pairs in binary format
+// Each key is prefixed with 2 bytes (little-endian uint16) of size,
+// each value with 4 bytes of size (little-endian uint32)
+var _ KVStreamWriter = &BinaryStreamWriter{}
 
 type BinaryStreamWriter struct {
 	w         io.Writer
@@ -38,8 +109,8 @@ func NewBinaryStreamWriter(w io.Writer) *BinaryStreamWriter {
 	return &BinaryStreamWriter{w: w}
 }
 
-// BinaryStreamWriter implements StreamWriter interface
-var _ StreamWriter = &BinaryStreamWriter{}
+// BinaryStreamWriter implements KVStreamWriter interface
+var _ KVStreamWriter = &BinaryStreamWriter{}
 
 func (b *BinaryStreamWriter) Write(key, value []byte) error {
 	if err := WriteBytes16(b.w, key); err != nil {
@@ -59,7 +130,7 @@ func (b *BinaryStreamWriter) Stats() (int, int) {
 }
 
 // BinaryStreamIterator deserializes stream of key/value pairs from io.Reader
-var _ StreamIterator = &BinaryStreamIterator{}
+var _ KVStreamIterator = &BinaryStreamIterator{}
 
 type BinaryStreamIterator struct {
 	r io.Reader
@@ -89,11 +160,11 @@ func (b BinaryStreamIterator) Iterate(fun func(k []byte, v []byte) bool) error {
 }
 
 // BinaryStreamFileWriter is a BinaryStreamWriter with the file as a backend
-var _ StreamWriter = &BinaryStreamFileWriter{}
+var _ KVStreamWriter = &BinaryStreamFileWriter{}
 
 type BinaryStreamFileWriter struct {
 	*BinaryStreamWriter
-	File *os.File
+	file *os.File
 }
 
 // CreateKVStreamFile create a new BinaryStreamFileWriter
@@ -104,16 +175,20 @@ func CreateKVStreamFile(fname string) (*BinaryStreamFileWriter, error) {
 	}
 	return &BinaryStreamFileWriter{
 		BinaryStreamWriter: NewBinaryStreamWriter(file),
-		File:               file,
+		file:               file,
 	}, nil
 }
 
+func (fw *BinaryStreamFileWriter) Close() error {
+	return fw.file.Close()
+}
+
 // BinaryStreamFileIterator is a BinaryStreamIterator with the file as a backend
-var _ StreamIterator = &BinaryStreamFileIterator{}
+var _ KVStreamIterator = &BinaryStreamFileIterator{}
 
 type BinaryStreamFileIterator struct {
 	*BinaryStreamIterator
-	File *os.File
+	file *os.File
 }
 
 // OpenKVStreamFile opens existing file with key/value stream for reading
@@ -124,13 +199,17 @@ func OpenKVStreamFile(fname string) (*BinaryStreamFileIterator, error) {
 	}
 	return &BinaryStreamFileIterator{
 		BinaryStreamIterator: NewBinaryStreamIterator(file),
-		File:                 file,
+		file:                 file,
 	}, nil
+}
+
+func (fs *BinaryStreamFileIterator) Close() error {
+	return fs.file.Close()
 }
 
 // RandStreamIterator is a stream of random key/value pairs with the given parameters
 // Used for testing
-var _ StreamIterator = &RandStreamIterator{}
+var _ KVStreamIterator = &RandStreamIterator{}
 
 type RandStreamIterator struct {
 	rnd   *rand.Rand
