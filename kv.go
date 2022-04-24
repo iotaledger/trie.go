@@ -40,6 +40,32 @@ type KVStore interface {
 	KVIterator
 }
 
+// KVBatchedUpdater collects mutations in the buffer then flushes it at once
+type KVBatchedUpdater interface {
+	Update(key, value []byte)
+	Commit() error
+}
+
+type PartitionReader struct {
+	rdr    KVReader
+	prefix []byte
+}
+
+func NewPartitionReader(rdr KVReader, prefix []byte) *PartitionReader {
+	return &PartitionReader{
+		rdr:    rdr,
+		prefix: prefix,
+	}
+}
+
+func (p *PartitionReader) Get(key []byte) []byte {
+	return p.rdr.Get(Concat(p.prefix, key))
+}
+
+func (p *PartitionReader) Has(key []byte) bool {
+	return p.rdr.Has(Concat(p.prefix, key))
+}
+
 // inMemoryKVStore is a KVStore implementation. Mostly used for testing
 var _ KVStore = inMemoryKVStore{}
 

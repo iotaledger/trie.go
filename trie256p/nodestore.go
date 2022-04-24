@@ -161,15 +161,19 @@ func (tr *Trie) replaceNode(n *bufferedNode) {
 
 // PersistMutations persists the cache to the key/value store
 // Does not clear cache
-func (tr *Trie) PersistMutations(store trie_go.KVWriter) {
+func (tr *Trie) PersistMutations(store trie_go.KVWriter) int {
+	counter := 0
 	for k, v := range tr.nodeCache {
 		store.Set([]byte(k), v.Bytes())
+		counter++
 	}
 	for k := range tr.deleted {
 		_, inCache := tr.nodeCache[k]
 		trie_go.Assert(!inCache, "!inCache")
 		store.Set([]byte(k), nil)
+		counter++
 	}
+	return counter
 }
 
 // ClearCache clears the node cache
