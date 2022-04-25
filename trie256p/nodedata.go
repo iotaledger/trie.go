@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	trie_go "github.com/iotaledger/trie.go"
+	"golang.org/x/xerrors"
 	"io"
 )
 
@@ -12,6 +13,7 @@ type NodeData struct {
 	PathFragment     []byte
 	ChildCommitments map[byte]trie_go.VCommitment
 	Terminal         trie_go.TCommitment
+	KeyCommitment    bool
 }
 
 func NewNodeData() *NodeData {
@@ -35,6 +37,7 @@ func (n *NodeData) Clone() *NodeData {
 	ret := &NodeData{
 		PathFragment:     make([]byte, len(n.PathFragment)),
 		ChildCommitments: make(map[byte]trie_go.VCommitment),
+		KeyCommitment:    n.KeyCommitment,
 	}
 	if n.Terminal != nil {
 		ret.Terminal = n.Terminal.Clone()
@@ -61,10 +64,17 @@ func (n *NodeData) String() string {
 }
 
 // Read/Write implements optimized serialization of the trie node
-// The serialization of the node takes advantage of the fact that most of the nodes has just few children
+// The serialization of the node takes advantage of the fact that most of the
+// nodes has just few children.
 // the 'smallFlags' (1 byte) contains information:
-// - does node contain Terminal commitment
-// - does node contain at least one child
+// - 'hasTerminalValueFlag' does node contain Terminal commitment
+// - 'hasChildrenFlag' does node contain at least one child
+// - 'keyCommitmentFlag' is the terminal commitment considered commitment to the key of the node.
+//   This flag can only be set if node contains Terminal commitment.
+//   In this case terminal commitment is equal to the commitment to the key of the
+//   node + pathFragment. It is not saved and therefore saves 32 bytes in each node.
+//   Useful for example for leger state commitments when ID of the UTXO is a commitment itself
+// - hasNonEmptyPathFragment flag means node has non-empty path fragment
 // By the semantics of the trie, 'smallFlags' cannot be 0
 // 'childrenFlags' (32 bytes array or 256 bits) are only present if node contains at least one child commitment
 // In this case:
@@ -72,10 +82,13 @@ func (n *NodeData) String() string {
 // at the index i/8. The bit position in the byte is i % 8
 
 const (
-	hasTerminalValueFlag = 0x01
-	hasChildrenFlag      = 0x02
+	hasTerminalValueFlag    = 0x01
+	hasChildrenFlag         = 0x02
+	keyCommitmentFlag       = 0x04
+	hasNonEmptyPathFragment = 0x08
 )
 
+// cflags 256 flags, one for each child
 type cflags [32]byte
 
 func (fl *cflags) setFlag(i byte) {
@@ -87,25 +100,41 @@ func (fl *cflags) hasFlag(i byte) bool {
 }
 
 func (n *NodeData) Write(w io.Writer) error {
-	if err := trie_go.WriteBytes16(w, n.PathFragment); err != nil {
-		return err
-	}
-
 	var smallFlags byte
-	if n.Terminal != nil {
+	if n.KeyCommitment || n.Terminal != nil {
 		smallFlags = hasTerminalValueFlag
 	}
-	// compress children childrenFlags 32 bytes (if any)
-	var childrenFlags cflags
-	for i := range n.ChildCommitments {
-		childrenFlags.setFlag(i)
+	if n.KeyCommitment {
+		smallFlags |= keyCommitmentFlag
+	}
+	if len(n.ChildCommitments) > 0 {
 		smallFlags |= hasChildrenFlag
+	}
+	var childrenFlags cflags
+	if smallFlags&hasChildrenFlag != 0 {
+		// compress children childrenFlags 32 bytes, if any
+		for i := range n.ChildCommitments {
+			childrenFlags.setFlag(i)
+		}
+	}
+	if smallFlags == 0 {
+		return xerrors.New("non-committing node can't be serialized")
+	}
+
+	if len(n.PathFragment) > 0 {
+		smallFlags |= hasNonEmptyPathFragment
 	}
 	if err := trie_go.WriteByte(w, smallFlags); err != nil {
 		return err
 	}
-	// write Terminal commitment if any
-	if smallFlags&hasTerminalValueFlag != 0 {
+	if smallFlags&hasNonEmptyPathFragment != 0 {
+		if err := trie_go.WriteBytes16(w, n.PathFragment); err != nil {
+			return err
+		}
+	}
+	// write Terminal commitment if needed
+	// if key is committed as terminal, terminal is not serialized
+	if smallFlags&keyCommitmentFlag == 0 && smallFlags&hasTerminalValueFlag != 0 {
 		if err := n.Terminal.Write(w); err != nil {
 			return err
 		}
@@ -130,20 +159,27 @@ func (n *NodeData) Write(w io.Writer) error {
 
 func (n *NodeData) Read(r io.Reader, setup CommitmentModel) error {
 	var err error
-	if n.PathFragment, err = trie_go.ReadBytes16(r); err != nil {
-		return err
-	}
 	var smallFlags byte
 	if smallFlags, err = trie_go.ReadByte(r); err != nil {
 		return err
 	}
-	if smallFlags&hasTerminalValueFlag != 0 {
-		n.Terminal = setup.NewTerminalCommitment()
-		if err := n.Terminal.Read(r); err != nil {
+
+	if smallFlags&hasNonEmptyPathFragment != 0 {
+		if n.PathFragment, err = trie_go.ReadBytes16(r); err != nil {
 			return err
 		}
 	} else {
-		n.Terminal = nil
+		n.PathFragment = nil
+	}
+	n.KeyCommitment = smallFlags&keyCommitmentFlag != 0
+	n.Terminal = nil
+	if !n.KeyCommitment {
+		if smallFlags&hasTerminalValueFlag != 0 {
+			n.Terminal = setup.NewTerminalCommitment()
+			if err := n.Terminal.Read(r); err != nil {
+				return err
+			}
+		}
 	}
 	if smallFlags&hasChildrenFlag != 0 {
 		var flags cflags

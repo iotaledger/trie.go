@@ -8,6 +8,7 @@ import (
 	"github.com/iotaledger/trie.go/trie_blake2b"
 	"github.com/iotaledger/trie.go/trie_kzg_bn256"
 	"github.com/stretchr/testify/require"
+	"io"
 	"math"
 	"math/rand"
 	"strings"
@@ -19,8 +20,13 @@ func TestNode(t *testing.T) {
 	runTest := func(t *testing.T, m trie256p.CommitmentModel) {
 		t.Run("base1", func(t *testing.T) {
 			n := trie256p.NewNodeData()
+			err := n.Write(io.Discard)
+			require.Error(t, err)
+
 			var buf bytes.Buffer
-			err := n.Write(&buf)
+			n = trie256p.NewNodeData()
+			n.KeyCommitment = true
+			err = n.Write(&buf)
 			require.NoError(t, err)
 			t.Logf("size() = %d, size(serialize) = %d", len(n.Bytes()), len(buf.Bytes()))
 			require.EqualValues(t, trie_go.MustSize(n), len(buf.Bytes()))
