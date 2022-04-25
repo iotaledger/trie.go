@@ -108,6 +108,19 @@ func (tr *Trie) Update(key []byte, value []byte) {
 	tr.markModifiedCommitmentsBackToRoot(proof)
 }
 
+// MustInsertKeyCommitment inserts key/value pair with equal key and value.
+// Key must not be empty.
+// It leads to optimized serialization of trie nodes because terminal commitment is
+// contained in the key.
+// It saves 33 bytes per trie node for use cases such as ledger state commitment via UTXO IDs:
+// each UTXO ID is a commitment to the output, so we only need PoI, not the commitment itself
+func (tr *Trie) MustInsertKeyCommitment(key []byte) {
+	if len(key) == 0 {
+		panic("MustInsertKeyCommitment: key can't be empty")
+	}
+	tr.Update(key, key)
+}
+
 func (tr *Trie) splitNode(fullKey, lastKey, commonPrefix []byte, newTerminal trie_go.TCommitment) {
 	splitIndex := len(commonPrefix)
 	childPosition := len(lastKey) + splitIndex

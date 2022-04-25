@@ -13,7 +13,6 @@ type NodeData struct {
 	PathFragment     []byte
 	ChildCommitments map[byte]trie_go.VCommitment
 	Terminal         trie_go.TCommitment
-	KeyCommitment    bool
 }
 
 func NewNodeData() *NodeData {
@@ -24,9 +23,9 @@ func NewNodeData() *NodeData {
 	}
 }
 
-func NodeDataFromBytes(model CommitmentModel, data []byte) (*NodeData, error) {
+func NodeDataFromBytes(model CommitmentModel, data, key []byte) (*NodeData, error) {
 	ret := NewNodeData()
-	if err := ret.Read(bytes.NewReader(data), model); err != nil {
+	if err := ret.Read(bytes.NewReader(data), model, key); err != nil {
 		return nil, err
 	}
 	return ret, nil
@@ -37,7 +36,6 @@ func (n *NodeData) Clone() *NodeData {
 	ret := &NodeData{
 		PathFragment:     make([]byte, len(n.PathFragment)),
 		ChildCommitments: make(map[byte]trie_go.VCommitment),
-		KeyCommitment:    n.KeyCommitment,
 	}
 	if n.Terminal != nil {
 		ret.Terminal = n.Terminal.Clone()
@@ -67,14 +65,11 @@ func (n *NodeData) String() string {
 // The serialization of the node takes advantage of the fact that most of the
 // nodes has just few children.
 // the 'smallFlags' (1 byte) contains information:
-// - 'hasTerminalValueFlag' does node contain Terminal commitment
-// - 'hasChildrenFlag' does node contain at least one child
-// - 'keyCommitmentFlag' is the terminal commitment considered commitment to the key of the node.
-//   This flag can only be set if node contains Terminal commitment.
-//   In this case terminal commitment is equal to the commitment to the key of the
-//   node + pathFragment. It is not saved and therefore saves 32 bytes in each node.
-//   Useful for example for leger state commitments when ID of the UTXO is a commitment itself
-// - hasNonEmptyPathFragment flag means node has non-empty path fragment
+// - 'serializeTerminalValueFlag' does node contain Terminal commitment
+// - 'serializeChildrenFlag' does node contain at least one child
+// - 'isKeyCommitmentFlag' is optimization case when commitment to the terminal == commitment to the key
+//    In this case terminal is not serialized
+// - 'serializePathFragmentFlag' flag means node has non-empty path fragment
 // By the semantics of the trie, 'smallFlags' cannot be 0
 // 'childrenFlags' (32 bytes array or 256 bits) are only present if node contains at least one child commitment
 // In this case:
@@ -82,36 +77,36 @@ func (n *NodeData) String() string {
 // at the index i/8. The bit position in the byte is i % 8
 
 const (
-	hasTerminalValueFlag    = 0x01
-	hasChildrenFlag         = 0x02
-	keyCommitmentFlag       = 0x04
-	hasNonEmptyPathFragment = 0x08
+	isKeyCommitmentFlag        = 0x01
+	serializeTerminalValueFlag = 0x02
+	serializeChildrenFlag      = 0x04
+	serializePathFragmentFlag  = 0x08
 )
 
-// cflags 256 flags, one for each child
-type cflags [32]byte
+// cflags256 256 flags, one for each child
+type cflags256 [32]byte
 
-func (fl *cflags) setFlag(i byte) {
+func (fl *cflags256) setFlag(i byte) {
 	fl[i/8] |= 0x1 << (i % 8)
 }
 
-func (fl *cflags) hasFlag(i byte) bool {
+func (fl *cflags256) hasFlag(i byte) bool {
 	return fl[i/8]&(0x1<<(i%8)) != 0
 }
 
-func (n *NodeData) Write(w io.Writer) error {
+func (n *NodeData) Write(w io.Writer, isKeyCommitment bool) error {
 	var smallFlags byte
-	if n.KeyCommitment || n.Terminal != nil {
-		smallFlags = hasTerminalValueFlag
+	if isKeyCommitment {
+		smallFlags |= isKeyCommitmentFlag
 	}
-	if n.KeyCommitment {
-		smallFlags |= keyCommitmentFlag
+	if !isKeyCommitment && n.Terminal != nil {
+		smallFlags |= serializeTerminalValueFlag
 	}
 	if len(n.ChildCommitments) > 0 {
-		smallFlags |= hasChildrenFlag
+		smallFlags |= serializeChildrenFlag
 	}
-	var childrenFlags cflags
-	if smallFlags&hasChildrenFlag != 0 {
+	var childrenFlags cflags256
+	if smallFlags&serializeChildrenFlag != 0 {
 		// compress children childrenFlags 32 bytes, if any
 		for i := range n.ChildCommitments {
 			childrenFlags.setFlag(i)
@@ -120,27 +115,26 @@ func (n *NodeData) Write(w io.Writer) error {
 	if smallFlags == 0 {
 		return xerrors.New("non-committing node can't be serialized")
 	}
-
 	if len(n.PathFragment) > 0 {
-		smallFlags |= hasNonEmptyPathFragment
+		smallFlags |= serializePathFragmentFlag
 	}
 	if err := trie_go.WriteByte(w, smallFlags); err != nil {
 		return err
 	}
-	if smallFlags&hasNonEmptyPathFragment != 0 {
+	if smallFlags&serializePathFragmentFlag != 0 {
 		if err := trie_go.WriteBytes16(w, n.PathFragment); err != nil {
 			return err
 		}
 	}
 	// write Terminal commitment if needed
 	// if key is committed as terminal, terminal is not serialized
-	if smallFlags&keyCommitmentFlag == 0 && smallFlags&hasTerminalValueFlag != 0 {
+	if smallFlags&serializeTerminalValueFlag != 0 {
 		if err := n.Terminal.Write(w); err != nil {
 			return err
 		}
 	}
 	// write child commitments if any
-	if smallFlags&hasChildrenFlag != 0 {
+	if smallFlags&serializeChildrenFlag != 0 {
 		if _, err := w.Write(childrenFlags[:]); err != nil {
 			return err
 		}
@@ -157,48 +151,51 @@ func (n *NodeData) Write(w io.Writer) error {
 	return nil
 }
 
-func (n *NodeData) Read(r io.Reader, setup CommitmentModel) error {
+// Read deserialized node data and returns isKeyCommitmentFlag value
+func (n *NodeData) Read(r io.Reader, model CommitmentModel, key []byte) error {
 	var err error
 	var smallFlags byte
 	if smallFlags, err = trie_go.ReadByte(r); err != nil {
 		return err
 	}
-
-	if smallFlags&hasNonEmptyPathFragment != 0 {
+	if smallFlags&serializePathFragmentFlag != 0 {
 		if n.PathFragment, err = trie_go.ReadBytes16(r); err != nil {
 			return err
 		}
 	} else {
 		n.PathFragment = nil
 	}
-	n.KeyCommitment = smallFlags&keyCommitmentFlag != 0
 	n.Terminal = nil
-	if !n.KeyCommitment {
-		if smallFlags&hasTerminalValueFlag != 0 {
-			n.Terminal = setup.NewTerminalCommitment()
-			if err := n.Terminal.Read(r); err != nil {
-				return err
+	if smallFlags&serializeTerminalValueFlag != 0 {
+		if smallFlags&isKeyCommitmentFlag != 0 {
+			return xerrors.New("wrong flag")
+		}
+		n.Terminal = model.NewTerminalCommitment()
+		if err = n.Terminal.Read(r); err != nil {
+			return err
+		}
+	} else {
+		if smallFlags&isKeyCommitmentFlag != 0 {
+			if len(key) == 0 {
+				return xerrors.New("non-empty key expected")
 			}
+			n.Terminal = model.CommitToData(trie_go.Concat(key, n.PathFragment))
 		}
 	}
-	if smallFlags&hasChildrenFlag != 0 {
-		var flags cflags
-		if _, err := r.Read(flags[:]); err != nil {
+	if smallFlags&serializeChildrenFlag != 0 {
+		var flags cflags256
+		if _, err = r.Read(flags[:]); err != nil {
 			return err
 		}
 		for i := 0; i < 256; i++ {
 			ib := uint8(i)
 			if flags.hasFlag(ib) {
-				n.ChildCommitments[ib] = setup.NewVectorCommitment()
-				if err := n.ChildCommitments[ib].Read(r); err != nil {
+				n.ChildCommitments[ib] = model.NewVectorCommitment()
+				if err = n.ChildCommitments[ib].Read(r); err != nil {
 					return err
 				}
 			}
 		}
 	}
 	return nil
-}
-
-func (n *NodeData) Bytes() []byte {
-	return trie_go.MustBytes(n)
 }

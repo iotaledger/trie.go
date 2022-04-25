@@ -163,8 +163,8 @@ func (tr *Trie) replaceNode(n *bufferedNode) {
 // Does not clear cache
 func (tr *Trie) PersistMutations(store trie_go.KVWriter) int {
 	counter := 0
-	for k, v := range tr.nodeCache {
-		store.Set([]byte(k), v.Bytes())
+	for _, v := range tr.nodeCache {
+		store.Set(v.key, v.Bytes(tr.Model()))
 		counter++
 	}
 	for k := range tr.deleted {

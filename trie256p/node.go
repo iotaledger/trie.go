@@ -1,6 +1,9 @@
 package trie256p
 
-import trie_go "github.com/iotaledger/trie.go"
+import (
+	"bytes"
+	trie_go "github.com/iotaledger/trie.go"
+)
 
 // Node is a read-only interface to the 256+ trie node
 type Node interface {
@@ -45,15 +48,8 @@ func (n *nodeReadOnly) IsCommitted() bool {
 	return true
 }
 
-func newNodeReadOnly(key []byte) *nodeReadOnly {
-	return &nodeReadOnly{
-		n:   *NewNodeData(),
-		key: key,
-	}
-}
-
 func nodeReadOnlyFromBytes(model CommitmentModel, data, key []byte) (*nodeReadOnly, error) {
-	ret, err := NodeDataFromBytes(model, data)
+	ret, err := NodeDataFromBytes(model, data, key)
 	if err != nil {
 		return nil, err
 	}
@@ -146,8 +142,17 @@ func (n *bufferedNode) isModified() bool {
 	return n.pathChanged || len(n.modifiedChildren) > 0 || !trie_go.EqualCommitments(n.newTerminal, n.n.Terminal)
 }
 
-func (n *bufferedNode) Bytes() []byte {
-	return n.n.Bytes()
+func (n *bufferedNode) Bytes(model CommitmentModel) []byte {
+	// Optimization: if terminal commits to key, no need to serialize it
+	isKeyCommitment := false
+	if len(n.key) > 0 {
+		keyCommitment := model.CommitToData(trie_go.Concat(n.key, n.n.PathFragment))
+		isKeyCommitment = trie_go.EqualCommitments(n.n.Terminal, keyCommitment)
+	}
+	var buf bytes.Buffer
+	err := n.n.Write(&buf, isKeyCommitment)
+	trie_go.Assert(err == nil, "%v", err)
+	return buf.Bytes()
 }
 
 func childKey(n Node, childIndex byte) []byte {

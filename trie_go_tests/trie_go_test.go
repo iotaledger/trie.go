@@ -18,26 +18,49 @@ import (
 
 func TestNode(t *testing.T) {
 	runTest := func(t *testing.T, m trie256p.CommitmentModel) {
-		t.Run("base1", func(t *testing.T) {
+		t.Run("base normal", func(t *testing.T) {
 			n := trie256p.NewNodeData()
-			err := n.Write(io.Discard)
+			err := n.Write(io.Discard, false)
 			require.Error(t, err)
+
+			key := []byte("a")
+			value := []byte("b")
 
 			var buf bytes.Buffer
 			n = trie256p.NewNodeData()
-			n.KeyCommitment = true
-			err = n.Write(&buf)
+			n.Terminal = m.CommitToData(value)
+			err = n.Write(&buf, false)
 			require.NoError(t, err)
-			t.Logf("size() = %d, size(serialize) = %d", len(n.Bytes()), len(buf.Bytes()))
-			require.EqualValues(t, trie_go.MustSize(n), len(buf.Bytes()))
 
-			nBack, err := trie256p.NodeDataFromBytes(m, buf.Bytes())
+			nBack, err := trie256p.NodeDataFromBytes(m, buf.Bytes(), key)
 			require.NoError(t, err)
-			require.EqualValues(t, buf.Bytes(), nBack.Bytes())
+			require.True(t, trie_go.EqualCommitments(n.Terminal, nBack.Terminal))
 
 			h := m.CalcNodeCommitment(n)
 			hBack := m.CalcNodeCommitment(nBack)
 			require.EqualValues(t, h, hBack)
+			t.Logf("commitment = %s", h)
+		})
+		t.Run("base key commitment", func(t *testing.T) {
+			key := []byte("abc")
+			pathFragment := []byte("d")
+			value := []byte("abcd")
+
+			var buf bytes.Buffer
+			n := trie256p.NewNodeData()
+			n.PathFragment = pathFragment
+			n.Terminal = m.CommitToData(value)
+			err := n.Write(&buf, true)
+			require.NoError(t, err)
+
+			nBack, err := trie256p.NodeDataFromBytes(m, buf.Bytes(), key)
+			require.NoError(t, err)
+			require.EqualValues(t, n.PathFragment, nBack.PathFragment)
+			require.True(t, trie_go.EqualCommitments(n.Terminal, nBack.Terminal))
+
+			h := m.CalcNodeCommitment(n)
+			hBack := m.CalcNodeCommitment(nBack)
+			require.True(t, trie_go.EqualCommitments(h, hBack))
 			t.Logf("commitment = %s", h)
 		})
 		t.Run("base short terminal", func(t *testing.T) {
@@ -46,14 +69,11 @@ func TestNode(t *testing.T) {
 			n.Terminal = m.CommitToData([]byte("data"))
 
 			var buf bytes.Buffer
-			err := n.Write(&buf)
+			err := n.Write(&buf, false)
 			require.NoError(t, err)
-			t.Logf("size() = %d, size(serialize) = %d", trie_go.MustSize(n), len(buf.Bytes()))
-			require.EqualValues(t, trie_go.MustSize(n), len(buf.Bytes()))
 
-			nBack, err := trie256p.NodeDataFromBytes(m, buf.Bytes())
+			nBack, err := trie256p.NodeDataFromBytes(m, buf.Bytes(), nil)
 			require.NoError(t, err)
-			require.EqualValues(t, buf.Bytes(), nBack.Bytes())
 
 			h := m.CalcNodeCommitment(n)
 			hBack := m.CalcNodeCommitment(nBack)
@@ -64,15 +84,13 @@ func TestNode(t *testing.T) {
 			n := trie256p.NewNodeData()
 			n.PathFragment = []byte("kuku")
 			n.Terminal = m.CommitToData([]byte(strings.Repeat("data", 1000)))
-			var buf bytes.Buffer
-			err := n.Write(&buf)
-			require.NoError(t, err)
-			t.Logf("size() = %d, size(serialize) = %d", trie_go.MustSize(n), len(buf.Bytes()))
-			require.EqualValues(t, trie_go.MustSize(n), len(buf.Bytes()))
 
-			nBack, err := trie256p.NodeDataFromBytes(m, buf.Bytes())
+			var buf bytes.Buffer
+			err := n.Write(&buf, false)
 			require.NoError(t, err)
-			require.EqualValues(t, buf.Bytes(), nBack.Bytes())
+
+			nBack, err := trie256p.NodeDataFromBytes(m, buf.Bytes(), nil)
+			require.NoError(t, err)
 
 			h := m.CalcNodeCommitment(n)
 			hBack := m.CalcNodeCommitment(nBack)
@@ -622,6 +640,165 @@ func TestTrieRnd(t *testing.T) {
 			tr2 := trie256p.New(m, store2)
 			for i := range data {
 				tr2.Update([]byte(data[i]), []byte(data[i]))
+			}
+
+			tr2.Commit()
+			c2 := trie256p.RootCommitment(tr2)
+			t.Logf("root1 = %s", c1)
+			t.Logf("root2 = %s", c2)
+			require.True(t, trie_go.EqualCommitments(c1, c2))
+		})
+	}
+	runTest(t, trie_blake2b.New(), false)
+	runTest(t, trie_kzg_bn256.New(), true)
+}
+
+func TestTrieRndKeyCommitment(t *testing.T) {
+	runTest := func(t *testing.T, m trie256p.CommitmentModel, shortData bool) {
+		t.Run("determ key commitment1", func(t *testing.T) {
+			data := genData1()
+			store1 := trie_go.NewInMemoryKVStore()
+			tr1 := trie256p.New(m, store1)
+
+			for _, d := range data {
+				if len(d) > 0 {
+					tr1.MustInsertKeyCommitment([]byte(d))
+				}
+			}
+			tr1.Commit()
+			c1 := trie256p.RootCommitment(tr1)
+
+			store2 := trie_go.NewInMemoryKVStore()
+			tr2 := trie256p.New(m, store2)
+			permutation := rand.Perm(len(data))
+			for _, i := range permutation {
+				if len(data[i]) > 0 {
+					tr2.MustInsertKeyCommitment([]byte(data[i]))
+				}
+			}
+			tr2.Commit()
+			c2 := trie256p.RootCommitment(tr2)
+			t.Logf("root1 = %s", c1)
+			t.Logf("root2 = %s", c2)
+			require.True(t, trie_go.EqualCommitments(c1, c2))
+		})
+		t.Run("determ key commitment2", func(t *testing.T) {
+			data := genData2()
+			store1 := trie_go.NewInMemoryKVStore()
+			tr1 := trie256p.New(m, store1)
+
+			for i := range data {
+				if len(data[i]) > 0 {
+					tr1.MustInsertKeyCommitment([]byte(data[i]))
+				}
+			}
+			tr1.Commit()
+			c1 := trie256p.RootCommitment(tr1)
+
+			store2 := trie_go.NewInMemoryKVStore()
+			tr2 := trie256p.New(m, store2)
+
+			permutation := rand.Perm(len(data))
+			for _, i := range permutation {
+				if len(data[i]) > 0 {
+					tr2.MustInsertKeyCommitment([]byte(data[i]))
+				}
+			}
+			tr2.Commit()
+			c2 := trie256p.RootCommitment(tr2)
+			t.Logf("root1 = %s", c1)
+			t.Logf("root2 = %s", c2)
+			require.True(t, trie_go.EqualCommitments(c1, c2))
+		})
+		t.Run("determ key commitment3", func(t *testing.T) {
+			data := genRnd3()
+			store1 := trie_go.NewInMemoryKVStore()
+			tr1 := trie256p.New(m, store1)
+
+			for i := range data {
+				if len(data[i]) > 0 {
+					tr1.MustInsertKeyCommitment([]byte(data[i]))
+				}
+			}
+			tr1.Commit()
+			c1 := trie256p.RootCommitment(tr1)
+
+			store2 := trie_go.NewInMemoryKVStore()
+			tr2 := trie256p.New(m, store2)
+
+			permutation := rand.Perm(len(data))
+			for _, i := range permutation {
+				if len(data[i]) > 0 {
+					tr2.MustInsertKeyCommitment([]byte(data[i]))
+				}
+			}
+			tr2.Commit()
+			c2 := trie256p.RootCommitment(tr2)
+			t.Logf("root1 = %s", c1)
+			t.Logf("root2 = %s", c2)
+			require.True(t, trie_go.EqualCommitments(c1, c2))
+		})
+		t.Run("determ key commitment4", func(t *testing.T) {
+			data := genRnd4()
+			if shortData {
+				data = data[:1000]
+			}
+			store1 := trie_go.NewInMemoryKVStore()
+			tr1 := trie256p.New(m, store1)
+
+			for i := range data {
+				if len(data[i]) > 0 {
+					tr1.MustInsertKeyCommitment([]byte(data[i]))
+				}
+			}
+			tr1.Commit()
+			c1 := trie256p.RootCommitment(tr1)
+
+			store2 := trie_go.NewInMemoryKVStore()
+			tr2 := trie256p.New(m, store2)
+
+			permutation := rand.Perm(len(data))
+			for _, i := range permutation {
+				if len(data[i]) > 0 {
+					tr2.MustInsertKeyCommitment([]byte(data[i]))
+				}
+			}
+			tr2.Commit()
+			c2 := trie256p.RootCommitment(tr2)
+			t.Logf("root1 = %s", c1)
+			t.Logf("root2 = %s", c2)
+			require.True(t, trie_go.EqualCommitments(c1, c2))
+
+			tr2.PersistMutations(store2)
+			trieSize := trie_go.ByteSize(store2)
+			numEntries := trie_go.NumEntries(store2)
+			t.Logf("key entries = %d", len(data))
+			t.Logf("Trie entries = %d", numEntries)
+			t.Logf("Trie bytes = %d KB", trieSize/1024)
+			t.Logf("Trie bytes/entry = %d ", trieSize/numEntries)
+		})
+		t.Run("determ key commitment5", func(t *testing.T) {
+			data := genRnd4()
+			if shortData {
+				data = data[:1000]
+			}
+			store1 := trie_go.NewInMemoryKVStore()
+			tr1 := trie256p.New(m, store1)
+
+			for i := range data {
+				if len(data[i]) > 0 {
+					tr1.MustInsertKeyCommitment([]byte(data[i]))
+				}
+				tr1.Commit()
+			}
+			c1 := trie256p.RootCommitment(tr1)
+
+			store2 := trie_go.NewInMemoryKVStore()
+			tr2 := trie256p.New(m, store2)
+			for i := range data {
+				if len(data[i]) > 0 {
+					tr2.MustInsertKeyCommitment([]byte(data[i]))
+				}
 			}
 
 			tr2.Commit()
