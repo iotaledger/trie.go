@@ -3,7 +3,7 @@ Go library for implementations of tries (radix trees), state commitments and _pr
 
 It implements a generic `256+ trie` for several particular commitment schemes. 
 
-The repository has minimal dependencies and no dependencies on other projects in IOTA. 
+The trie implementation has minimal dependencies and no dependencies on other projects in IOTA. 
 
 It is used as a dependency in the [IOTA Smart Contracts (the Wasp node)](https://github.com/iotaledger/wasp) 
 as the engine for the state commitment.
