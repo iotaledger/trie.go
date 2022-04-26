@@ -2,12 +2,14 @@ package trie_blake2b
 
 import (
 	"bytes"
+	"fmt"
 	trie_go "github.com/iotaledger/trie.go"
 	"github.com/iotaledger/trie.go/trie256p"
 	"golang.org/x/xerrors"
 	"io"
 )
 
+// blake2b model-specific proof of inclusion
 type Proof struct {
 	Key  []byte
 	Path []*ProofElement
@@ -45,7 +47,7 @@ func (m *CommitmentModel) Proof(key []byte, tr trie256p.NodeStore) *Proof {
 	for i, k := range proofGeneric.Path {
 		node, ok := tr.GetNode(k)
 		if !ok {
-			panic(xerrors.Errorf("can't find node key '%x'", k))
+			panic(fmt.Errorf("can't find node key '%x'", k))
 		}
 		isLast = i == len(proofGeneric.Path)-1
 		if !isLast {
@@ -170,19 +172,19 @@ func (p *Proof) verify(pathIdx, keyIdx int) ([32]byte, error) {
 	isPrefix := bytes.HasPrefix(tail, elem.PathFragment)
 	last := pathIdx == len(p.Path)-1
 	if !last && !isPrefix {
-		return [32]byte{}, xerrors.Errorf("wrong proof: proof path does not follow the key. Path position: %d, key position %d", pathIdx, keyIdx)
+		return [32]byte{}, fmt.Errorf("wrong proof: proof path does not follow the key. Path position: %d, key position %d", pathIdx, keyIdx)
 	}
 	if !last {
 		trie_go.Assert(isPrefix, "assertion: isPrefix")
 		if elem.ChildIndex > 255 {
-			return [32]byte{}, xerrors.Errorf("wrong proof: wrong child index. Path position: %d, key position %d", pathIdx, keyIdx)
+			return [32]byte{}, fmt.Errorf("wrong proof: wrong child index. Path position: %d, key position %d", pathIdx, keyIdx)
 		}
 		if _, ok := elem.Children[byte(elem.ChildIndex)]; ok {
-			return [32]byte{}, xerrors.Errorf("wrong proof: unexpected commitment at child index %d. Path position: %d, key position %d", elem.ChildIndex, pathIdx, keyIdx)
+			return [32]byte{}, fmt.Errorf("wrong proof: unexpected commitment at child index %d. Path position: %d, key position %d", elem.ChildIndex, pathIdx, keyIdx)
 		}
 		nextKeyIdx := keyIdx + len(elem.PathFragment) + 1
 		if nextKeyIdx > len(p.Key) {
-			return [32]byte{}, xerrors.Errorf("wrong proof: proof path out of key bounds. Path position: %d, key position %d", pathIdx, keyIdx)
+			return [32]byte{}, fmt.Errorf("wrong proof: proof path out of key bounds. Path position: %d, key position %d", pathIdx, keyIdx)
 		}
 		c, err := p.verify(pathIdx+1, nextKeyIdx)
 		if err != nil {
@@ -194,12 +196,12 @@ func (p *Proof) verify(pathIdx, keyIdx int) ([32]byte, error) {
 	if elem.ChildIndex < 256 {
 		c := elem.Children[byte(elem.ChildIndex)]
 		if c != nil {
-			return [32]byte{}, xerrors.Errorf("wrong proof: child commitment of the last element expected to be nil. Path position: %d, key position %d", pathIdx, keyIdx)
+			return [32]byte{}, fmt.Errorf("wrong proof: child commitment of the last element expected to be nil. Path position: %d, key position %d", pathIdx, keyIdx)
 		}
 		return elem.hashIt(nil), nil
 	}
 	if elem.ChildIndex != 256 && elem.ChildIndex != 257 {
-		return [32]byte{}, xerrors.Errorf("wrong proof: child index expected to be 256 or 257. Path position: %d, key position %d", pathIdx, keyIdx)
+		return [32]byte{}, fmt.Errorf("wrong proof: child index expected to be 256 or 257. Path position: %d, key position %d", pathIdx, keyIdx)
 	}
 	return elem.hashIt(nil), nil
 }

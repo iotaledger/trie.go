@@ -20,5 +20,6 @@ type CommitmentModel interface {
 	// from scratch using CalcNodeCommitment, or it can be calculated by applying additive delta
 	// I can be used by implementation to optimize the computation of update. For example KZG implementation
 	// can be made dramatically faster this way than strictly computing each time whole expensive vector commitment
+	// This interface takes into account different ways how updates are propagated in the trie
 	UpdateNodeCommitment(mutate *NodeData, childUpdates map[byte]trie_go.VCommitment, calcDelta bool, terminal trie_go.TCommitment, update *trie_go.VCommitment)
 }

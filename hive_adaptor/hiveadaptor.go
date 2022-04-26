@@ -1,3 +1,4 @@
+// Package hive_adaptor contains dapator interfaces with the key/value interfaces implemented in th `hive.go` repository.
 package hive_adaptor
 
 import (
@@ -13,6 +14,7 @@ type HiveKVStoreAdaptor struct {
 	prefix []byte
 }
 
+// NewHiveKVStoreAdaptor creates a new KVStore as a partition of hive.go KVStore
 func NewHiveKVStoreAdaptor(kvs kvstore.KVStore, prefix []byte) *HiveKVStoreAdaptor {
 	return &HiveKVStoreAdaptor{kvs: kvs, prefix: prefix}
 }
@@ -74,6 +76,7 @@ type HiveBatchedUpdater struct {
 	trie             *trie256p.Trie
 }
 
+// NewHiveBatchedUpdater creates new batch updater with the hive.go batch as a backend
 func NewHiveBatchedUpdater(kvs kvstore.KVStore, model trie256p.CommitmentModel, triePrefix, storePrefix []byte) (*HiveBatchedUpdater, error) {
 	ret := &HiveBatchedUpdater{
 		kvs:              kvs,
@@ -84,6 +87,7 @@ func NewHiveBatchedUpdater(kvs kvstore.KVStore, model trie256p.CommitmentModel, 
 	return ret, nil
 }
 
+// Update adds key values store both to the batch and to the trie
 func (a *HiveBatchedUpdater) Update(key []byte, value []byte) {
 	var err error
 	if a.batch == nil {
@@ -96,7 +100,7 @@ func (a *HiveBatchedUpdater) Update(key []byte, value []byte) {
 	a.trie.Update(key, value)
 }
 
-// batchWriter implements KVWriter interface over the Hive batch
+// batchWriter implements KVWriter interface over the hive.go batch
 type batchWriter struct {
 	prefix []byte
 	batch  kvstore.BatchedMutations
@@ -119,6 +123,8 @@ func (b batchWriter) Set(key, value []byte) {
 	mustNoErr(err)
 }
 
+// Commit commits the tries cache and persist mutations to the batch. Then it commits the whole batch
+// as an atomic update to the underlying kvstore
 func (a *HiveBatchedUpdater) Commit() error {
 	if a.batch == nil {
 		return nil
