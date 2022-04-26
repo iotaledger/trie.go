@@ -812,6 +812,45 @@ func TestTrieRndKeyCommitment(t *testing.T) {
 	runTest(t, trie_kzg_bn256.New(), true)
 }
 
+func TestKeyCommitmentOptimization(t *testing.T) {
+	data := genRnd4()[:10_000]
+	runTest := func(model trie256p.CommitmentModel) {
+		store1 := trie_go.NewInMemoryKVStore()
+		store2 := trie_go.NewInMemoryKVStore()
+		tr1 := trie256p.New(model, store1)
+		tr2 := trie256p.New(model, store2)
+
+		for _, d := range data {
+			if len(d) > 0 {
+				tr1.MustInsertKeyCommitment([]byte(d))
+			}
+		}
+		tr1.Commit()
+		tr1.PersistMutations(store1)
+
+		for _, d := range data {
+			b := []byte(d)
+			if len(d) > 0 {
+				b[0] = b[0] + 1 // make different
+				tr2.Update([]byte(d), b)
+			}
+		}
+		tr2.Commit()
+		tr2.PersistMutations(store2)
+
+		size1 := trie_go.ByteSize(store1)
+		size2 := trie_go.ByteSize(store2)
+		numEntries := trie_go.NumEntries(store1)
+		require.EqualValues(t, numEntries, trie_go.NumEntries(store2))
+
+		t.Logf("num entries: %d", numEntries)
+		t.Logf("   with key commitments. Byte size: %d, avg: %f bytes per entry", size1, float32(size1)/float32(numEntries))
+		t.Logf("without key commitments. Byte size: %d, avg: %f bytes per entry", size2, float32(size2)/float32(numEntries))
+	}
+	runTest(trie_blake2b.New())
+	runTest(trie_kzg_bn256.New())
+}
+
 func TestTrieWithDeletion(t *testing.T) {
 	data := []string{"0", "1", "2", "3", "4", "5"}
 	var tr1, tr2 *trie256p.Trie
