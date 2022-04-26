@@ -831,7 +831,7 @@ func TestKeyCommitmentOptimization(t *testing.T) {
 		for _, d := range data {
 			b := []byte(d)
 			if len(d) > 0 {
-				b[0] = b[0] + 1 // make different
+				b[0] = b[0] + 1 // make different from the key but same length
 				tr2.Update([]byte(d), b)
 			}
 		}

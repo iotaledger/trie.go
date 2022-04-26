@@ -19,7 +19,7 @@ const usage = "generate random key/value pairs. USAGE: trie_bench -gen <size> <n
 	"generate random key/value pairs with 32 byte random keys. USAGE: trie_bench -genhash <size> <name>\n" +
 	"make badger DB with trie from file. USAGE: trie_bench -mkdbbadger <name>\n" +
 	"make in-memory DB with trie from file. USAGE: trie_bench -mkdbmem <name>\n" +
-	"check consistency of the DB. USAGE: trie_bench -checkdbbadger <name>\n"
+	"check consistency of the DB. USAGE: trie_bench -scandbbadger <name>\n"
 
 func main() {
 	if len(os.Args) < 2 {
@@ -58,13 +58,6 @@ func main() {
 			os.Exit(1)
 		}
 		mkdbmem(os.Args[2])
-
-	case "-checkdbbadger":
-		if len(os.Args) != 3 {
-			fmt.Printf(usage)
-			os.Exit(1)
-		}
-		checkdbbadger(os.Args[2])
 
 	case "-scandbbadger":
 		if len(os.Args) != 3 {
@@ -152,38 +145,6 @@ func mkdbbadger(name string) {
 	must(err)
 
 	file2kvs(fname, kvs)
-}
-
-func checkdbbadger(name string) {
-	dbDir := name + ".dbdir"
-	if _, err := os.Stat(dbDir); os.IsNotExist(err) {
-		fmt.Printf("directory %s does not exist\n", dbDir)
-		os.Exit(1)
-	}
-	fmt.Printf("opening database '%s'\n", dbDir)
-
-	db, err := badger.CreateDB(dbDir)
-	must(err)
-	kvs := badger.New(db)
-	trieKVS := hive_adaptor.NewHiveKVStoreAdaptor(kvs, triePrefix)
-	model := trie_blake2b.New()
-	trie := trie256p.NewNodeStoreReader(trieKVS, model)
-	values := hive_adaptor.NewHiveKVStoreAdaptor(kvs, valueStorePrefix)
-
-	rootC := trie256p.RootCommitment(trie)
-	fmt.Printf("root commitment: %s\n", rootC)
-
-	counter := 0
-	values.Iterate(func(k []byte, v []byte) bool {
-		p := model.Proof(k, trie)
-		err = p.Validate(rootC)
-		must(err)
-		if counter%flushEach == 0 {
-			fmt.Printf("validate %d records\n")
-		}
-		counter++
-		return true
-	})
 }
 
 func scandbbadger(name string) {

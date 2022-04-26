@@ -1,5 +1,5 @@
-## trie.go  (WIP)
-Go library for implementations of tries (radix trees), state commitments and _proof of inclusion_ in large data sets.
+## trie.go
+Go library for implementations of tries (radix trees), state commitments and _proof of inclusion_ for large data sets.
 
 It implements a generic `256+ trie` for several particular commitment schemes. 
 
@@ -52,53 +52,42 @@ times shorter.
 This makes `trie_kzg_bn256` implementation more a _proof of concept_ and verification of the `256+ trie` concept. 
 It should not be use in practical project, unless `bn256` is replaced with other, faster curves.
 
-## Example 
+## Package `trie_go_tests`
+Contains number of tests of the trie implementation. Most of the tests run with both `trie_blak2b` and `trie_kzg_bn256` 
+implementations of the `CommitmentModel`. The tests check different edge conditions and determinism of the `trie`.
+It also makes sure `trie256p` implementation is agnostic about the specific commitment model. 
 
-```go
-package main
+## Package `hive_adaptor`
+Contains useful adaptors to key/value interface of `hive.go`. It makes `trie.go` compatible with any key/value database
+implemented in the `hive.go`.
 
-import (
-	"fmt"
-	trie_go "github.com/iotaledger/trie.go"
-	"github.com/iotaledger/trie.go/trie256p"
-	"github.com/iotaledger/trie.go/trie_blake2b"
-)
+## Package `trie_bench`
+Contains `trie_bench` program made for testing and benchmarking of different functions of `trie` with `tre_blake2b` 
+commitment model. The `trie_bench` uses `Badger` key/value database via `hive_adaptor`.
 
-func main() {
-	// create store where trie nodes will be stored
-	store := trie_go.NewInMemoryKVStore()
+In the directory of the package run `go install`. Then you can run the program one of the following ways:
 
-	// create blake2b commitment model
-	model := trie_blake2b.New()
+* `trie_bench -gen <size> <name>` generates a binary file `<name>.bin` of `<size>` random keys and values. Key and value are of variable length.
+* `trie_bench -genhash <size> <name>` generates a binary file `<name>.bin` of `<size>` random keys and values. Keys and values have fixed length of 32 bytes.
+* `trie_bench -mkdbmem <name>` loads file `<name>.bin` into the in-memory k/v database, both values and the trie. Outputs statistics.  
+* `trie_bench -mkdbbadger <name>` loads file `<name>.bin` into the `Badger` k/v database on directory `<name>.dbdir`, both values and the trie. 
+Outputs statistics.
+* `trie_bench -scandbbadger <name>` scans database and outputs statistics. Then it iterates over all keys and value in the database 
+and for each key/value pair:
+  * retrieves proof of inclusion for the key from the trie
+  * runs validation of the proof
+  * collects statistics
 
-	// create the trie
-	tr := trie256p.New(model, store)
+Statistics on the 2.8 GhZ 32 MB RAM SDD laptop. 
+`trie_bench` run over the key/value database of 1 mil key/value pairs and `trie_blake2b` commitment model:
 
-	// add some key/value pairs to the trie
-	keys := []string{"abc", "klm", "oprs"}
-	tr.Update([]byte(keys[0]), []byte("dummy1"))
-	tr.Update([]byte(keys[1]), []byte("dummy2"))
+| Parameter                                                              | Value               |
+|------------------------------------------------------------------------|---------------------|
+| Load 1 mil records into the DB <br> with trie generation (cached trie) | 31400 key pairs/sec |
+| Retrieve proof + validation (not-cached trie)                          | 3400 proofs/sec     |
+| Average length of the proof path                                       | 4.04                |
+| Average size of serialized proof                                       | 17 kB               |
 
-	// recalculate commitments in the trie
-	tr.Commit()
 
-	// retrieve root commitment (normally it is taken from the 3rd party)
-	rootCommitment := trie256p.RootCommitment(tr)
-
-	// prove that key 'abc' is in the state against the root
-	proof := model.Proof([]byte(keys[0]), tr)
-	err := proof.Validate(rootCommitment)
-	if err == nil {
-		fmt.Printf("key '%s' is in the state\n", keys[0])
-	}
-
-	// prove that key 'oprs' is not in the state
-	proof = model.Proof([]byte(keys[2]), tr)
-	err = proof.Validate(rootCommitment)
-	if err == nil && proof.IsProofOfAbsence() {
-		// proof is valid, however it proves inclusion of something else in the state and effectively 
-		// proves absence of the target key   
-		fmt.Printf("key '%s' is NOT in the state\n", keys[2])
-	}
-}
-```
+## Package `trie_example`  
+Contains example with the in memory key/value store. Run `go install` and the run the program `trie_example`.
