@@ -33,7 +33,7 @@ type Options struct {
 	DisableKeyCommitmentOptimization bool
 	// if true, provided keys are 'hexarized' with subsequent optimization
 	// It makes proofs in the 'blake2b' trie approx 8 times smaller (2 times longer and 16 times narrower)
-	// At the expense of the database size overhead.
-	// Default is disabled
+	// At the expense of some database size overhead.
+	// Default is disabled TODO WIP
 	EnableHexaryKeys bool
 }
