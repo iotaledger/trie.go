@@ -22,4 +22,18 @@ type CommitmentModel interface {
 	// can be made dramatically faster this way than strictly computing each time whole expensive vector commitment
 	// This interface takes into account different ways how updates are propagated in the trie
 	UpdateNodeCommitment(mutate *NodeData, childUpdates map[byte]trie_go.VCommitment, calcDelta bool, terminal trie_go.TCommitment, update *trie_go.VCommitment)
+	// GetOptions returns optimization options
+	GetOptions() Options
+}
+
+type Options struct {
+	// is true, key commitments won't be optimized when serializing the trie node
+	// Makes sense when key commitments are rare.
+	// Default is 'enabled'
+	DisableKeyCommitmentOptimization bool
+	// if true, provided keys are 'hexarized' with subsequent optimization
+	// It makes proofs in the 'blake2b' trie approx 8 times smaller (2 times longer and 16 times narrower)
+	// At the expense of the database size overhead.
+	// Default is disabled
+	EnableHexaryKeys bool
 }

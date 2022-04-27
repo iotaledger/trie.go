@@ -76,17 +76,29 @@ func (t *terminalCommitment) Clone() trie_go.TCommitment {
 // CommitmentModel implements 256+ trie based on blake2b hashing
 type CommitmentModel struct {
 	TrustedSetup
+	opt trie256p.Options
 }
 
 // Model is a singleton
 var Model = New()
 
-func New() *CommitmentModel {
+func New(opt ...trie256p.Options) *CommitmentModel {
 	ret, err := TrustedSetupFromBytes(bn256.NewSuite(), GetTrustedSetupBin())
 	if err != nil {
 		panic(err)
 	}
-	return &CommitmentModel{TrustedSetup: *ret}
+	o := trie256p.Options{}
+	if len(opt) > 0 {
+		o = opt[0]
+	}
+	return &CommitmentModel{
+		TrustedSetup: *ret,
+		opt:          o,
+	}
+}
+
+func (m *CommitmentModel) GetOptions() trie256p.Options {
+	return m.opt
 }
 
 func (m *CommitmentModel) NewVectorCommitment() trie_go.VCommitment {

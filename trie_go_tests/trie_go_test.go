@@ -843,12 +843,38 @@ func TestKeyCommitmentOptimization(t *testing.T) {
 		numEntries := trie_go.NumEntries(store1)
 		require.EqualValues(t, numEntries, trie_go.NumEntries(store2))
 
+		require.True(t, size1 < size2)
 		t.Logf("num entries: %d", numEntries)
 		t.Logf("   with key commitments. Byte size: %d, avg: %f bytes per entry", size1, float32(size1)/float32(numEntries))
 		t.Logf("without key commitments. Byte size: %d, avg: %f bytes per entry", size2, float32(size2)/float32(numEntries))
 	}
 	runTest(trie_blake2b.New())
 	runTest(trie_kzg_bn256.New())
+}
+
+func TestKeyCommitmentOptimizationOptions(t *testing.T) {
+	data := genRnd4()[:10_000]
+	runTest := func(model trie256p.CommitmentModel) int {
+		store1 := trie_go.NewInMemoryKVStore()
+		tr1 := trie256p.New(model, store1)
+
+		for _, d := range data {
+			if len(d) > 0 {
+				tr1.MustInsertKeyCommitment([]byte(d))
+			}
+		}
+		tr1.Commit()
+		tr1.PersistMutations(store1)
+
+		return trie_go.ByteSize(store1)
+	}
+	size1 := runTest(trie_blake2b.New())
+	size2 := runTest(trie_blake2b.New(trie256p.Options{
+		DisableKeyCommitmentOptimization: true,
+	}))
+	t.Logf("   with key commitment optimization. Byte size: %d", size1)
+	t.Logf("without key commitment optimization. Byte size: %d", size2)
+	require.True(t, size1 < size2)
 }
 
 func TestTrieWithDeletion(t *testing.T) {

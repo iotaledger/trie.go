@@ -145,7 +145,7 @@ func (n *bufferedNode) isModified() bool {
 func (n *bufferedNode) Bytes(model CommitmentModel) []byte {
 	// Optimization: if terminal commits to key, no need to serialize it
 	isKeyCommitment := false
-	if len(n.key) > 0 {
+	if !model.GetOptions().DisableKeyCommitmentOptimization && len(n.key) > 0 {
 		keyCommitment := model.CommitToData(trie_go.Concat(n.key, n.n.PathFragment))
 		isKeyCommitment = trie_go.EqualCommitments(n.n.Terminal, keyCommitment)
 	}
