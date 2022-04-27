@@ -78,7 +78,7 @@ and for each key/value pair:
   * runs validation of the proof
   * collects statistics
 
-Statistics on the 2.8 GhZ 32 MB RAM SDD laptop. 
+Statistics on the 2.8 GhZ 32 GB RAM SDD laptop. 
 `trie_bench` run over the key/value database of 1 mil key/value pairs and `trie_blake2b` commitment model:
 
 | Parameter                                                              | Value               |
