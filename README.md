@@ -38,7 +38,7 @@ Contains implementation of the `CommitmentModel` as a Merkle tree on the `256+ t
 The implementation is fast and optimized. It can be used in various project. It is used in the `Wasp` node.
 
 The usage of hashing function as a commitment function results in proofs of inclusion 5-6 times bigger than with
-polynomial KZK (Kate) commitments (size of PoI usually is up to 1-2K bytes).
+polynomial KZG (aka Kate) commitments (size of PoI usually is up to 1-2K bytes).
 
 ### Package `trie_kzg_bn256` 
 Contains implementation of the `CommitmentModel` as the _verkle_ tree which uses _KZG (Kate) commitments_ 
