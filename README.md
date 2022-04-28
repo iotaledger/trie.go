@@ -32,13 +32,15 @@ and from details of key/value store implementation via `KVStore` interface.
 The generic implementation of `256+ trie` can be used to implement different commitment models by implementing 
 `CommitmentModel` interface.  
 
-### Package `trie_blake2b`
-Contains implementation of the `CommitmentModel` as a Merkle tree on the `256+ trie` with data commitment via `blake2b` hash function. 
+### Packages `trie_blake2b_32` and `trie_blake2b_20`
+Contains implementation of the `CommitmentModel` as a Merkle tree on the `256+ trie` with data commitment via `blake2b` hash function.
+
+The two implementations are almost identical. The difference is the use of 32 byte/256 bit and 20 byte/160 bit hashing functions respectively.  
 
 The implementation is fast and optimized. It can be used in various project. It is used in the `Wasp` node.
 
-The usage of hashing function as a commitment function results in proofs of inclusion 5-6 times bigger than with
-polynomial KZK (Kate) commitments (size of PoI usually is up to 1-2K bytes).
+The usage of hashing function as a commitment function results in proofs of inclusion significantly bigger than with
+polynomial KZK (Kate) commitments.
 
 ### Package `trie_kzg_bn256` 
 Contains implementation of the `CommitmentModel` as the _verkle_ tree which uses _KZG (Kate) commitments_ 
@@ -65,14 +67,15 @@ implemented in the `hive.go`.
 Contains `trie_bench` program made for testing and benchmarking of different functions of `trie` with `tre_blake2b` 
 commitment model. The `trie_bench` uses `Badger` key/value database via `hive_adaptor`.
 
-In the directory of the package run `go install`. Then you can run the program one of the following ways:
+In the directory of the package run `go install`. Then you can run the program one of the following ways 
+(options `[-20|-32]` means choice between `blake2b` 160 and 256 bit commitment model implementations):
 
-* `trie_bench -gen <size> <name>` generates a binary file `<name>.bin` of `<size>` random keys and values. Key and value are of variable length.
-* `trie_bench -genhash <size> <name>` generates a binary file `<name>.bin` of `<size>` random keys and values. Keys and values have fixed length of 32 bytes.
-* `trie_bench -mkdbmem <name>` loads file `<name>.bin` into the in-memory k/v database, both values and the trie. Outputs statistics.  
-* `trie_bench -mkdbbadger <name>` loads file `<name>.bin` into the `Badger` k/v database on directory `<name>.dbdir`, both values and the trie. 
+* `trie_bench [-20|-32] -gen <size> <name>` generates a binary file `<name>.bin` of `<size>` random keys and values. Key and value are of variable length.
+* `trie_bench [-20|-32]-genhash <size> <name>` generates a binary file `<name>.bin` of `<size>` random keys and values. Keys and values have fixed length of 32 bytes.
+* `trie_bench [-20|-32] -mkdbmem <name>` loads file `<name>.bin` into the in-memory k/v database, both values and the trie. Outputs statistics.  
+* `trie_bench [-20|-32] -mkdbbadger <name>` loads file `<name>.bin` into the `Badger` k/v database on directory `<name>.dbdir`, both values and the trie. 
 Outputs statistics.
-* `trie_bench -scandbbadger <name>` scans database and outputs statistics. Then it iterates over all keys and value in the database 
+* `trie_bench [-20|-32] -scandbbadger <name>` scans database and outputs statistics. Then it iterates over all keys and value in the database 
 and for each key/value pair:
   * retrieves proof of inclusion for the key from the trie
   * runs validation of the proof
@@ -81,13 +84,18 @@ and for each key/value pair:
 Statistics on the 2.8 GhZ 32 GB RAM SDD laptop. 
 `trie_bench` run over the key/value database of 1 mil key/value pairs and `trie_blake2b` commitment model:
 
-| Parameter                                                              | Value               |
-|------------------------------------------------------------------------|---------------------|
-| Load 1 mil records into the DB <br> with trie generation (cached trie) | 31400 key pairs/sec |
-| Retrieve proof + validation (not-cached trie)                          | 3400 proofs/sec     |
-| Average length of the proof path                                       | 4.04                |
-| Average size of serialized proof                                       | 17 kB               |
+| Parameter                                                               | blake2b 256 bit<br/>model | blake2b 160 bit<br/>model |
+|-------------------------------------------------------------------------|---------------------------|---------------------------|
+| Load 1 mil records into the DB <br> with trie generation (cached trie)  | 30000 kv pairs/sec        | 33700 kv pairs/sec        |
+| Badger DB size (blake2b both 256 bit model)                             | 449 MB                    | 390 MB                    |
+| Retrieve proof + validation (not-cached trie)                           | 3370 proofs/sec           | 3600 proofs/sec           |
+| Average length of the proof path                                        | 4.04                      | 4.04                      |
+| Average size of serialized proof                                        | 17 kB                     | 10.7 kB                   |
 
 
 ## Package `trie_example`  
 Contains example with the in memory key/value store. Run `go install` and the run the program `trie_example`.
+
+### TODO list
+* implement optimization with hexary keys, similar to Patricia trie. 
+That would make proof size ~8 times less (2 times longer, 16 times narrower) at the expense of small DB overhead

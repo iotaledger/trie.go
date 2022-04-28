@@ -1,4 +1,4 @@
-// Package hive_adaptor contains dapator interfaces with the key/value interfaces implemented in th `hive.go` repository.
+// Package hive_adaptor contains adaptor interfaces with the key/value interfaces implemented in the `hive.go` repository.
 package hive_adaptor
 
 import (

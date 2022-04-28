@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"golang.org/x/crypto/blake2b"
 	"io"
 	"math"
 	"os"
@@ -301,4 +302,13 @@ func ReadUint32(r io.Reader, pval *uint32) error {
 func WriteUint32(w io.Writer, val uint32) error {
 	_, err := w.Write(Uint32To4Bytes(val))
 	return err
+}
+
+func Blake2b160(data []byte) (ret [20]byte) {
+	hash, _ := blake2b.New(20, nil)
+	if _, err := hash.Write(data); err != nil {
+		panic(err)
+	}
+	copy(ret[:], hash.Sum(nil))
+	return
 }

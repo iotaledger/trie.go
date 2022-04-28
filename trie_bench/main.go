@@ -8,63 +8,81 @@ import (
 	trie_go "github.com/iotaledger/trie.go"
 	"github.com/iotaledger/trie.go/hive_adaptor"
 	"github.com/iotaledger/trie.go/trie256p"
-	"github.com/iotaledger/trie.go/trie_blake2b"
+	"github.com/iotaledger/trie.go/trie_blake2b_20"
+	"github.com/iotaledger/trie.go/trie_blake2b_32"
 	"golang.org/x/crypto/blake2b"
 	"os"
 	"strconv"
 	"time"
 )
 
-const usage = "generate random key/value pairs. USAGE: trie_bench -gen <size> <name>\n" +
-	"generate random key/value pairs with 32 byte random keys. USAGE: trie_bench -genhash <size> <name>\n" +
-	"make badger DB with trie from file. USAGE: trie_bench -mkdbbadger <name>\n" +
-	"make in-memory DB with trie from file. USAGE: trie_bench -mkdbmem <name>\n" +
-	"check consistency of the DB. USAGE: trie_bench -scandbbadger <name>\n"
+const usage = "generate random key/value pairs. USAGE: trie_bench [-20|-32] -gen <size> <name>\n" +
+	"generate random key/value pairs with 32 byte random keys. USAGE: trie_bench [-20|-32] -genhash <size> <name>\n" +
+	"make badger DB with trie from file. USAGE: trie_bench [-20|-32] -mkdbbadger <name>\n" +
+	"make in-memory DB with trie from file. USAGE: trie_bench [-20|-32] -mkdbmem <name>\n" +
+	"check consistency of the DB. USAGE: trie_bench [-20|-32] -scandbbadger <name>\n"
+
+var (
+	model trie256p.CommitmentModel
+	tag   string
+)
 
 func main() {
-	if len(os.Args) < 2 {
+	if len(os.Args) < 3 {
 		fmt.Printf(usage)
 		os.Exit(1)
 	}
 	switch os.Args[1] {
+	case "-20":
+		model = trie_blake2b_20.New()
+		tag = "20"
+	case "-32":
+		model = trie_blake2b_32.New()
+		tag = "32"
+	default:
+		fmt.Printf(usage)
+		os.Exit(1)
+	}
+	fmt.Printf("Commitment model: '%s'\n", model.Description())
+	switch os.Args[2] {
 	case "-gen":
-		if len(os.Args) != 4 {
+		if len(os.Args) != 5 {
 			fmt.Printf(usage)
 			os.Exit(1)
 		}
-		size, err := strconv.Atoi(os.Args[2])
+		size, err := strconv.Atoi(os.Args[3])
 		must(err)
-		genrnd(size, os.Args[3], false)
+		genrnd(size, os.Args[4], false)
 
 	case "-genhash":
+		if len(os.Args) != 5 {
+			fmt.Printf(usage)
+			os.Exit(1)
+		}
+		size, err := strconv.Atoi(os.Args[3])
+		must(err)
+		genrnd(size, os.Args[4], true)
+
+	case "-mkdbbadger":
 		if len(os.Args) != 4 {
 			fmt.Printf(usage)
 			os.Exit(1)
 		}
-		size, err := strconv.Atoi(os.Args[2])
-		must(err)
-		genrnd(size, os.Args[3], true)
-
-	case "-mkdbbadger":
-		if len(os.Args) != 3 {
-			fmt.Printf(usage)
-			os.Exit(1)
-		}
-		mkdbbadger(os.Args[2])
+		mkdbbadger(os.Args[3])
 
 	case "-mkdbmem":
-		if len(os.Args) != 3 {
+		if len(os.Args) != 4 {
 			fmt.Printf(usage)
 			os.Exit(1)
 		}
-		mkdbmem(os.Args[2])
+		mkdbmem(os.Args[3])
 
 	case "-scandbbadger":
-		if len(os.Args) != 3 {
+		if len(os.Args) != 4 {
 			fmt.Printf(usage)
 			os.Exit(1)
 		}
-		scandbbadger(os.Args[2])
+		scandbbadger(os.Args[3])
 
 	default:
 		fmt.Printf(usage)
@@ -84,6 +102,14 @@ const (
 	MaxValue = 32
 )
 
+func getFname(name string) string {
+	return name + "." + tag + ".bin"
+}
+
+func getDbDir(name string) string {
+	return name + "." + tag + ".dbdir"
+}
+
 func genrnd(size int, name string, hashKV bool) {
 	rndIterator := trie_go.NewRandStreamIterator(trie_go.RandStreamParams{
 		Seed:       time.Now().UnixNano(),
@@ -91,7 +117,7 @@ func genrnd(size int, name string, hashKV bool) {
 		MaxKey:     MaxKey,
 		MaxValue:   MaxValue,
 	})
-	fname := name + ".bin"
+	fname := getFname(name)
 	fileWriter, err := trie_go.CreateKVStreamFile(fname)
 	must(err)
 	defer fileWriter.Close()
@@ -131,8 +157,8 @@ func mkdbmem(name string) {
 // all value and trie in badger db. Flushes every 100_000 records
 
 func mkdbbadger(name string) {
-	dbDir := name + ".dbdir"
-	fname := name + ".bin"
+	dbDir := getDbDir(name)
+	fname := getFname(name)
 	if _, err := os.Stat(dbDir); !os.IsNotExist(err) {
 		fmt.Printf("directory %s already exists. Can't create new database\n", dbDir)
 		os.Exit(1)
@@ -148,7 +174,7 @@ func mkdbbadger(name string) {
 }
 
 func scandbbadger(name string) {
-	dbDir := name + ".dbdir"
+	dbDir := getDbDir(name)
 	if _, err := os.Stat(dbDir); os.IsNotExist(err) {
 		fmt.Printf("directory %s does not exist\n", dbDir)
 		os.Exit(1)
@@ -183,7 +209,6 @@ func scandbbadger(name string) {
 	fmt.Printf("TRIE: number of nodes: %d, avg key len: %d, avg node size: %d\n",
 		recCounter, keyByteCounter/recCounter, valueByteCounter/recCounter)
 
-	model := trie_blake2b.New()
 	trie := trie256p.NewNodeStoreReader(trieKVS, model)
 	root := trie256p.RootCommitment(trie)
 	fmt.Printf("root commitment: %s\n", root)
@@ -193,10 +218,20 @@ func scandbbadger(name string) {
 	proofLen := 0
 	tm := newTimer()
 	valueKVS.Iterate(func(k []byte, v []byte) bool {
-		proof := model.Proof(k, trie)
-		proofBytes += len(proof.Bytes())
-		proofLen += len(proof.Path)
-		err = proof.Validate(root, v)
+		switch m := model.(type) {
+		case *trie_blake2b_20.CommitmentModel:
+			proof := m.Proof(k, trie)
+			proofBytes += len(proof.Bytes())
+			proofLen += len(proof.Path)
+			err = proof.Validate(root, v)
+
+		case *trie_blake2b_32.CommitmentModel:
+			proof := m.Proof(k, trie)
+			proofBytes += len(proof.Bytes())
+			proofLen += len(proof.Path)
+			err = proof.Validate(root, v)
+
+		}
 		must(err)
 		if recCounter%flushEach == 0 {
 			fmt.Printf("validated %d records in %v, %f proof/sec, avg proof bytes %d, avg proof len %f\n",
@@ -222,7 +257,6 @@ func file2kvs(fname string, kvs kvstore.KVStore) {
 
 	tm := newTimer()
 	counterRec := 1
-	model := trie_blake2b.New()
 	trie := trie256p.NewNodeStoreReader(hive_adaptor.NewHiveKVStoreAdaptor(kvs, triePrefix), model)
 	updater, err := hive_adaptor.NewHiveBatchedUpdater(kvs, model, triePrefix, valueStorePrefix)
 	must(err)
