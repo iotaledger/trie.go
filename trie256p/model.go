@@ -37,5 +37,5 @@ type Options struct {
 	// It makes proofs in the 'blake2b' trie approx 8 times smaller (2 times longer and 16 times narrower)
 	// At the expense of some database size overhead.
 	// Default is disabled TODO WIP
-	EnableHexaryKeys bool
+	UseHexaryPath bool
 }
