@@ -5,7 +5,8 @@ import (
 	"fmt"
 	trie_go "github.com/iotaledger/trie.go"
 	"github.com/iotaledger/trie.go/trie256p"
-	"github.com/iotaledger/trie.go/trie_blake2b"
+	"github.com/iotaledger/trie.go/trie_blake2b_20"
+	"github.com/iotaledger/trie.go/trie_blake2b_32"
 	"github.com/iotaledger/trie.go/trie_kzg_bn256"
 	"github.com/stretchr/testify/require"
 	"io"
@@ -98,7 +99,8 @@ func TestNode(t *testing.T) {
 			t.Logf("commitment = %s", h)
 		})
 	}
-	runTest(t, trie_blake2b.New())
+	runTest(t, trie_blake2b_32.New())
+	runTest(t, trie_blake2b_20.New())
 	//runTest(t, trie_kzg_bn256.New())
 }
 
@@ -436,7 +438,8 @@ func TestTrieBase(t *testing.T) {
 		})
 
 	}
-	runTest(t, trie_blake2b.New())
+	runTest(t, trie_blake2b_32.New())
+	runTest(t, trie_blake2b_20.New())
 	runTest(t, trie_kzg_bn256.New())
 }
 
@@ -649,7 +652,8 @@ func TestTrieRnd(t *testing.T) {
 			require.True(t, trie_go.EqualCommitments(c1, c2))
 		})
 	}
-	runTest(t, trie_blake2b.New(), false)
+	runTest(t, trie_blake2b_32.New(), false)
+	runTest(t, trie_blake2b_20.New(), false)
 	runTest(t, trie_kzg_bn256.New(), true)
 }
 
@@ -808,7 +812,8 @@ func TestTrieRndKeyCommitment(t *testing.T) {
 			require.True(t, trie_go.EqualCommitments(c1, c2))
 		})
 	}
-	runTest(t, trie_blake2b.New(), false)
+	runTest(t, trie_blake2b_32.New(), false)
+	runTest(t, trie_blake2b_20.New(), false)
 	runTest(t, trie_kzg_bn256.New(), true)
 }
 
@@ -848,7 +853,8 @@ func TestKeyCommitmentOptimization(t *testing.T) {
 		t.Logf("   with key commitments. Byte size: %d, avg: %f bytes per entry", size1, float32(size1)/float32(numEntries))
 		t.Logf("without key commitments. Byte size: %d, avg: %f bytes per entry", size2, float32(size2)/float32(numEntries))
 	}
-	runTest(trie_blake2b.New())
+	runTest(trie_blake2b_32.New())
+	runTest(trie_blake2b_20.New())
 	runTest(trie_kzg_bn256.New())
 }
 
@@ -868,13 +874,36 @@ func TestKeyCommitmentOptimizationOptions(t *testing.T) {
 
 		return trie_go.ByteSize(store1)
 	}
-	size1 := runTest(trie_blake2b.New())
-	size2 := runTest(trie_blake2b.New(trie256p.Options{
+	size1 := runTest(trie_blake2b_32.New())
+	size2 := runTest(trie_blake2b_32.New(trie256p.Options{
 		DisableKeyCommitmentOptimization: true,
 	}))
 	t.Logf("   with key commitment optimization. Byte size: %d", size1)
 	t.Logf("without key commitment optimization. Byte size: %d", size2)
 	require.True(t, size1 < size2)
+}
+
+func Test20Vs32(t *testing.T) {
+	data := genRnd4()[:10_000]
+	runTest := func(model trie256p.CommitmentModel) int {
+		store := trie_go.NewInMemoryKVStore()
+		tr1 := trie256p.New(model, store)
+
+		for _, d := range data {
+			if len(d) > 0 {
+				tr1.MustInsertKeyCommitment([]byte(d))
+			}
+		}
+		tr1.Commit()
+		tr1.PersistMutations(store)
+
+		return trie_go.ByteSize(store)
+	}
+	size1 := runTest(trie_blake2b_32.New())
+	size2 := runTest(trie_blake2b_20.New())
+	t.Logf("with blake2b 32 byte. Byte size: %d", size1)
+	t.Logf("with blake2b 20. Byte size: %d", size2)
+	require.True(t, size2 < size1)
 }
 
 func TestTrieWithDeletion(t *testing.T) {
@@ -1009,7 +1038,8 @@ func TestTrieWithDeletion(t *testing.T) {
 			require.EqualValues(t, nil, c)
 		})
 	}
-	runTest(t, trie_blake2b.New())
+	runTest(t, trie_blake2b_32.New())
+	runTest(t, trie_blake2b_20.New())
 	runTest(t, trie_kzg_bn256.New())
 }
 
@@ -1098,7 +1128,8 @@ func TestTrieWithDeletionDeterm(t *testing.T) {
 			}
 		})
 	}
-	runTest(t, trie_blake2b.New(), false)
+	runTest(t, trie_blake2b_32.New(), false)
+	runTest(t, trie_blake2b_20.New(), false)
 	runTest(t, trie_kzg_bn256.New(), true)
 }
 
@@ -1143,7 +1174,8 @@ func TestDeleteCommit(t *testing.T) {
 		}
 		require.True(t, trie_go.EqualCommitments(c[0], c[1]))
 	}
-	runTest(t, trie_blake2b.New())
+	runTest(t, trie_blake2b_32.New())
+	runTest(t, trie_blake2b_20.New())
 	runTest(t, trie_kzg_bn256.New())
 }
 
@@ -1184,6 +1216,7 @@ func TestGenTrie(t *testing.T) {
 			t.Logf("dumped trie size = %d", n)
 		})
 	}
-	runTest(t, trie_blake2b.New())
+	runTest(t, trie_blake2b_32.New())
+	runTest(t, trie_blake2b_20.New())
 	runTest(t, trie_kzg_bn256.New())
 }
