@@ -1,4 +1,4 @@
-package trie_blake2b
+package trie_blake2b_32
 
 import (
 	"bytes"
@@ -9,7 +9,7 @@ import (
 	"io"
 )
 
-// blake2b model-specific proof of inclusion
+// blake2b 32 byte model-specific proof of inclusion
 type Proof struct {
 	Key  []byte
 	Path []*ProofElement
@@ -91,7 +91,7 @@ func (p *Proof) Bytes() []byte {
 
 // MustKeyWithTerminal returns key and terminal commitment the proof is about. It returns:
 // - key
-// - commitment slice of up to 32 bytes long. If it is nil, the proof is a proof of absence
+// - commitment slice of up to hashSize bytes long. If it is nil, the proof is a proof of absence
 // - false if it is original data, true if it is a blake2b hash of the data
 // It does not verify the proof, so this function should be used only after Validate()
 func (p *Proof) MustKeyWithTerminal() ([]byte, []byte, bool) {
@@ -163,7 +163,7 @@ func (p *Proof) CommitmentToTheTerminalNode() trie_go.VCommitment {
 	return (*vectorCommitment)(&ret)
 }
 
-func (p *Proof) verify(pathIdx, keyIdx int) ([32]byte, error) {
+func (p *Proof) verify(pathIdx, keyIdx int) ([hashSize]byte, error) {
 	trie_go.Assert(pathIdx < len(p.Path), "assertion: pathIdx < lenPlus1(p.Path)")
 	trie_go.Assert(keyIdx <= len(p.Key), "assertion: keyIdx <= lenPlus1(p.Key)")
 
@@ -172,23 +172,23 @@ func (p *Proof) verify(pathIdx, keyIdx int) ([32]byte, error) {
 	isPrefix := bytes.HasPrefix(tail, elem.PathFragment)
 	last := pathIdx == len(p.Path)-1
 	if !last && !isPrefix {
-		return [32]byte{}, fmt.Errorf("wrong proof: proof path does not follow the key. Path position: %d, key position %d", pathIdx, keyIdx)
+		return [hashSize]byte{}, fmt.Errorf("wrong proof: proof path does not follow the key. Path position: %d, key position %d", pathIdx, keyIdx)
 	}
 	if !last {
 		trie_go.Assert(isPrefix, "assertion: isPrefix")
 		if elem.ChildIndex > 255 {
-			return [32]byte{}, fmt.Errorf("wrong proof: wrong child index. Path position: %d, key position %d", pathIdx, keyIdx)
+			return [hashSize]byte{}, fmt.Errorf("wrong proof: wrong child index. Path position: %d, key position %d", pathIdx, keyIdx)
 		}
 		if _, ok := elem.Children[byte(elem.ChildIndex)]; ok {
-			return [32]byte{}, fmt.Errorf("wrong proof: unexpected commitment at child index %d. Path position: %d, key position %d", elem.ChildIndex, pathIdx, keyIdx)
+			return [hashSize]byte{}, fmt.Errorf("wrong proof: unexpected commitment at child index %d. Path position: %d, key position %d", elem.ChildIndex, pathIdx, keyIdx)
 		}
 		nextKeyIdx := keyIdx + len(elem.PathFragment) + 1
 		if nextKeyIdx > len(p.Key) {
-			return [32]byte{}, fmt.Errorf("wrong proof: proof path out of key bounds. Path position: %d, key position %d", pathIdx, keyIdx)
+			return [hashSize]byte{}, fmt.Errorf("wrong proof: proof path out of key bounds. Path position: %d, key position %d", pathIdx, keyIdx)
 		}
 		c, err := p.verify(pathIdx+1, nextKeyIdx)
 		if err != nil {
-			return [32]byte{}, err
+			return [hashSize]byte{}, err
 		}
 		return elem.hashIt(&c), nil
 	}
@@ -196,20 +196,20 @@ func (p *Proof) verify(pathIdx, keyIdx int) ([32]byte, error) {
 	if elem.ChildIndex < 256 {
 		c := elem.Children[byte(elem.ChildIndex)]
 		if c != nil {
-			return [32]byte{}, fmt.Errorf("wrong proof: child commitment of the last element expected to be nil. Path position: %d, key position %d", pathIdx, keyIdx)
+			return [hashSize]byte{}, fmt.Errorf("wrong proof: child commitment of the last element expected to be nil. Path position: %d, key position %d", pathIdx, keyIdx)
 		}
 		return elem.hashIt(nil), nil
 	}
 	if elem.ChildIndex != 256 && elem.ChildIndex != 257 {
-		return [32]byte{}, fmt.Errorf("wrong proof: child index expected to be 256 or 257. Path position: %d, key position %d", pathIdx, keyIdx)
+		return [hashSize]byte{}, fmt.Errorf("wrong proof: child index expected to be 256 or 257. Path position: %d, key position %d", pathIdx, keyIdx)
 	}
 	return elem.hashIt(nil), nil
 }
 
-func (e *ProofElement) hashIt(missingCommitment *[32]byte) [32]byte {
-	var hashes [258]*[32]byte
+func (e *ProofElement) hashIt(missingCommitment *[hashSize]byte) [hashSize]byte {
+	var hashes [258]*[hashSize]byte
 	for idx, c := range e.Children {
-		hashes[idx] = (*[32]byte)(c)
+		hashes[idx] = (*[hashSize]byte)(c)
 	}
 	if e.Terminal != nil {
 		hashes[256] = &e.Terminal.bytes

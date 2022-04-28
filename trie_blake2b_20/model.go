@@ -1,5 +1,5 @@
-// Package trie_blake2b implements trie.CommitmentModel based on blake2b hashing
-package trie_blake2b
+// Package trie_blake2b_20 implements trie.CommitmentModel based on blake2b 32-byte hashing
+package trie_blake2b_20
 
 import (
 	"encoding/hex"
@@ -7,21 +7,22 @@ import (
 
 	trie_go "github.com/iotaledger/trie.go"
 	"github.com/iotaledger/trie.go/trie256p"
-	"golang.org/x/crypto/blake2b"
 	"golang.org/x/xerrors"
 )
 
+const hashSize = 20
+
 // terminalCommitment commits to the data of arbitrary size.
-// If len(data) <= 32, then lenPlus1 = len(data)+1 and bytes contains the data itself padded with 0's in the end
-// If len(data) > 32, the bytes contains blake2b hash of the data and lenPlus1 = 0
+// If len(data) <= hashSize, then lenPlus1 = len(data)+1 and bytes contains the data itself padded with 0's in the end
+// If len(data) > hashSize, the bytes contains blake2b hash of the data and lenPlus1 = 0
 // So, a correct value of lenPlus1 is 0 to 33
 type terminalCommitment struct {
-	bytes    [32]byte
+	bytes    [hashSize]byte
 	lenPlus1 uint8
 }
 
 // vectorCommitment is a blake2b hash of the vector elements
-type vectorCommitment [32]byte
+type vectorCommitment [hashSize]byte
 
 // CommitmentModel provides commitment model implementation for the 256+ trie
 type CommitmentModel struct {
@@ -49,7 +50,7 @@ func (m *CommitmentModel) NewVectorCommitment() trie_go.VCommitment {
 // UpdateNodeCommitment computes update to the node data and, optionally, updates existing commitment
 // In blake2b implementation delta it just means computing the hash of data
 func (m *CommitmentModel) UpdateNodeCommitment(mutate *trie256p.NodeData, childUpdates map[byte]trie_go.VCommitment, _ bool, newTerminalUpdate trie_go.TCommitment, update *trie_go.VCommitment) {
-	var hashes [258]*[32]byte
+	var hashes [258]*[hashSize]byte
 
 	deleted := make([]byte, 0, 256)
 	for i, upd := range childUpdates {
@@ -63,7 +64,7 @@ func (m *CommitmentModel) UpdateNodeCommitment(mutate *trie256p.NodeData, childU
 		delete(mutate.ChildCommitments, i)
 	}
 	for i, c := range mutate.ChildCommitments {
-		hashes[i] = (*[32]byte)(c.(*vectorCommitment))
+		hashes[i] = (*[hashSize]byte)(c.(*vectorCommitment))
 	}
 	mutate.Terminal = newTerminalUpdate // for hash commitment just replace
 	if mutate.Terminal != nil {
@@ -85,13 +86,13 @@ func (m *CommitmentModel) UpdateNodeCommitment(mutate *trie256p.NodeData, childU
 // CalcNodeCommitment computes commitment of the node. It is suboptimal in KZG trie.
 // Used in computing root commitment
 func (m *CommitmentModel) CalcNodeCommitment(par *trie256p.NodeData) trie_go.VCommitment {
-	var hashes [258]*[32]byte
+	var hashes [258]*[hashSize]byte
 
 	if len(par.ChildCommitments) == 0 && par.Terminal == nil {
 		return nil
 	}
 	for i, c := range par.ChildCommitments {
-		hashes[i] = (*[32]byte)(c.(*vectorCommitment))
+		hashes[i] = (*[hashSize]byte)(c.(*vectorCommitment))
 	}
 	if par.Terminal != nil {
 		hashes[256] = &par.Terminal.(*terminalCommitment).bytes
@@ -112,6 +113,10 @@ func (m *CommitmentModel) CommitToData(data []byte) trie_go.TCommitment {
 
 func (m *CommitmentModel) GetOptions() trie256p.Options {
 	return m.opt
+}
+
+func (m *CommitmentModel) Description() string {
+	return "trie256p commitment model implementation based on blake2b 160 bit hashing"
 }
 
 // *vectorCommitment implements trie_go.VCommitment
@@ -158,7 +163,7 @@ func (t *terminalCommitment) Write(w io.Writer) error {
 	if err := trie_go.WriteByte(w, t.lenPlus1); err != nil {
 		return err
 	}
-	l := byte(32)
+	l := byte(hashSize)
 	if t.lenPlus1 > 0 {
 		l = t.lenPlus1 - 1
 	}
@@ -174,11 +179,11 @@ func (t *terminalCommitment) Read(r io.Reader) error {
 	if t.lenPlus1 > 33 {
 		return xerrors.New("terminal commitment size byte must be <= 33")
 	}
-	l := byte(32)
+	l := byte(hashSize)
 	if t.lenPlus1 > 0 {
 		l = t.lenPlus1 - 1
 	}
-	t.bytes = [32]byte{}
+	t.bytes = [hashSize]byte{}
 	n, err := r.Read(t.bytes[:l])
 	if err != nil {
 		return err
@@ -210,23 +215,23 @@ func (t *terminalCommitment) value() ([]byte, bool) {
 	return t.bytes[:t.lenPlus1-1], t.lenPlus1 == 0
 }
 
-func hashVector(hashes *[258]*[32]byte) [32]byte {
-	var buf [258 * 32]byte // 8 KB + 32 B + 32 B
+func hashVector(hashes *[258]*[hashSize]byte) [hashSize]byte {
+	var buf [258 * hashSize]byte
 	for i, h := range hashes {
 		if h == nil {
 			continue
 		}
-		pos := 32 * int(i)
-		copy(buf[pos:pos+32], h[:])
+		pos := hashSize * int(i)
+		copy(buf[pos:pos+hashSize], h[:])
 	}
-	return blake2b.Sum256(buf[:])
+	return trie_go.Blake2b160(buf[:])
 }
 
-func commitToData(data []byte) (ret [32]byte) {
-	if len(data) <= 32 {
+func commitToData(data []byte) (ret [hashSize]byte) {
+	if len(data) <= hashSize {
 		copy(ret[:], data)
 	} else {
-		ret = blake2b.Sum256(data)
+		ret = trie_go.Blake2b160(data)
 	}
 	return
 }
@@ -235,7 +240,7 @@ func commitToTerminal(data []byte) *terminalCommitment {
 	ret := &terminalCommitment{
 		bytes: commitToData(data),
 	}
-	if len(data) <= 32 {
+	if len(data) <= hashSize {
 		ret.lenPlus1 = uint8(len(data)) + 1 // 1-33
 	}
 	return ret

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	trie_go "github.com/iotaledger/trie.go"
 	"github.com/iotaledger/trie.go/trie256p"
-	"github.com/iotaledger/trie.go/trie_blake2b"
+	"github.com/iotaledger/trie.go/trie_blake2b_32"
 )
 
 func main() {
@@ -12,7 +12,7 @@ func main() {
 	store := trie_go.NewInMemoryKVStore()
 
 	// create blake2b commitment model
-	model := trie_blake2b.New()
+	model := trie_blake2b_32.New()
 
 	// create the trie
 	tr := trie256p.New(model, store)

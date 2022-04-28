@@ -24,6 +24,8 @@ type CommitmentModel interface {
 	UpdateNodeCommitment(mutate *NodeData, childUpdates map[byte]trie_go.VCommitment, calcDelta bool, terminal trie_go.TCommitment, update *trie_go.VCommitment)
 	// GetOptions returns optimization options
 	GetOptions() Options
+	// Description return description of the implementation
+	Description() string
 }
 
 type Options struct {
