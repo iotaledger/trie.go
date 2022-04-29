@@ -1,69 +1,63 @@
 package trie256p
 
 import (
-	"encoding/hex"
 	"errors"
-	"fmt"
 )
 
-type key256 []byte
-type key16 []byte
-type encodedPath []byte
-
-var ErrWrongNibble = errors.New("key16 byte must be less than 0x0F")
+var (
+	ErrWrongNibble = errors.New("key16 byte must be less than 0x0F")
+	ErrEmpty       = errors.New("encoded key16 can't be empty")
+	ErrWrongFormat = errors.New("encoded key16 wrong format")
+)
 
 // TODO WIP hex keys will be used to transparently optimize blake2b proof size
 
-func (k key256) ToKey16() key16 {
-	ret := make([]byte, len(k)*2)
-	for i, c := range k {
-		ret[2*i] = c >> 4
-		ret[2*i+1] = c & 0x0F
+//
+func unpackK16(dst, src []byte) []byte {
+	for _, c := range src {
+		dst = append(dst, c>>4, c&0x0F)
 	}
-	return ret
+	return dst
 }
 
-func (k key256) String() string {
-	return fmt.Sprintf("key256(%s)", hex.EncodeToString(k))
-}
-
-func (k key256) encodePath() encodedPath {
-	return encodedPath(k)
-}
-
-func (hk key16) encodePath() (encodedPath, error) {
-	isOdd := len(hk)%2 != 0
-	var ret []byte
-	if isOdd {
-		ret = make([]byte, (len(hk)+1)/2+1)
-	} else {
-		ret = make([]byte, len(hk)/2+1)
-	}
-	if isOdd {
-		ret[0] = 1
-	}
-	for i, c := range hk {
-		if c > 0x0F {
+func packK16(dst, src []byte) ([]byte, error) {
+	for i := 0; i < len(src); i += 2 {
+		if src[i] > 0x0F {
 			return nil, ErrWrongNibble
 		}
-		if i%2 == 0 {
-			ret[i/2+1] = c << 4
-		} else {
-			ret[i/2+1] |= c
+		c := src[i] << 4
+		if i+1 < len(src) {
+			c |= src[i+1]
 		}
+		dst = append(dst, c)
+	}
+	return dst, nil
+}
+
+func encodeK16(k16 []byte) ([]byte, error) {
+	ret := make([]byte, 0, len(k16)%2+1)
+	if len(k16)%2 == 0 {
+		ret = append(ret, 0x00)
+	} else {
+		ret = append(ret, 0xFF)
+	}
+	return packK16(ret, k16)
+}
+
+func decodeK16(data []byte) ([]byte, error) {
+	if len(data) == 0 {
+		return nil, ErrEmpty
+	}
+	if data[0] != 0 && data[0] != 0xFF {
+		return nil, ErrWrongFormat
+	}
+	ret := make([]byte, 0, len(data)*2)
+	ret = unpackK16(ret, data[1:])
+	if data[0] == 0xFF {
+		if ret[len(ret)-1] != 0 {
+			return nil, ErrWrongFormat
+		}
+		ret = ret[:len(ret)-1]
 	}
 	return ret, nil
-}
-
-func (hk key16) isValid() error {
-	for _, c := range hk {
-		if c&0xF0 != 0 {
-			return ErrWrongNibble
-		}
-	}
-	return nil
-}
-
-func (k key16) String() string {
-	return fmt.Sprintf("key16(%s)", hex.EncodeToString(k))
 }
