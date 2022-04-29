@@ -13,6 +13,13 @@ import (
 	"sort"
 )
 
+func (tr *Trie) unpackKeyIfNeeded(key []byte) []byte {
+	if !tr.Model().GetOptions().UseHexaryPath {
+		return key
+	}
+	return unpackK16(make([]byte, 0, len(key)*2), key)
+}
+
 // newTerminalNode creates new node in the trie with specified PathFragment and Terminal commitment.
 // Assumes 'key' does not exist in the Trie
 func (tr *Trie) newTerminalNode(key, pathFragment []byte, newTerminal trie_go.TCommitment) *bufferedNode {
@@ -28,16 +35,16 @@ func (tr *Trie) newTerminalNode(key, pathFragment []byte, newTerminal trie_go.TC
 // Commit calculates a new root commitment value from the cache and commits all mutations in the cached NodeStoreReader
 // It is a re-calculation of the trie. bufferedNode caches are updated accordingly.
 func (tr *Trie) Commit() {
-	tr.CommitNode(nil, nil)
+	tr.commitNode(nil, nil)
 }
 
-// CommitNode re-calculates node commitment and, recursively, its children commitments
+// commitNode re-calculates node commitment and, recursively, its children commitments
 // Child modification marks in 'modifiedChildren' are updated
 // Return update to the upper commitment. nil mean upper commitment is not updated
 // It calls implementation-specific function UpdateNodeCommitment and passes parameter
 // calcDelta = true if node's commitment can be updated incrementally. The implementation
 // of UpdateNodeCommitment may use this parameter to optimize underlying cryptography
-func (tr *Trie) CommitNode(key []byte, update *trie_go.VCommitment) {
+func (tr *Trie) commitNode(key []byte, update *trie_go.VCommitment) {
 	n, ok := tr.getNodeIntern(key)
 	if !ok {
 		if update != nil {
@@ -56,7 +63,7 @@ func (tr *Trie) CommitNode(key []byte, update *trie_go.VCommitment) {
 	childUpdates := make(map[byte]trie_go.VCommitment)
 	for childIndex := range n.modifiedChildren {
 		curCommitment := mutate.ChildCommitments[childIndex] // may be nil
-		tr.CommitNode(childKey(n, childIndex), &curCommitment)
+		tr.commitNode(childKey(n, childIndex), &curCommitment)
 		childUpdates[childIndex] = curCommitment
 	}
 
