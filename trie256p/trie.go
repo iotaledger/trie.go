@@ -17,7 +17,7 @@ func (tr *Trie) unpackKeyIfNeeded(key []byte) []byte {
 	if !tr.Model().GetOptions().UseHexaryPath {
 		return key
 	}
-	return unpackK16(make([]byte, 0, len(key)*2), key)
+	return unpack16(make([]byte, 0, len(key)*2), key)
 }
 
 // newTerminalNode creates new node in the trie with specified PathFragment and Terminal commitment.

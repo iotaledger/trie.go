@@ -28,8 +28,8 @@ func RootCommitment(tr NodeStore) trie_go.VCommitment {
 
 // NodeStoreReader direct access to trie
 type NodeStoreReader struct {
-	model CommitmentModel
-	store trie_go.KVReader
+	arity  Arity
+	reader *NodeStoreReader
 }
 
 // NodeStoreReader implements NodeStore
@@ -64,99 +64,40 @@ func (sr *NodeStoreReader) Model() CommitmentModel {
 // Trie is an updatable trie implemented on top of the key/value store. It is virtualized and optimized by caching of the
 // trie update operation and keeping consistent trie in the cache
 type Trie struct {
-	// persisted trie
-	nodeStoreReader NodeStoreReader
-	// buffered part of the trie
-	nodeCache map[string]*bufferedNode
-	// cached deleted nodes
-	deleted map[string]struct{}
+	nodeStore              *nodeStoreBuffered
+	arity                  Arity
+	optimizeKeyCommitments bool
 }
 
 // Trie implements NodeStore interface. It buffers all NodeStoreReader for optimization purposes: multiple updates of trie do not require DB NodeStoreReader
 var _ NodeStore = &Trie{}
 
-func New(model CommitmentModel, store trie_go.KVReader) *Trie {
+func New(model CommitmentModel, store trie_go.KVReader, arity Arity, optimizeKeyCommitments bool) *Trie {
 	ret := &Trie{
-		nodeStoreReader: *NewNodeStoreReader(store, model),
-		nodeCache:       make(map[string]*bufferedNode),
-		deleted:         make(map[string]struct{}),
+		nodeStore:              newNodeStoreBuffered(model, store),
+		arity:                  arity,
+		optimizeKeyCommitments: optimizeKeyCommitments,
 	}
 	return ret
 }
 
 // Clone is a deep copy of the trie, including its buffered data
 func (tr *Trie) Clone() *Trie {
-	ret := &Trie{
-		nodeStoreReader: tr.nodeStoreReader,
-		nodeCache:       make(map[string]*bufferedNode),
-		deleted:         make(map[string]struct{}),
+	return &Trie{
+		nodeStore:              tr.nodeStore.Clone(),
+		arity:                  tr.arity,
+		optimizeKeyCommitments: tr.optimizeKeyCommitments,
 	}
-	for k, v := range tr.nodeCache {
-		ret.nodeCache[k] = v.Clone()
-	}
-	for k := range tr.deleted {
-		ret.deleted[k] = struct{}{}
-	}
-	return ret
 }
 
 func (tr *Trie) Model() CommitmentModel {
-	return tr.nodeStoreReader.model
+	return tr.nodeStore.reader.m
 }
 
 // GetNode fetches node from the trie
 func (tr *Trie) GetNode(key []byte) (Node, bool) {
-	return tr.getNodeIntern(key)
-}
-
-// getNodeIntern takes node form the cache or fetches it from stored tries
-func (tr *Trie) getNodeIntern(key []byte) (*bufferedNode, bool) {
-	if _, isDeleted := tr.deleted[string(key)]; isDeleted {
-		return nil, false
-	}
-	ret, ok := tr.nodeCache[string(key)]
-	if ok {
-		return ret, true
-	}
-	n, ok := tr.nodeStoreReader.getNodeIntern(key)
-	if !ok {
-		return nil, false
-	}
-	ret = newBufferedNode(key)
-	ret.n = n.n
-	ret.newTerminal = n.n.Terminal
-	tr.nodeCache[string(key)] = ret
-	return ret, true
-}
-
-func (tr *Trie) mustGetNode(key []byte) *bufferedNode {
-	ret, ok := tr.getNodeIntern(key)
-	trie_go.Assert(ok, "mustGetNode: not found key '%x'", key)
-	return ret
-}
-
-// removeKey marks key deleted
-func (tr *Trie) removeKey(key []byte) {
-	delete(tr.nodeCache, string(key))
-	tr.deleted[string(key)] = struct{}{}
-}
-
-// unDelete removes deletion mark, if any
-func (tr *Trie) unDelete(key []byte) {
-	delete(tr.deleted, string(key))
-}
-
-func (tr *Trie) insertNewNode(n *bufferedNode) {
-	tr.unDelete(n.key) // in case was marked deleted previously
-	_, already := tr.nodeCache[string(n.key)]
-	trie_go.Assert(!already, "!already")
-	tr.nodeCache[string(n.key)] = n
-}
-
-func (tr *Trie) replaceNode(n *bufferedNode) {
-	_, already := tr.nodeCache[string(n.key)]
-	trie_go.Assert(already, "already")
-	tr.nodeCache[string(n.key)] = n
+	// TODO encode
+	return tr.nodeStore.getNode(key)
 }
 
 // PersistMutations persists the cache to the key/value store

@@ -39,3 +39,11 @@ type Options struct {
 	// Default is disabled TODO WIP
 	UseHexaryPath bool
 }
+
+type Arity byte
+
+const (
+	Arity256 = Arity(255)
+	Arity16  = Arity(15)
+	Arity2   = Arity(1)
+)
