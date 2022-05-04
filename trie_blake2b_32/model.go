@@ -27,15 +27,10 @@ type vectorCommitment [hashSize]byte
 
 // CommitmentModel provides commitment model implementation for the 256+ trie
 type CommitmentModel struct {
-	opt trie256p.Options
 }
 
-func New(opt ...trie256p.Options) *CommitmentModel {
-	o := trie256p.Options{}
-	if len(opt) > 0 {
-		o = opt[0]
-	}
-	return &CommitmentModel{opt: o}
+func New() *CommitmentModel {
+	return &CommitmentModel{}
 }
 
 // NewTerminalCommitment creates empty terminal commitment
@@ -110,10 +105,6 @@ func (m *CommitmentModel) CommitToData(data []byte) trie_go.TCommitment {
 		return nil
 	}
 	return commitToTerminal(data)
-}
-
-func (m *CommitmentModel) GetOptions() trie256p.Options {
-	return m.opt
 }
 
 func (m *CommitmentModel) Description() string {

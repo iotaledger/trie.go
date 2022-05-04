@@ -28,55 +28,38 @@ func RootCommitment(tr NodeStore) trie_go.VCommitment {
 
 // NodeStoreReader direct access to trie
 type NodeStoreReader struct {
-	arity  Arity
-	reader *NodeStoreReader
+	reader *nodeStore
 }
 
 // NodeStoreReader implements NodeStore
 var _ NodeStore = &NodeStoreReader{}
 
-func NewNodeStoreReader(store trie_go.KVReader, model CommitmentModel) *NodeStoreReader {
+func NewNodeStoreReader(model CommitmentModel, store trie_go.KVReader, arity PathArity) *NodeStoreReader {
 	return &NodeStoreReader{
-		model: model,
-		store: store,
+		reader: newNodeStore(store, model, arity),
 	}
 }
 
 func (sr *NodeStoreReader) GetNode(key []byte) (Node, bool) {
-	return sr.getNodeIntern(key)
-}
-
-func (sr *NodeStoreReader) getNodeIntern(key []byte) (*nodeReadOnly, bool) {
-	nodeBin := sr.store.Get(key)
-	if nodeBin == nil {
-		return nil, false
-	}
-	node, err := nodeReadOnlyFromBytes(sr.model, nodeBin, key)
-	trie_go.Assert(err == nil, "getNodeIntern: %v", err)
-	return node, true
-
+	return sr.reader.getNodeIntern(unpackKey(key, sr.reader.arity))
 }
 
 func (sr *NodeStoreReader) Model() CommitmentModel {
-	return sr.model
+	return sr.reader.m
 }
 
 // Trie is an updatable trie implemented on top of the key/value store. It is virtualized and optimized by caching of the
 // trie update operation and keeping consistent trie in the cache
 type Trie struct {
-	nodeStore              *nodeStoreBuffered
-	arity                  Arity
-	optimizeKeyCommitments bool
+	nodeStore *nodeStoreBuffered
 }
 
 // Trie implements NodeStore interface. It buffers all NodeStoreReader for optimization purposes: multiple updates of trie do not require DB NodeStoreReader
 var _ NodeStore = &Trie{}
 
-func New(model CommitmentModel, store trie_go.KVReader, arity Arity, optimizeKeyCommitments bool) *Trie {
+func New(model CommitmentModel, store trie_go.KVReader, arity PathArity, optimizeKeyCommitments bool) *Trie {
 	ret := &Trie{
-		nodeStore:              newNodeStoreBuffered(model, store),
-		arity:                  arity,
-		optimizeKeyCommitments: optimizeKeyCommitments,
+		nodeStore: newNodeStoreBuffered(model, store, arity, optimizeKeyCommitments),
 	}
 	return ret
 }
@@ -84,9 +67,7 @@ func New(model CommitmentModel, store trie_go.KVReader, arity Arity, optimizeKey
 // Clone is a deep copy of the trie, including its buffered data
 func (tr *Trie) Clone() *Trie {
 	return &Trie{
-		nodeStore:              tr.nodeStore.Clone(),
-		arity:                  tr.arity,
-		optimizeKeyCommitments: tr.optimizeKeyCommitments,
+		nodeStore: tr.nodeStore.Clone(),
 	}
 }
 
@@ -96,29 +77,16 @@ func (tr *Trie) Model() CommitmentModel {
 
 // GetNode fetches node from the trie
 func (tr *Trie) GetNode(key []byte) (Node, bool) {
-	// TODO encode
-	return tr.nodeStore.getNode(key)
+	return tr.nodeStore.getNode(unpackKey(key, tr.nodeStore.arity))
 }
 
 // PersistMutations persists the cache to the key/value store
 // Does not clear cache
 func (tr *Trie) PersistMutations(store trie_go.KVWriter) int {
-	counter := 0
-	for _, v := range tr.nodeCache {
-		store.Set(v.key, v.Bytes(tr.Model()))
-		counter++
-	}
-	for k := range tr.deleted {
-		_, inCache := tr.nodeCache[k]
-		trie_go.Assert(!inCache, "!inCache")
-		store.Set([]byte(k), nil)
-		counter++
-	}
-	return counter
+	return tr.nodeStore.persistMutations(store)
 }
 
 // ClearCache clears the node cache
 func (tr *Trie) ClearCache() {
-	tr.nodeCache = make(map[string]*bufferedNode)
-	tr.deleted = make(map[string]struct{})
+	tr.nodeStore.clearCache()
 }

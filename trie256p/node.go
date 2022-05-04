@@ -48,8 +48,8 @@ func (n *nodeReadOnly) IsCommitted() bool {
 	return true
 }
 
-func nodeReadOnlyFromBytes(model CommitmentModel, data, key []byte) (*nodeReadOnly, error) {
-	ret, err := NodeDataFromBytes(model, data, key)
+func nodeReadOnlyFromBytes(model CommitmentModel, data, key []byte, arity PathArity) (*nodeReadOnly, error) {
+	ret, err := NodeDataFromBytes(model, data, key, arity)
 	if err != nil {
 		return nil, err
 	}
@@ -142,15 +142,15 @@ func (n *bufferedNode) isModified() bool {
 	return n.pathChanged || len(n.modifiedChildren) > 0 || !trie_go.EqualCommitments(n.newTerminal, n.n.Terminal)
 }
 
-func (n *bufferedNode) Bytes(model CommitmentModel) []byte {
+func (n *bufferedNode) Bytes(model CommitmentModel, arity PathArity, optimizeKeyCommitments bool) []byte {
 	// Optimization: if terminal commits to key, no need to serialize it
 	isKeyCommitment := false
-	if !model.GetOptions().DisableKeyCommitmentOptimization && len(n.key) > 0 {
+	if optimizeKeyCommitments && len(n.key) > 0 {
 		keyCommitment := model.CommitToData(trie_go.Concat(n.key, n.n.PathFragment))
 		isKeyCommitment = trie_go.EqualCommitments(n.n.Terminal, keyCommitment)
 	}
 	var buf bytes.Buffer
-	err := n.n.Write(&buf, isKeyCommitment)
+	err := n.n.Write(&buf, arity, isKeyCommitment)
 	trie_go.Assert(err == nil, "%v", err)
 	return buf.Bytes()
 }

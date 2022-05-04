@@ -23,9 +23,9 @@ func NewNodeData() *NodeData {
 	}
 }
 
-func NodeDataFromBytes(model CommitmentModel, data, key []byte) (*NodeData, error) {
+func NodeDataFromBytes(model CommitmentModel, data, key []byte, arity PathArity) (*NodeData, error) {
 	ret := NewNodeData()
-	if err := ret.Read(bytes.NewReader(data), model, key); err != nil {
+	if err := ret.Read(bytes.NewReader(data), model, key, arity); err != nil {
 		return nil, err
 	}
 	return ret, nil
@@ -81,6 +81,8 @@ const (
 	serializeTerminalValueFlag = 0x02
 	serializeChildrenFlag      = 0x04
 	serializePathFragmentFlag  = 0x08
+	optimizedPathArityFlag     = 0x10 // if set, it is binary or hexary
+	binaryPath                 = 0x20 // is set, it is binary, otherwise hexary. Only makes sense if optimizedPathArityFlag is set.
 )
 
 // cflags256 256 flags, one for each child
@@ -94,7 +96,7 @@ func (fl *cflags256) hasFlag(i byte) bool {
 	return fl[i/8]&(0x1<<(i%8)) != 0
 }
 
-func (n *NodeData) Write(w io.Writer, isKeyCommitment bool) error {
+func (n *NodeData) Write(w io.Writer, arity PathArity, isKeyCommitment bool) error {
 	var smallFlags byte
 	if isKeyCommitment {
 		smallFlags |= isKeyCommitmentFlag
@@ -115,14 +117,19 @@ func (n *NodeData) Write(w io.Writer, isKeyCommitment bool) error {
 	if smallFlags == 0 {
 		return xerrors.New("non-committing node can't be serialized")
 	}
+	var pathFragmentEncoded []byte
+	var err error
 	if len(n.PathFragment) > 0 {
 		smallFlags |= serializePathFragmentFlag
+		if pathFragmentEncoded, err = encodeKey(pathFragmentEncoded, arity); err != nil {
+			return err
+		}
 	}
 	if err := trie_go.WriteByte(w, smallFlags); err != nil {
 		return err
 	}
 	if smallFlags&serializePathFragmentFlag != 0 {
-		if err := trie_go.WriteBytes16(w, n.PathFragment); err != nil {
+		if err := trie_go.WriteBytes16(w, pathFragmentEncoded); err != nil {
 			return err
 		}
 	}
@@ -152,14 +159,18 @@ func (n *NodeData) Write(w io.Writer, isKeyCommitment bool) error {
 }
 
 // Read deserialized node data and returns isKeyCommitmentFlag value
-func (n *NodeData) Read(r io.Reader, model CommitmentModel, key []byte) error {
+func (n *NodeData) Read(r io.Reader, model CommitmentModel, key []byte, arity PathArity) error {
 	var err error
 	var smallFlags byte
 	if smallFlags, err = trie_go.ReadByte(r); err != nil {
 		return err
 	}
 	if smallFlags&serializePathFragmentFlag != 0 {
-		if n.PathFragment, err = trie_go.ReadBytes16(r); err != nil {
+		encoded, err := trie_go.ReadBytes16(r)
+		if err != nil {
+			return err
+		}
+		if n.PathFragment, err = decodeKey(encoded, arity); err != nil {
 			return err
 		}
 	} else {

@@ -1,6 +1,10 @@
 package trie256p
 
-import trie_go "github.com/iotaledger/trie.go"
+import (
+	"fmt"
+	trie_go "github.com/iotaledger/trie.go"
+	"sort"
+)
 
 // nodeStoreBackend is access with real encoded keys
 type nodeStoreBackend interface {
@@ -12,15 +16,17 @@ type nodeStoreBackend interface {
 type nodeStore struct {
 	m     CommitmentModel
 	store trie_go.KVReader
+	arity PathArity
 }
 
 // NodeStoreReader implements NodeStore
 var _ nodeStoreBackend = &nodeStore{}
 
-func newNodeStore(store trie_go.KVReader, model CommitmentModel) *nodeStore {
+func newNodeStore(store trie_go.KVReader, model CommitmentModel, arity PathArity) *nodeStore {
 	return &nodeStore{
 		m:     model,
 		store: store,
+		arity: arity,
 	}
 }
 
@@ -33,7 +39,7 @@ func (sr *nodeStore) getNodeIntern(key []byte) (*nodeReadOnly, bool) {
 	if nodeBin == nil {
 		return nil, false
 	}
-	n, err := nodeReadOnlyFromBytes(sr.m, nodeBin, key)
+	n, err := nodeReadOnlyFromBytes(sr.m, nodeBin, key, sr.arity)
 	trie_go.Assert(err == nil, "nodeStore::getNodeIntern: %v", err)
 	return n, true
 }
@@ -48,17 +54,21 @@ type nodeStoreBuffered struct {
 	// buffered part of the trie
 	nodeCache map[string]*bufferedNode
 	// cached deleted nodes
-	deleted map[string]struct{}
+	deleted                map[string]struct{}
+	arity                  PathArity
+	optimizeKeyCommitments bool
 }
 
 // nodeStoreBuffered implements nodeStoreBackend interface.
 var _ nodeStoreBackend = &nodeStoreBuffered{}
 
-func newNodeStoreBuffered(model CommitmentModel, store trie_go.KVReader) *nodeStoreBuffered {
+func newNodeStoreBuffered(model CommitmentModel, store trie_go.KVReader, arity PathArity, optimizeKeyCommitments bool) *nodeStoreBuffered {
 	ret := &nodeStoreBuffered{
-		reader:    *newNodeStore(store, model),
-		nodeCache: make(map[string]*bufferedNode),
-		deleted:   make(map[string]struct{}),
+		reader:                 *newNodeStore(store, model, arity),
+		nodeCache:              make(map[string]*bufferedNode),
+		deleted:                make(map[string]struct{}),
+		arity:                  arity,
+		optimizeKeyCommitments: optimizeKeyCommitments,
 	}
 	return ret
 }
@@ -85,6 +95,12 @@ func (sc *nodeStoreBuffered) model() CommitmentModel {
 
 func (sc *nodeStoreBuffered) getNode(key []byte) (Node, bool) {
 	return sc.getNodeIntern(key)
+}
+
+func (sc *nodeStoreBuffered) mustGetNode(key []byte) *bufferedNode {
+	ret, ok := sc.getNodeIntern(key)
+	trie_go.Assert(ok, "can't find node")
+	return ret
 }
 
 // GetNode fetches node from the trie
@@ -129,4 +145,40 @@ func (sc *nodeStoreBuffered) replaceNode(n *bufferedNode) {
 	_, already := sc.nodeCache[string(n.key)]
 	trie_go.Assert(already, "already")
 	sc.nodeCache[string(n.key)] = n
+}
+
+// PersistMutations persists the cache to the key/value store
+// Does not clear cache
+func (sc *nodeStoreBuffered) persistMutations(store trie_go.KVWriter) int {
+	counter := 0
+	for _, v := range sc.nodeCache {
+		store.Set(mustEncodeKey(v.key, sc.arity), v.Bytes(sc.reader.m, sc.arity, sc.optimizeKeyCommitments))
+		counter++
+	}
+	for k := range sc.deleted {
+		_, inCache := sc.nodeCache[k]
+		trie_go.Assert(!inCache, "!inCache")
+		store.Set(mustEncodeKey([]byte(k), sc.arity), nil)
+		counter++
+	}
+	return counter
+}
+
+// ClearCache clears the node cache
+func (sc *nodeStoreBuffered) clearCache() {
+	sc.nodeCache = make(map[string]*bufferedNode)
+	sc.deleted = make(map[string]struct{})
+}
+
+func (sc *nodeStoreBuffered) dangerouslyDumpCacheToString() string {
+	ret := ""
+	keys := make([]string, 0)
+	for k := range sc.nodeCache {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	for _, k := range keys {
+		ret += fmt.Sprintf("'%s': C = %s\n%s\n", k, sc.reader.m.CalcNodeCommitment(&sc.nodeCache[k].n), sc.nodeCache[k].n.String())
+	}
+	return ret
 }

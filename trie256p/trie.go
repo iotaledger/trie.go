@@ -8,27 +8,18 @@ package trie256p
 
 import (
 	"bytes"
-	"fmt"
 	trie_go "github.com/iotaledger/trie.go"
-	"sort"
 )
-
-func (tr *Trie) unpackKeyIfNeeded(key []byte) []byte {
-	if !tr.Model().GetOptions().UseHexaryPath {
-		return key
-	}
-	return unpack16(make([]byte, 0, len(key)*2), key)
-}
 
 // newTerminalNode creates new node in the trie with specified PathFragment and Terminal commitment.
 // Assumes 'key' does not exist in the Trie
 func (tr *Trie) newTerminalNode(key, pathFragment []byte, newTerminal trie_go.TCommitment) *bufferedNode {
-	tr.unDelete(key)
+	tr.nodeStore.unDelete(key)
 	ret := newBufferedNode(key)
 	ret.newTerminal = newTerminal
 	ret.n.PathFragment = pathFragment
 	ret.pathChanged = true
-	tr.insertNewNode(ret)
+	tr.nodeStore.insertNewNode(ret)
 	return ret
 }
 
@@ -45,7 +36,7 @@ func (tr *Trie) Commit() {
 // calcDelta = true if node's commitment can be updated incrementally. The implementation
 // of UpdateNodeCommitment may use this parameter to optimize underlying cryptography
 func (tr *Trie) commitNode(key []byte, update *trie_go.VCommitment) {
-	n, ok := tr.getNodeIntern(key)
+	n, ok := tr.nodeStore.getNodeIntern(key)
 	if !ok {
 		if update != nil {
 			*update = nil
@@ -80,13 +71,14 @@ func (tr *Trie) commitNode(key []byte, update *trie_go.VCommitment) {
 
 // Update updates Trie with the key/value. Reorganizes and re-calculates trie, keeps cache consistent
 func (tr *Trie) Update(key []byte, value []byte) {
-	c := tr.nodeStoreReader.model.CommitToData(value)
+	c := tr.nodeStore.reader.m.CommitToData(value)
 	if c == nil {
 		// nil value means deletion
 		tr.Delete(key)
 		return
 	}
 	// find path in the trie corresponding to the key
+	key = unpackKey(key, tr.nodeStore.arity)
 	proof, lastCommonPrefix, ending := proofPath(tr, key)
 	if len(proof) == 0 {
 		tr.newTerminalNode(nil, key, c)
@@ -95,15 +87,15 @@ func (tr *Trie) Update(key []byte, value []byte) {
 	lastKey := proof[len(proof)-1]
 	switch ending {
 	case EndingTerminal:
-		tr.mustGetNode(lastKey).setNewTerminal(c)
+		tr.nodeStore.mustGetNode(lastKey).setNewTerminal(c)
 
 	case EndingExtend:
 		childIndexPosition := len(lastKey) + len(lastCommonPrefix)
 		trie_go.Assert(childIndexPosition < len(key), "childPosition < len(key)")
 		childIndex := key[childIndexPosition]
-		tr.removeKey(key[:childIndexPosition+1])
+		tr.nodeStore.removeKey(key[:childIndexPosition+1])
 		tr.newTerminalNode(key[:childIndexPosition+1], key[childIndexPosition+1:], c)
-		tr.mustGetNode(lastKey).markChildModified(childIndex)
+		tr.nodeStore.mustGetNode(lastKey).markChildModified(childIndex)
 
 	case EndingSplit:
 		// splitting the node into two path fragments
@@ -133,7 +125,7 @@ func (tr *Trie) splitNode(fullKey, lastKey, commonPrefix []byte, newTerminal tri
 	childPosition := len(lastKey) + splitIndex
 	trie_go.Assert(childPosition <= len(fullKey), "childPosition <= len(fullKey)")
 
-	n := tr.mustGetNode(lastKey)
+	n := tr.nodeStore.mustGetNode(lastKey)
 
 	keyNewNode := make([]byte, childPosition+1)
 	copy(keyNewNode, fullKey)
@@ -146,7 +138,7 @@ func (tr *Trie) splitNode(fullKey, lastKey, commonPrefix []byte, newTerminal tri
 	newNode := n.Clone() // children and Terminal remains the same, PathFragment changes
 	newNode.setNewKey(keyNewNode)
 	newNode.setNewPathFragment(n.PathFragment()[splitIndex+1:])
-	tr.insertNewNode(newNode)
+	tr.nodeStore.insertNewNode(newNode)
 
 	// modify the node under the old key
 	n.setNewPathFragment(commonPrefix)
@@ -177,7 +169,7 @@ func (tr *Trie) Delete(key []byte) {
 		return
 	}
 	lastKey := proof[len(proof)-1]
-	lastNode, ok := tr.getNodeIntern(lastKey)
+	lastNode, ok := tr.nodeStore.getNodeIntern(lastKey)
 	if !ok {
 		return
 	}
@@ -189,11 +181,11 @@ func (tr *Trie) Delete(key []byte) {
 		tr.markModifiedCommitmentsBackToRoot(proof)
 	case nodeReorgRemove:
 		// last node does not commit to anything, should be removed
-		tr.removeKey(lastKey)
+		tr.nodeStore.removeKey(lastKey)
 		if len(proof) >= 2 {
 			tr.markModifiedCommitmentsBackToRoot(proof)
 			prevKey := proof[len(proof)-2]
-			prevNode := tr.mustGetNode(prevKey)
+			prevNode := tr.nodeStore.mustGetNode(prevKey)
 			reorg, mergeChildIndex = tr.checkReorg(prevNode)
 			if reorg == nodeReorgMerge {
 				tr.mergeNode(prevKey, prevNode, mergeChildIndex)
@@ -209,14 +201,14 @@ func (tr *Trie) Delete(key []byte) {
 // child commitment. In this case pathFragments can be merged in one resulting node
 func (tr *Trie) mergeNode(key []byte, n *bufferedNode, childIndex byte) {
 	nextKey := childKey(n, childIndex)
-	nextNode := tr.mustGetNode(nextKey)
+	nextNode := tr.nodeStore.mustGetNode(nextKey)
 
-	tr.unDelete(key)
+	tr.nodeStore.unDelete(key)
 	ret := nextNode.Clone()
 	ret.setNewKey(key)
 	ret.setNewPathFragment(trie_go.Concat(n.PathFragment(), childIndex, nextNode.PathFragment()))
-	tr.replaceNode(ret)
-	tr.removeKey(nextKey)
+	tr.nodeStore.replaceNode(ret)
+	tr.nodeStore.removeKey(nextKey)
 }
 
 // markModifiedCommitmentsBackToRoot updates 'modifiedChildren' marks along tha path from the updated node to the root
@@ -225,14 +217,14 @@ func (tr *Trie) markModifiedCommitmentsBackToRoot(proof [][]byte) {
 		k := proof[i]
 		kPrev := proof[i-1]
 		childIndex := k[len(k)-1]
-		n := tr.mustGetNode(kPrev)
+		n := tr.nodeStore.mustGetNode(kPrev)
 		n.markChildModified(childIndex)
 	}
 }
 
 // hasCommitment returns if trie will contain commitment to the key in the (future) committed state
 func (tr *Trie) hasCommitment(key []byte) bool {
-	n, ok := tr.getNodeIntern(key)
+	n, ok := tr.nodeStore.getNodeIntern(key)
 	if !ok {
 		return false
 	}
@@ -333,7 +325,7 @@ func (tr *Trie) DeleteStr(key interface{}) {
 }
 
 func (tr *Trie) VectorCommitmentFromBytes(data []byte) (trie_go.VCommitment, error) {
-	ret := tr.nodeStoreReader.model.NewVectorCommitment()
+	ret := tr.nodeStore.reader.m.NewVectorCommitment()
 	if err := ret.Read(bytes.NewReader(data)); err != nil {
 		return nil, err
 	}
@@ -353,7 +345,7 @@ func (tr *Trie) Reconcile(store trie_go.KVIterator) [][]byte {
 			if !ok {
 				ret = append(ret, k)
 			} else {
-				if !trie_go.EqualCommitments(tr.nodeStoreReader.model.CommitToData(v), n.Terminal()) {
+				if !trie_go.EqualCommitments(tr.nodeStore.reader.m.CommitToData(v), n.Terminal()) {
 					ret = append(ret, k)
 				}
 			}
@@ -375,14 +367,5 @@ func (tr *Trie) UpdateAll(store trie_go.KVIterator) {
 }
 
 func (tr *Trie) DangerouslyDumpCacheToString() string {
-	ret := ""
-	keys := make([]string, 0)
-	for k := range tr.nodeCache {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
-	for _, k := range keys {
-		ret += fmt.Sprintf("'%s': C = %s\n%s\n", k, tr.Model().CalcNodeCommitment(&tr.nodeCache[k].n), tr.nodeCache[k].n.String())
-	}
-	return ret
+	return tr.nodeStore.dangerouslyDumpCacheToString()
 }

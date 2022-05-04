@@ -10,6 +10,7 @@ var (
 	ErrEmpty            = errors.New("encoded key16 can't be empty")
 	ErrWrongFormat      = errors.New("encoded key16 wrong format")
 	ErrWrongBinaryValue = errors.New("key2 byte must be 1 or 0")
+	ErrWrongArity       = errors.New("arity value must be 1, 15 or 255")
 )
 
 // unpack16 src places each 4 bit nibble into separate byte
@@ -125,4 +126,46 @@ func decode2(data []byte) ([]byte, error) {
 	}
 	ret = ret[:len(ret)-int(data[0])]
 	return ret, nil
+}
+
+func unpackKey(src []byte, arity PathArity) []byte {
+	switch arity {
+	case Arity256:
+		return src
+	case Arity16:
+		return unpack16(make([]byte, 0, 2*len(src)), src)
+	case Arity2:
+		return unpack2(make([]byte, 0, 8*len(src)), src)
+	}
+	panic(ErrWrongArity)
+}
+
+func encodeKey(unpacked []byte, arity PathArity) ([]byte, error) {
+	switch arity {
+	case Arity256:
+		return unpacked, nil
+	case Arity16:
+		return encode16(unpacked)
+	case Arity2:
+		return encode2(unpacked)
+	}
+	return nil, ErrWrongArity
+}
+
+func mustEncodeKey(unpacked []byte, arity PathArity) []byte {
+	ret, err := encodeKey(unpacked, arity)
+	trie_go.Assert(err != nil, "%v", err)
+	return ret
+}
+
+func decodeKey(encoded []byte, arity PathArity) ([]byte, error) {
+	switch arity {
+	case Arity256:
+		return encoded, nil
+	case Arity16:
+		return decode16(encoded)
+	case Arity2:
+		return decode2(encoded)
+	}
+	return nil, ErrWrongArity
 }
