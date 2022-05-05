@@ -11,6 +11,81 @@ import (
 	trie_go "github.com/iotaledger/trie.go"
 )
 
+// Trie is an updatable trie implemented on top of the key/value store. It is virtualized and optimized by caching of the
+// trie update operation and keeping consistent trie in the cache
+type Trie struct {
+	nodeStore *nodeStoreBuffered
+}
+
+// TrieReader direct read-only access to trie
+type TrieReader struct {
+	reader *nodeStore
+}
+
+// NodeStore is an interface to TrieReader to the trie as a set of TrieReader represented as key/value pairs
+// Two implementations:
+// - TrieReader is a direct, non-cached TrieReader to key/value storage
+// - Trie implement a cached TrieReader
+type NodeStore interface {
+	GetNode(unpackedKey []byte) (Node, bool)
+	Model() CommitmentModel
+	PathArity() PathArity
+}
+
+// RootCommitment computes root commitment from the root node of the trie represented as a NodeStore
+func RootCommitment(tr NodeStore) trie_go.VCommitment {
+	n, ok := tr.GetNode(nil)
+	if !ok {
+		return nil
+	}
+	return tr.Model().CalcNodeCommitment(&NodeData{
+		PathFragment:     n.PathFragment(),
+		ChildCommitments: n.ChildCommitments(),
+		Terminal:         n.Terminal(),
+	})
+}
+
+// Trie implements NodeStore interface. It buffers all TrieReader for optimization purposes: multiple updates of trie do not require DB TrieReader
+var _ NodeStore = &Trie{}
+
+func New(model CommitmentModel, store trie_go.KVReader, arity PathArity, optimizeKeyCommitments bool) *Trie {
+	ret := &Trie{
+		nodeStore: newNodeStoreBuffered(model, store, arity, optimizeKeyCommitments),
+	}
+	return ret
+}
+
+// Clone is a deep copy of the trie, including its buffered data
+func (tr *Trie) Clone() *Trie {
+	return &Trie{
+		nodeStore: tr.nodeStore.clone(),
+	}
+}
+
+func (tr *Trie) Model() CommitmentModel {
+	return tr.nodeStore.reader.m
+}
+
+func (tr *Trie) PathArity() PathArity {
+	return tr.nodeStore.arity
+}
+
+// GetNode fetches node from the trie
+func (tr *Trie) GetNode(unpackedKey []byte) (Node, bool) {
+	return tr.nodeStore.getNode(unpackedKey)
+}
+
+// PersistMutations persists the cache to the key/value store
+// Does not clear cache
+func (tr *Trie) PersistMutations(store trie_go.KVWriter) int {
+	return tr.nodeStore.persistMutations(store)
+}
+
+// ClearCache clears the node cache
+func (tr *Trie) ClearCache() {
+	tr.nodeStore.clearCache()
+}
+
 // newTerminalNode creates new node in the trie with specified PathFragment and Terminal commitment.
 // Assumes 'key' does not exist in the Trie
 func (tr *Trie) newTerminalNode(key, pathFragment []byte, newTerminal trie_go.TCommitment) *bufferedNode {
@@ -23,7 +98,7 @@ func (tr *Trie) newTerminalNode(key, pathFragment []byte, newTerminal trie_go.TC
 	return ret
 }
 
-// Commit calculates a new root commitment value from the cache and commits all mutations in the cached NodeStoreReader
+// Commit calculates a new root commitment value from the cache and commits all mutations in the cached TrieReader
 // It is a re-calculation of the trie. bufferedNode caches are updated accordingly.
 func (tr *Trie) Commit() {
 	tr.commitNode(nil, nil)
@@ -36,7 +111,7 @@ func (tr *Trie) Commit() {
 // calcDelta = true if node's commitment can be updated incrementally. The implementation
 // of UpdateNodeCommitment may use this parameter to optimize underlying cryptography
 func (tr *Trie) commitNode(key []byte, update *trie_go.VCommitment) {
-	n, ok := tr.nodeStore.getNodeIntern(key)
+	n, ok := tr.nodeStore.getNode(key)
 	if !ok {
 		if update != nil {
 			*update = nil
@@ -169,7 +244,7 @@ func (tr *Trie) Delete(key []byte) {
 		return
 	}
 	lastKey := proof[len(proof)-1]
-	lastNode, ok := tr.nodeStore.getNodeIntern(lastKey)
+	lastNode, ok := tr.nodeStore.getNode(lastKey)
 	if !ok {
 		return
 	}
@@ -224,7 +299,7 @@ func (tr *Trie) markModifiedCommitmentsBackToRoot(proof [][]byte) {
 
 // hasCommitment returns if trie will contain commitment to the key in the (future) committed state
 func (tr *Trie) hasCommitment(key []byte) bool {
-	n, ok := tr.nodeStore.getNodeIntern(key)
+	n, ok := tr.nodeStore.getNode(key)
 	if !ok {
 		return false
 	}
@@ -368,4 +443,25 @@ func (tr *Trie) UpdateAll(store trie_go.KVIterator) {
 
 func (tr *Trie) DangerouslyDumpCacheToString() string {
 	return tr.nodeStore.dangerouslyDumpCacheToString()
+}
+
+// TrieReader implements NodeStore
+var _ NodeStore = &TrieReader{}
+
+func NewTrieReader(model CommitmentModel, store trie_go.KVReader, arity PathArity) *TrieReader {
+	return &TrieReader{
+		reader: newNodeStore(store, model, arity),
+	}
+}
+
+func (tr *TrieReader) GetNode(unpackedKey []byte) (Node, bool) {
+	return tr.reader.getNode(unpackedKey)
+}
+
+func (tr *TrieReader) Model() CommitmentModel {
+	return tr.reader.m
+}
+
+func (tr *TrieReader) PathArity() PathArity {
+	return tr.reader.arity
 }

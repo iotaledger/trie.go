@@ -130,23 +130,26 @@ func decode2(data []byte) ([]byte, error) {
 
 func unpackKey(src []byte, arity PathArity) []byte {
 	switch arity {
-	case Arity256:
+	case PathArity256:
 		return src
-	case Arity16:
+	case PathArity16:
 		return unpack16(make([]byte, 0, 2*len(src)), src)
-	case Arity2:
+	case PathArity2:
 		return unpack2(make([]byte, 0, 8*len(src)), src)
 	}
 	panic(ErrWrongArity)
 }
 
 func encodeKey(unpacked []byte, arity PathArity) ([]byte, error) {
+	if len(unpacked) == 0 {
+		return nil, nil
+	}
 	switch arity {
-	case Arity256:
+	case PathArity256:
 		return unpacked, nil
-	case Arity16:
+	case PathArity16:
 		return encode16(unpacked)
-	case Arity2:
+	case PathArity2:
 		return encode2(unpacked)
 	}
 	return nil, ErrWrongArity
@@ -160,11 +163,11 @@ func mustEncodeKey(unpacked []byte, arity PathArity) []byte {
 
 func decodeKey(encoded []byte, arity PathArity) ([]byte, error) {
 	switch arity {
-	case Arity256:
+	case PathArity256:
 		return encoded, nil
-	case Arity16:
+	case PathArity16:
 		return decode16(encoded)
-	case Arity2:
+	case PathArity2:
 		return decode2(encoded)
 	}
 	return nil, ErrWrongArity

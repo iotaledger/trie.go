@@ -1,6 +1,7 @@
 package trie256p
 
 import (
+	"fmt"
 	trie_go "github.com/iotaledger/trie.go"
 )
 
@@ -28,7 +29,16 @@ type CommitmentModel interface {
 type PathArity byte
 
 const (
-	Arity256 = PathArity(255)
-	Arity16  = PathArity(15)
-	Arity2   = PathArity(1)
+	PathArity256 = PathArity(255)
+	PathArity16  = PathArity(15)
+	PathArity2   = PathArity(1)
 )
+
+func (a PathArity) String() string {
+	switch a {
+	case PathArity256, PathArity16, PathArity2:
+		return fmt.Sprintf("PathArity(%d)", a)
+	default:
+		return "PathArity(wrong)"
+	}
+}

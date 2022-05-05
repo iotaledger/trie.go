@@ -48,14 +48,14 @@ func (n *nodeReadOnly) IsCommitted() bool {
 	return true
 }
 
-func nodeReadOnlyFromBytes(model CommitmentModel, data, key []byte, arity PathArity) (*nodeReadOnly, error) {
-	ret, err := NodeDataFromBytes(model, data, key, arity)
+func nodeReadOnlyFromBytes(model CommitmentModel, data, unpackedKey []byte, arity PathArity) (*nodeReadOnly, error) {
+	ret, err := NodeDataFromBytes(model, data, unpackedKey, arity)
 	if err != nil {
 		return nil, err
 	}
 	return &nodeReadOnly{
 		n:   *ret,
-		key: key,
+		key: unpackedKey,
 	}, nil
 }
 

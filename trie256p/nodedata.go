@@ -23,9 +23,9 @@ func NewNodeData() *NodeData {
 	}
 }
 
-func NodeDataFromBytes(model CommitmentModel, data, key []byte, arity PathArity) (*NodeData, error) {
+func NodeDataFromBytes(model CommitmentModel, data, unpackedKey []byte, arity PathArity) (*NodeData, error) {
 	ret := NewNodeData()
-	if err := ret.Read(bytes.NewReader(data), model, key, arity); err != nil {
+	if err := ret.Read(bytes.NewReader(data), model, unpackedKey, arity); err != nil {
 		return nil, err
 	}
 	return ret, nil
@@ -159,7 +159,7 @@ func (n *NodeData) Write(w io.Writer, arity PathArity, isKeyCommitment bool) err
 }
 
 // Read deserialized node data and returns isKeyCommitmentFlag value
-func (n *NodeData) Read(r io.Reader, model CommitmentModel, key []byte, arity PathArity) error {
+func (n *NodeData) Read(r io.Reader, model CommitmentModel, unpackedKey []byte, arity PathArity) error {
 	var err error
 	var smallFlags byte
 	if smallFlags, err = trie_go.ReadByte(r); err != nil {
@@ -187,10 +187,10 @@ func (n *NodeData) Read(r io.Reader, model CommitmentModel, key []byte, arity Pa
 		}
 	} else {
 		if smallFlags&isKeyCommitmentFlag != 0 {
-			if len(key) == 0 {
-				return xerrors.New("non-empty key expected")
+			if len(unpackedKey) == 0 {
+				return xerrors.New("non-empty unpackedKey expected")
 			}
-			n.Terminal = model.CommitToData(trie_go.Concat(key, n.PathFragment))
+			n.Terminal = model.CommitToData(trie_go.Concat(unpackedKey, n.PathFragment))
 		}
 	}
 	if smallFlags&serializeChildrenFlag != 0 {
