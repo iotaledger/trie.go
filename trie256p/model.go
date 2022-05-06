@@ -25,6 +25,8 @@ type CommitmentModel interface {
 	UpdateNodeCommitment(mutate *NodeData, childUpdates map[byte]trie_go.VCommitment, calcDelta bool, terminal trie_go.TCommitment, update *trie_go.VCommitment)
 	// Description return description of the implementation
 	Description() string
+	// ShortName short name
+	ShortName() string
 }
 type PathArity byte
 

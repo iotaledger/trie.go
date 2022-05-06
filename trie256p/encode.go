@@ -157,7 +157,7 @@ func encodeUnpackedBytes(unpacked []byte, arity PathArity) ([]byte, error) {
 
 func mustEncodeUnpackedBytes(unpacked []byte, arity PathArity) []byte {
 	ret, err := encodeUnpackedBytes(unpacked, arity)
-	trie_go.Assert(err != nil, "%v", err)
+	trie_go.Assert(err == nil, "%v", err)
 	return ret
 }
 

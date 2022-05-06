@@ -95,6 +95,10 @@ func (m *CommitmentModel) Description() string {
 	return "trie256p commitment model implementation based on KZG (Kate) polynomial commitments and bn256 curve frm Dedis.Kyber library"
 }
 
+func (m *CommitmentModel) ShortName() string {
+	return "kzg"
+}
+
 func (m *CommitmentModel) NewVectorCommitment() trie_go.VCommitment {
 	return m.newVectorCommitment()
 }

@@ -100,9 +100,9 @@ func (sc *nodeStoreBuffered) mustGetNode(key []byte) *bufferedNode {
 }
 
 // removeKey marks unpackedKey deleted
-func (sc *nodeStoreBuffered) removeKey(key []byte) {
-	delete(sc.nodeCache, string(key))
-	sc.deleted[string(key)] = struct{}{}
+func (sc *nodeStoreBuffered) removeKey(unpackedKey []byte) {
+	delete(sc.nodeCache, string(unpackedKey))
+	sc.deleted[string(unpackedKey)] = struct{}{}
 }
 
 // unDelete removes deletion mark, if any

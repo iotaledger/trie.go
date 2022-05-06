@@ -88,11 +88,11 @@ func (tr *Trie) ClearCache() {
 
 // newTerminalNode creates new node in the trie with specified PathFragment and Terminal commitment.
 // Assumes 'unpackedKey' does not exist in the Trie
-func (tr *Trie) newTerminalNode(key, pathFragment []byte, newTerminal trie_go.TCommitment) *bufferedNode {
-	tr.nodeStore.unDelete(key)
-	ret := newBufferedNode(key)
+func (tr *Trie) newTerminalNode(unpackedKey, unpackedPathFragment []byte, newTerminal trie_go.TCommitment) *bufferedNode {
+	tr.nodeStore.unDelete(unpackedKey)
+	ret := newBufferedNode(unpackedKey)
 	ret.newTerminal = newTerminal
-	ret.n.PathFragment = pathFragment
+	ret.n.PathFragment = unpackedPathFragment
 	ret.pathChanged = true
 	tr.nodeStore.insertNewNode(ret)
 	return ret
@@ -146,17 +146,22 @@ func (tr *Trie) commitNode(key []byte, update *trie_go.VCommitment) {
 
 // Update updates Trie with the unpackedKey/value. Reorganizes and re-calculates trie, keeps cache consistent
 func (tr *Trie) Update(key []byte, value []byte) {
-	c := tr.nodeStore.reader.m.CommitToData(value)
+	var c trie_go.TCommitment
+	if tr.nodeStore.optimizeKeyCommitments && bytes.Equal(key, value) {
+		c = tr.nodeStore.reader.m.CommitToData(UnpackBytes(value, tr.nodeStore.arity))
+	} else {
+		c = tr.nodeStore.reader.m.CommitToData(value)
+	}
 	if c == nil {
 		// nil value means deletion
 		tr.Delete(key)
 		return
 	}
 	// find path in the trie corresponding to the unpackedKey
-	key = UnpackBytes(key, tr.nodeStore.arity)
-	proof, lastCommonPrefix, ending := proofPath(tr, key)
+	unpackedKey := UnpackBytes(key, tr.nodeStore.arity)
+	proof, lastCommonPrefix, ending := proofPath(tr, unpackedKey)
 	if len(proof) == 0 {
-		tr.newTerminalNode(nil, key, c)
+		tr.newTerminalNode(nil, unpackedKey, c)
 		return
 	}
 	lastKey := proof[len(proof)-1]
@@ -166,15 +171,15 @@ func (tr *Trie) Update(key []byte, value []byte) {
 
 	case EndingExtend:
 		childIndexPosition := len(lastKey) + len(lastCommonPrefix)
-		trie_go.Assert(childIndexPosition < len(key), "childPosition < len(unpackedKey)")
-		childIndex := key[childIndexPosition]
-		tr.nodeStore.removeKey(key[:childIndexPosition+1])
-		tr.newTerminalNode(key[:childIndexPosition+1], key[childIndexPosition+1:], c)
+		trie_go.Assert(childIndexPosition < len(unpackedKey), "childPosition < len(unpackedKey)")
+		childIndex := unpackedKey[childIndexPosition]
+		tr.nodeStore.removeKey(unpackedKey[:childIndexPosition+1])
+		tr.newTerminalNode(unpackedKey[:childIndexPosition+1], unpackedKey[childIndexPosition+1:], c)
 		tr.nodeStore.mustGetNode(lastKey).markChildModified(childIndex)
 
 	case EndingSplit:
 		// splitting the node into two path fragments
-		tr.splitNode(key, lastKey, lastCommonPrefix, c)
+		tr.splitNode(unpackedKey, lastKey, lastCommonPrefix, c)
 
 	default:
 		panic("inconsistency: unknown path ending code")
@@ -182,15 +187,15 @@ func (tr *Trie) Update(key []byte, value []byte) {
 	tr.markModifiedCommitmentsBackToRoot(proof)
 }
 
-// MustInsertKeyCommitment inserts unpackedKey/value pair with equal unpackedKey and value.
+// InsertKeyCommitment inserts unpackedKey/value pair with equal unpackedKey and value.
 // Key must not be empty.
 // It leads to optimized serialization of trie nodes because terminal commitment is
 // contained in the unpackedKey.
 // It saves 33 bytes per trie node for use cases such as ledger state commitment via UTXO IDs:
 // each UTXO ID is a commitment to the output, so we only need PoI, not the commitment itself
-func (tr *Trie) MustInsertKeyCommitment(key []byte) {
+func (tr *Trie) InsertKeyCommitment(key []byte) {
 	if len(key) == 0 {
-		panic("MustInsertKeyCommitment: unpackedKey can't be empty")
+		panic("InsertKeyCommitment: unpackedKey can't be empty")
 	}
 	tr.Update(key, key)
 }
@@ -239,7 +244,8 @@ func (tr *Trie) splitNode(fullKey, lastKey, commonPrefix []byte, newTerminal tri
 
 // Delete deletes Key/value from the Trie, reorganizes the trie
 func (tr *Trie) Delete(key []byte) {
-	proof, _, ending := proofPath(tr, key)
+	unpackedKey := UnpackBytes(key, tr.nodeStore.arity)
+	proof, _, ending := proofPath(tr, unpackedKey)
 	if len(proof) == 0 || ending != EndingTerminal {
 		return
 	}
