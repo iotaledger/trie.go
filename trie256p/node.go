@@ -63,8 +63,8 @@ func nodeReadOnlyFromBytes(model CommitmentModel, data, unpackedKey []byte, arit
 type bufferedNode struct {
 	// persistent
 	n NodeData
-	// persisted in the key of the map
-	key []byte
+	// persisted in the unpackedKey of the map
+	unpackedKey []byte
 	// non-persistent
 	newTerminal      trie_go.TCommitment // next value of Terminal
 	modifiedChildren map[byte]struct{}   // children which has been modified
@@ -74,7 +74,7 @@ type bufferedNode struct {
 func newBufferedNode(key []byte) *bufferedNode {
 	return &bufferedNode{
 		n:                *NewNodeData(),
-		key:              key,
+		unpackedKey:      key,
 		newTerminal:      nil,
 		modifiedChildren: make(map[byte]struct{}),
 	}
@@ -89,7 +89,7 @@ func (n *bufferedNode) Terminal() trie_go.TCommitment {
 }
 
 func (n *bufferedNode) Key() []byte {
-	return n.key
+	return n.unpackedKey
 }
 
 func (n *bufferedNode) ChildCommitments() map[byte]trie_go.VCommitment {
@@ -108,12 +108,12 @@ func (n *bufferedNode) Clone() *bufferedNode {
 	}
 	ret := &bufferedNode{
 		n:                *n.n.Clone(),
-		key:              make([]byte, len(n.key)),
+		unpackedKey:      make([]byte, len(n.unpackedKey)),
 		newTerminal:      newTerminal,
 		modifiedChildren: make(map[byte]struct{}),
 		pathChanged:      n.pathChanged,
 	}
-	copy(ret.key, n.key)
+	copy(ret.unpackedKey, n.unpackedKey)
 	for k, v := range n.modifiedChildren {
 		ret.modifiedChildren[k] = v
 	}
@@ -121,7 +121,7 @@ func (n *bufferedNode) Clone() *bufferedNode {
 }
 
 func (n *bufferedNode) setNewKey(key []byte) {
-	n.key = key
+	n.unpackedKey = key
 	n.pathChanged = true
 }
 
@@ -143,10 +143,10 @@ func (n *bufferedNode) isModified() bool {
 }
 
 func (n *bufferedNode) Bytes(model CommitmentModel, arity PathArity, optimizeKeyCommitments bool) []byte {
-	// Optimization: if terminal commits to key, no need to serialize it
+	// Optimization: if terminal commits to unpackedKey, no need to serialize it
 	isKeyCommitment := false
-	if optimizeKeyCommitments && len(n.key) > 0 {
-		keyCommitment := model.CommitToData(trie_go.Concat(n.key, n.n.PathFragment))
+	if optimizeKeyCommitments && len(n.unpackedKey) > 0 {
+		keyCommitment := model.CommitToData(trie_go.Concat(n.unpackedKey, n.n.PathFragment))
 		isKeyCommitment = trie_go.EqualCommitments(n.n.Terminal, keyCommitment)
 	}
 	var buf bytes.Buffer

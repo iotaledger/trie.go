@@ -22,8 +22,8 @@ func newNodeStore(store trie_go.KVReader, model CommitmentModel, arity PathArity
 }
 
 func (sr *nodeStore) getNode(unpackedKey []byte) (*nodeReadOnly, bool) {
-	// original (unpacked) key is encoded to access the node in the kvstore
-	encodedKey, err := encodeKey(unpackedKey, sr.arity)
+	// original (unpacked) unpackedKey is encoded to access the node in the kvstore
+	encodedKey, err := encodeUnpackedBytes(unpackedKey, sr.arity)
 	trie_go.Assert(err == nil, "nodeStore::getNode: %v", err)
 
 	nodeBin := sr.store.Get(encodedKey)
@@ -99,7 +99,7 @@ func (sc *nodeStoreBuffered) mustGetNode(key []byte) *bufferedNode {
 	return ret
 }
 
-// removeKey marks key deleted
+// removeKey marks unpackedKey deleted
 func (sc *nodeStoreBuffered) removeKey(key []byte) {
 	delete(sc.nodeCache, string(key))
 	sc.deleted[string(key)] = struct{}{}
@@ -111,30 +111,30 @@ func (sc *nodeStoreBuffered) unDelete(key []byte) {
 }
 
 func (sc *nodeStoreBuffered) insertNewNode(n *bufferedNode) {
-	sc.unDelete(n.key) // in case was marked deleted previously
-	_, already := sc.nodeCache[string(n.key)]
+	sc.unDelete(n.unpackedKey) // in case was marked deleted previously
+	_, already := sc.nodeCache[string(n.unpackedKey)]
 	trie_go.Assert(!already, "!already")
-	sc.nodeCache[string(n.key)] = n
+	sc.nodeCache[string(n.unpackedKey)] = n
 }
 
 func (sc *nodeStoreBuffered) replaceNode(n *bufferedNode) {
-	_, already := sc.nodeCache[string(n.key)]
+	_, already := sc.nodeCache[string(n.unpackedKey)]
 	trie_go.Assert(already, "already")
-	sc.nodeCache[string(n.key)] = n
+	sc.nodeCache[string(n.unpackedKey)] = n
 }
 
-// PersistMutations persists the cache to the key/value store
+// PersistMutations persists the cache to the unpackedKey/value store
 // Does not clear cache
 func (sc *nodeStoreBuffered) persistMutations(store trie_go.KVWriter) int {
 	counter := 0
 	for _, v := range sc.nodeCache {
-		store.Set(mustEncodeKey(v.key, sc.arity), v.Bytes(sc.reader.m, sc.arity, sc.optimizeKeyCommitments))
+		store.Set(mustEncodeUnpackedBytes(v.unpackedKey, sc.arity), v.Bytes(sc.reader.m, sc.arity, sc.optimizeKeyCommitments))
 		counter++
 	}
 	for k := range sc.deleted {
 		_, inCache := sc.nodeCache[k]
 		trie_go.Assert(!inCache, "!inCache")
-		store.Set(mustEncodeKey([]byte(k), sc.arity), nil)
+		store.Set(mustEncodeUnpackedBytes([]byte(k), sc.arity), nil)
 		counter++
 	}
 	return counter

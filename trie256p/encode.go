@@ -2,7 +2,7 @@ package trie256p
 
 import (
 	"errors"
-	trie_go "github.com/iotaledger/trie.go"
+	"github.com/iotaledger/trie.go"
 )
 
 var (
@@ -128,7 +128,7 @@ func decode2(data []byte) ([]byte, error) {
 	return ret, nil
 }
 
-func unpackKey(src []byte, arity PathArity) []byte {
+func UnpackBytes(src []byte, arity PathArity) []byte {
 	switch arity {
 	case PathArity256:
 		return src
@@ -140,7 +140,7 @@ func unpackKey(src []byte, arity PathArity) []byte {
 	panic(ErrWrongArity)
 }
 
-func encodeKey(unpacked []byte, arity PathArity) ([]byte, error) {
+func encodeUnpackedBytes(unpacked []byte, arity PathArity) ([]byte, error) {
 	if len(unpacked) == 0 {
 		return nil, nil
 	}
@@ -155,13 +155,13 @@ func encodeKey(unpacked []byte, arity PathArity) ([]byte, error) {
 	return nil, ErrWrongArity
 }
 
-func mustEncodeKey(unpacked []byte, arity PathArity) []byte {
-	ret, err := encodeKey(unpacked, arity)
+func mustEncodeUnpackedBytes(unpacked []byte, arity PathArity) []byte {
+	ret, err := encodeUnpackedBytes(unpacked, arity)
 	trie_go.Assert(err != nil, "%v", err)
 	return ret
 }
 
-func decodeKey(encoded []byte, arity PathArity) ([]byte, error) {
+func decodeToUnpackedBytes(encoded []byte, arity PathArity) ([]byte, error) {
 	switch arity {
 	case PathArity256:
 		return encoded, nil

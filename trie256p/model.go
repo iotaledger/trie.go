@@ -37,7 +37,7 @@ const (
 func (a PathArity) String() string {
 	switch a {
 	case PathArity256, PathArity16, PathArity2:
-		return fmt.Sprintf("PathArity(%d)", a)
+		return fmt.Sprintf("PathArity%d", int(a)+1)
 	default:
 		return "PathArity(wrong)"
 	}

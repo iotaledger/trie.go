@@ -13,7 +13,7 @@ import (
 func TestNodeSerialization(t *testing.T) {
 	model := New()
 	runTest := func(arity trie256p.PathArity) {
-		t.Run(fmt.Sprintf("1: arity: %s", arity), func(t *testing.T) {
+		t.Run(fmt.Sprintf("1: %s", arity), func(t *testing.T) {
 			n := trie256p.NewNodeData()
 			n.ChildCommitments[1] = model.NewVectorCommitment()
 			n.ChildCommitments[6] = model.NewVectorCommitment()
@@ -28,7 +28,7 @@ func TestNodeSerialization(t *testing.T) {
 
 			require.True(t, trie_go.EqualCommitments(model.CalcNodeCommitment(n), model.CalcNodeCommitment(nBack)))
 		})
-		t.Run(fmt.Sprintf("2: arity: %s", arity), func(t *testing.T) {
+		t.Run(fmt.Sprintf("2: %s", arity), func(t *testing.T) {
 			n := trie256p.NewNodeData()
 			n.Terminal = model.NewTerminalCommitment()
 

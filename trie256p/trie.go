@@ -11,7 +11,7 @@ import (
 	trie_go "github.com/iotaledger/trie.go"
 )
 
-// Trie is an updatable trie implemented on top of the key/value store. It is virtualized and optimized by caching of the
+// Trie is an updatable trie implemented on top of the unpackedKey/value store. It is virtualized and optimized by caching of the
 // trie update operation and keeping consistent trie in the cache
 type Trie struct {
 	nodeStore *nodeStoreBuffered
@@ -22,9 +22,9 @@ type TrieReader struct {
 	reader *nodeStore
 }
 
-// NodeStore is an interface to TrieReader to the trie as a set of TrieReader represented as key/value pairs
+// NodeStore is an interface to TrieReader to the trie as a set of TrieReader represented as unpackedKey/value pairs
 // Two implementations:
-// - TrieReader is a direct, non-cached TrieReader to key/value storage
+// - TrieReader is a direct, non-cached TrieReader to unpackedKey/value storage
 // - Trie implement a cached TrieReader
 type NodeStore interface {
 	GetNode(unpackedKey []byte) (Node, bool)
@@ -75,7 +75,7 @@ func (tr *Trie) GetNode(unpackedKey []byte) (Node, bool) {
 	return tr.nodeStore.getNode(unpackedKey)
 }
 
-// PersistMutations persists the cache to the key/value store
+// PersistMutations persists the cache to the unpackedKey/value store
 // Does not clear cache
 func (tr *Trie) PersistMutations(store trie_go.KVWriter) int {
 	return tr.nodeStore.persistMutations(store)
@@ -87,7 +87,7 @@ func (tr *Trie) ClearCache() {
 }
 
 // newTerminalNode creates new node in the trie with specified PathFragment and Terminal commitment.
-// Assumes 'key' does not exist in the Trie
+// Assumes 'unpackedKey' does not exist in the Trie
 func (tr *Trie) newTerminalNode(key, pathFragment []byte, newTerminal trie_go.TCommitment) *bufferedNode {
 	tr.nodeStore.unDelete(key)
 	ret := newBufferedNode(key)
@@ -144,7 +144,7 @@ func (tr *Trie) commitNode(key []byte, update *trie_go.VCommitment) {
 	n.pathChanged = false
 }
 
-// Update updates Trie with the key/value. Reorganizes and re-calculates trie, keeps cache consistent
+// Update updates Trie with the unpackedKey/value. Reorganizes and re-calculates trie, keeps cache consistent
 func (tr *Trie) Update(key []byte, value []byte) {
 	c := tr.nodeStore.reader.m.CommitToData(value)
 	if c == nil {
@@ -152,8 +152,8 @@ func (tr *Trie) Update(key []byte, value []byte) {
 		tr.Delete(key)
 		return
 	}
-	// find path in the trie corresponding to the key
-	key = unpackKey(key, tr.nodeStore.arity)
+	// find path in the trie corresponding to the unpackedKey
+	key = UnpackBytes(key, tr.nodeStore.arity)
 	proof, lastCommonPrefix, ending := proofPath(tr, key)
 	if len(proof) == 0 {
 		tr.newTerminalNode(nil, key, c)
@@ -166,7 +166,7 @@ func (tr *Trie) Update(key []byte, value []byte) {
 
 	case EndingExtend:
 		childIndexPosition := len(lastKey) + len(lastCommonPrefix)
-		trie_go.Assert(childIndexPosition < len(key), "childPosition < len(key)")
+		trie_go.Assert(childIndexPosition < len(key), "childPosition < len(unpackedKey)")
 		childIndex := key[childIndexPosition]
 		tr.nodeStore.removeKey(key[:childIndexPosition+1])
 		tr.newTerminalNode(key[:childIndexPosition+1], key[childIndexPosition+1:], c)
@@ -182,15 +182,15 @@ func (tr *Trie) Update(key []byte, value []byte) {
 	tr.markModifiedCommitmentsBackToRoot(proof)
 }
 
-// MustInsertKeyCommitment inserts key/value pair with equal key and value.
+// MustInsertKeyCommitment inserts unpackedKey/value pair with equal unpackedKey and value.
 // Key must not be empty.
 // It leads to optimized serialization of trie nodes because terminal commitment is
-// contained in the key.
+// contained in the unpackedKey.
 // It saves 33 bytes per trie node for use cases such as ledger state commitment via UTXO IDs:
 // each UTXO ID is a commitment to the output, so we only need PoI, not the commitment itself
 func (tr *Trie) MustInsertKeyCommitment(key []byte) {
 	if len(key) == 0 {
-		panic("MustInsertKeyCommitment: key can't be empty")
+		panic("MustInsertKeyCommitment: unpackedKey can't be empty")
 	}
 	tr.Update(key, key)
 }
@@ -209,13 +209,13 @@ func (tr *Trie) splitNode(fullKey, lastKey, commonPrefix []byte, newTerminal tri
 	keyNewNode[len(keyNewNode)-1] = childContinue
 
 	// create new node with keyNewNode, move everything from old to the new node
-	// Only path fragment and key changes
+	// Only path fragment and unpackedKey changes
 	newNode := n.Clone() // children and Terminal remains the same, PathFragment changes
 	newNode.setNewKey(keyNewNode)
 	newNode.setNewPathFragment(n.PathFragment()[splitIndex+1:])
 	tr.nodeStore.insertNewNode(newNode)
 
-	// modify the node under the old key
+	// modify the node under the old unpackedKey
 	n.setNewPathFragment(commonPrefix)
 	n.n.ChildCommitments = make(map[uint8]trie_go.VCommitment)
 	n.modifiedChildren = make(map[uint8]struct{})
@@ -297,7 +297,7 @@ func (tr *Trie) markModifiedCommitmentsBackToRoot(proof [][]byte) {
 	}
 }
 
-// hasCommitment returns if trie will contain commitment to the key in the (future) committed state
+// hasCommitment returns if trie will contain commitment to the unpackedKey in the (future) committed state
 func (tr *Trie) hasCommitment(key []byte) bool {
 	n, ok := tr.nodeStore.getNode(key)
 	if !ok {
@@ -357,7 +357,7 @@ func (tr *Trie) checkReorg(n *bufferedNode) (reorgStatus, byte) {
 	return nodeReorgNOP, 0
 }
 
-// UpdateStr updates key/value pair in the trie
+// UpdateStr updates unpackedKey/value pair in the trie
 func (tr *Trie) UpdateStr(key interface{}, value interface{}) {
 	var k, v []byte
 	if key != nil {
@@ -432,8 +432,8 @@ func (tr *Trie) Reconcile(store trie_go.KVIterator) [][]byte {
 	return ret
 }
 
-// UpdateAll mass-updates trie from the key/value store.
-// To be used to build trie for arbitrary key/value data sets
+// UpdateAll mass-updates trie from the unpackedKey/value store.
+// To be used to build trie for arbitrary unpackedKey/value data sets
 func (tr *Trie) UpdateAll(store trie_go.KVIterator) {
 	store.Iterate(func(k, v []byte) bool {
 		tr.Update(k, v)

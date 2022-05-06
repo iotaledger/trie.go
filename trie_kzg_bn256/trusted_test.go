@@ -6,8 +6,10 @@ import (
 	"github.com/iotaledger/trie.go/trie256p"
 	"go.dedis.ch/kyber/v3"
 	"math/big"
+	"math/rand"
 	"runtime"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 	"go.dedis.ch/kyber/v3/pairing/bn256"
@@ -182,6 +184,8 @@ func TestValidateLinearDomain(t *testing.T) {
 }
 
 func TestValidate1Load(t *testing.T) {
+	t.SkipNow() // require file
+
 	suite := bn256.NewSuite()
 	tr, err := TrustedSetupFromFile(suite, "example.setup")
 	require.NoError(t, err)
@@ -196,6 +200,8 @@ func TestValidate1Load(t *testing.T) {
 }
 
 func TestValidate2Load(t *testing.T) {
+	t.SkipNow() // require file
+
 	suite := bn256.NewSuite()
 	tr, err := TrustedSetupFromFile(suite, "example.setup")
 	require.NoError(t, err)
@@ -215,7 +221,7 @@ func TestValidate2Load(t *testing.T) {
 		v.SetInt64(int64(i + 1))
 		require.False(t, tr.verify(c, pi[i], v, i))
 	}
-	rnd := random.New()
+	rnd := random.New(rand.New(rand.NewSource(time.Now().UnixNano())))
 	for k := 0; k < 5; k++ {
 		v.Pick(rnd)
 		for i := range vect {
@@ -228,9 +234,14 @@ func TestStaticTrustedSetup(t *testing.T) {
 	model := New()
 	require.EqualValues(t, 258, model.D)
 
-	store := trie_go.NewInMemoryKVStore()
-	tr := trie256p.New(model, store)
+	runTest := func(arity trie256p.PathArity) {
+		store := trie_go.NewInMemoryKVStore()
+		tr := trie256p.New(model, store, arity, false)
 
-	tr.Update(nil, []byte("kuku"))
-	tr.Commit()
+		tr.Update(nil, []byte("kuku"))
+		tr.Commit()
+	}
+	runTest(trie256p.PathArity256)
+	runTest(trie256p.PathArity16)
+	runTest(trie256p.PathArity2)
 }

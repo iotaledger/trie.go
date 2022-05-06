@@ -67,7 +67,7 @@ func (n *NodeData) String() string {
 // the 'smallFlags' (1 byte) contains information:
 // - 'serializeTerminalValueFlag' does node contain Terminal commitment
 // - 'serializeChildrenFlag' does node contain at least one child
-// - 'isKeyCommitmentFlag' is optimization case when commitment to the terminal == commitment to the key
+// - 'isKeyCommitmentFlag' is optimization case when commitment to the terminal == commitment to the unpackedKey
 //    In this case terminal is not serialized
 // - 'serializePathFragmentFlag' flag means node has non-empty path fragment
 // By the semantics of the trie, 'smallFlags' cannot be 0
@@ -121,28 +121,27 @@ func (n *NodeData) Write(w io.Writer, arity PathArity, isKeyCommitment bool) err
 	var err error
 	if len(n.PathFragment) > 0 {
 		smallFlags |= serializePathFragmentFlag
-		if pathFragmentEncoded, err = encodeKey(pathFragmentEncoded, arity); err != nil {
+		if pathFragmentEncoded, err = encodeUnpackedBytes(n.PathFragment, arity); err != nil {
 			return err
 		}
 	}
-	if err := trie_go.WriteByte(w, smallFlags); err != nil {
+	if err = trie_go.WriteByte(w, smallFlags); err != nil {
 		return err
 	}
 	if smallFlags&serializePathFragmentFlag != 0 {
-		if err := trie_go.WriteBytes16(w, pathFragmentEncoded); err != nil {
+		if err = trie_go.WriteBytes16(w, pathFragmentEncoded); err != nil {
 			return err
 		}
 	}
-	// write Terminal commitment if needed
-	// if key is committed as terminal, terminal is not serialized
+	// write Terminal commitment if needed. If unpackedKey is committed as terminal, terminal is not serialized
 	if smallFlags&serializeTerminalValueFlag != 0 {
-		if err := n.Terminal.Write(w); err != nil {
+		if err = n.Terminal.Write(w); err != nil {
 			return err
 		}
 	}
 	// write child commitments if any
 	if smallFlags&serializeChildrenFlag != 0 {
-		if _, err := w.Write(childrenFlags[:]); err != nil {
+		if _, err = w.Write(childrenFlags[:]); err != nil {
 			return err
 		}
 		for i := 0; i < 256; i++ {
@@ -150,7 +149,7 @@ func (n *NodeData) Write(w io.Writer, arity PathArity, isKeyCommitment bool) err
 			if !ok {
 				continue
 			}
-			if err := child.Write(w); err != nil {
+			if err = child.Write(w); err != nil {
 				return err
 			}
 		}
@@ -170,7 +169,7 @@ func (n *NodeData) Read(r io.Reader, model CommitmentModel, unpackedKey []byte, 
 		if err != nil {
 			return err
 		}
-		if n.PathFragment, err = decodeKey(encoded, arity); err != nil {
+		if n.PathFragment, err = decodeToUnpackedBytes(encoded, arity); err != nil {
 			return err
 		}
 	} else {

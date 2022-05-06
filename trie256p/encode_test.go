@@ -10,7 +10,7 @@ func Test16KeysEmpty(t *testing.T) {
 	var key []byte
 	k16 := make([]byte, 0, 2*len(key))
 	k16 = unpack16(k16, key)
-	t.Logf("key = %v", hex.EncodeToString(key))
+	t.Logf("unpackedKey = %v", hex.EncodeToString(key))
 	t.Logf("k16 = %v", hex.EncodeToString(k16))
 
 	enc, err := encode16(k16)
@@ -27,7 +27,7 @@ func Test16Keys1(t *testing.T) {
 	key := []byte{0x31, 0x32, 0x33, 0x34, 0x35}
 	k16 := make([]byte, 0, 2*len(key))
 	k16 = unpack16(k16, key)
-	t.Logf("key = %v", hex.EncodeToString(key))
+	t.Logf("unpackedKey = %v", hex.EncodeToString(key))
 	t.Logf("k16 = %v", hex.EncodeToString(k16))
 
 	enc, err := encode16(k16)
@@ -74,7 +74,7 @@ func Test2KeysEmpty(t *testing.T) {
 	var key []byte
 	k2 := make([]byte, 0, 8*len(key))
 	k2 = unpack2(k2, key)
-	t.Logf("key = %v", hex.EncodeToString(key))
+	t.Logf("unpackedKey = %v", hex.EncodeToString(key))
 	t.Logf("k2 = %v", hex.EncodeToString(k2))
 
 	enc, err := encode2(k2)
@@ -89,7 +89,7 @@ func Test2KeysEmpty(t *testing.T) {
 
 func Test2Keys1(t *testing.T) {
 	key := []byte{0x31, 0x32, 0x33, 0x34, 0x35}
-	t.Logf("key = %v", hex.EncodeToString(key))
+	t.Logf("unpackedKey = %v", hex.EncodeToString(key))
 	k2 := make([]byte, 0, 8*len(key))
 	k2 = unpack2(k2, key)
 	t.Logf("k2 = %+v", k2)

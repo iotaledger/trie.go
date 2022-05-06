@@ -19,21 +19,21 @@ import (
 
 func TestNode(t *testing.T) {
 	runTest := func(t *testing.T, m trie256p.CommitmentModel, arity trie256p.PathArity) {
-		t.Run("base normal", func(t *testing.T) {
+		t.Run("base normal"+" "+arity.String(), func(t *testing.T) {
 			n := trie256p.NewNodeData()
 			err := n.Write(io.Discard, arity, false)
 			require.Error(t, err)
 
-			key := []byte("a")
-			value := []byte("b")
+			unpackedKey := trie256p.UnpackBytes([]byte("a"), arity)
+			unpackedValue := trie256p.UnpackBytes([]byte("b"), arity)
 
 			var buf bytes.Buffer
 			n = trie256p.NewNodeData()
-			n.Terminal = m.CommitToData(value)
+			n.Terminal = m.CommitToData(unpackedValue)
 			err = n.Write(&buf, arity, false)
 			require.NoError(t, err)
 
-			nBack, err := trie256p.NodeDataFromBytes(m, buf.Bytes(), key, arity)
+			nBack, err := trie256p.NodeDataFromBytes(m, buf.Bytes(), unpackedKey, arity)
 			require.NoError(t, err)
 			require.True(t, trie_go.EqualCommitments(n.Terminal, nBack.Terminal))
 
@@ -42,19 +42,20 @@ func TestNode(t *testing.T) {
 			require.EqualValues(t, h, hBack)
 			t.Logf("commitment = %s", h)
 		})
-		t.Run("base key commitment", func(t *testing.T) {
-			key := []byte("abc")
-			pathFragment := []byte("d")
-			value := []byte("abcd")
+		t.Run("base key commitment"+" "+arity.String(), func(t *testing.T) {
+			unpackedKey := trie256p.UnpackBytes([]byte("abc"), arity)
+			unpackedPathFragment := trie256p.UnpackBytes([]byte("d"), arity)
+			unpackedValue := trie256p.UnpackBytes([]byte("abcd"), arity)
+			require.EqualValues(t, unpackedValue, trie_go.Concat(unpackedKey, unpackedPathFragment))
 
 			var buf bytes.Buffer
 			n := trie256p.NewNodeData()
-			n.PathFragment = pathFragment
-			n.Terminal = m.CommitToData(value)
+			n.PathFragment = unpackedPathFragment
+			n.Terminal = m.CommitToData(unpackedValue)
 			err := n.Write(&buf, arity, true)
 			require.NoError(t, err)
 
-			nBack, err := trie256p.NodeDataFromBytes(m, buf.Bytes(), key, arity)
+			nBack, err := trie256p.NodeDataFromBytes(m, buf.Bytes(), unpackedKey, arity)
 			require.NoError(t, err)
 			require.EqualValues(t, n.PathFragment, nBack.PathFragment)
 			require.True(t, trie_go.EqualCommitments(n.Terminal, nBack.Terminal))
@@ -64,10 +65,10 @@ func TestNode(t *testing.T) {
 			require.True(t, trie_go.EqualCommitments(h, hBack))
 			t.Logf("commitment = %s", h)
 		})
-		t.Run("base short terminal", func(t *testing.T) {
+		t.Run("base short terminal"+" "+arity.String(), func(t *testing.T) {
 			n := trie256p.NewNodeData()
-			n.PathFragment = []byte("kuku")
-			n.Terminal = m.CommitToData([]byte("data"))
+			n.PathFragment = trie256p.UnpackBytes([]byte("kuku"), arity)
+			n.Terminal = m.CommitToData(trie256p.UnpackBytes([]byte("data"), arity))
 
 			var buf bytes.Buffer
 			err := n.Write(&buf, arity, false)
@@ -81,10 +82,10 @@ func TestNode(t *testing.T) {
 			require.EqualValues(t, h, hBack)
 			t.Logf("commitment = %s", h)
 		})
-		t.Run("base long terminal", func(t *testing.T) {
+		t.Run("base long terminal"+" "+arity.String(), func(t *testing.T) {
 			n := trie256p.NewNodeData()
-			n.PathFragment = []byte("kuku")
-			n.Terminal = m.CommitToData([]byte(strings.Repeat("data", 1000)))
+			n.PathFragment = trie256p.UnpackBytes([]byte("kuku"), arity)
+			n.Terminal = m.CommitToData(trie256p.UnpackBytes([]byte(strings.Repeat("data", 1000)), arity))
 
 			var buf bytes.Buffer
 			err := n.Write(&buf, arity, false)
@@ -100,10 +101,10 @@ func TestNode(t *testing.T) {
 		})
 	}
 	runTest(t, trie_blake2b_32.New(), trie256p.PathArity256)
-	runTest(t, trie_blake2b_32.New(), trie256p.PathArity16)
-	runTest(t, trie_blake2b_32.New(), trie256p.PathArity2)
 	runTest(t, trie_blake2b_20.New(), trie256p.PathArity256)
+	runTest(t, trie_blake2b_32.New(), trie256p.PathArity16)
 	runTest(t, trie_blake2b_20.New(), trie256p.PathArity16)
+	runTest(t, trie_blake2b_32.New(), trie256p.PathArity2)
 	runTest(t, trie_blake2b_20.New(), trie256p.PathArity2)
 	//runTest(t, trie_kzg_bn256.New())
 }
