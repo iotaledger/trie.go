@@ -459,13 +459,14 @@ func TestTrieBase(t *testing.T) {
 
 func genRnd3() []string {
 	ret := make([]string, 0, len(letters)*len(letters)*len(letters))
+	rnd := rand.New(rand.NewSource(time.Now().UnixNano()))
 	for i := range letters {
 		for j := range letters {
 			for k := range letters {
 				s := string([]byte{letters[i], letters[j], letters[k]})
 				s = s + s + s + s
-				r1 := rand.Intn(len(s))
-				r2 := rand.Intn(len(s))
+				r1 := rnd.Intn(len(s))
+				r2 := rnd.Intn(len(s))
 				if r2 < r1 {
 					r1, r2 = r2, r1
 				}
@@ -548,7 +549,8 @@ func TestTrieRnd(t *testing.T) {
 			store2 := trie_go.NewInMemoryKVStore()
 			tr2 := trie256p.New(m, store2, arity, false)
 
-			permutation := rand.Perm(len(data))
+			rnd := rand.New(rand.NewSource(time.Now().UnixNano()))
+			permutation := rnd.Perm(len(data))
 			for _, i := range permutation {
 				tr2.Update([]byte(data[i]), []byte(data[i]))
 			}
@@ -572,7 +574,8 @@ func TestTrieRnd(t *testing.T) {
 			store2 := trie_go.NewInMemoryKVStore()
 			tr2 := trie256p.New(m, store2, arity, false)
 
-			permutation := rand.Perm(len(data))
+			rnd := rand.New(rand.NewSource(time.Now().UnixNano()))
+			permutation := rnd.Perm(len(data))
 			for _, i := range permutation {
 				tr2.Update([]byte(data[i]), []byte(data[i]))
 			}
@@ -596,7 +599,8 @@ func TestTrieRnd(t *testing.T) {
 			store2 := trie_go.NewInMemoryKVStore()
 			tr2 := trie256p.New(m, store2, arity, false)
 
-			permutation := rand.Perm(len(data))
+			rnd := rand.New(rand.NewSource(time.Now().UnixNano()))
+			permutation := rnd.Perm(len(data))
 			for _, i := range permutation {
 				tr2.Update([]byte(data[i]), []byte(data[i]))
 			}
@@ -623,7 +627,8 @@ func TestTrieRnd(t *testing.T) {
 			store2 := trie_go.NewInMemoryKVStore()
 			tr2 := trie256p.New(m, store2, arity, false)
 
-			permutation := rand.Perm(len(data))
+			rnd := rand.New(rand.NewSource(time.Now().UnixNano()))
+			permutation := rnd.Perm(len(data))
 			for _, i := range permutation {
 				tr2.Update([]byte(data[i]), []byte(data[i]))
 			}
