@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	trie_go "github.com/iotaledger/trie.go"
-	"github.com/iotaledger/trie.go/trie256p"
+	"github.com/iotaledger/trie.go/trie"
 	"golang.org/x/xerrors"
 	"io"
 )
@@ -31,8 +31,8 @@ func ProofFromBytes(data []byte) (*Proof, error) {
 }
 
 // Proof converts generic proof path to the Merkle proof path
-func (m *CommitmentModel) Proof(key []byte, tr trie256p.NodeStore) *Proof {
-	proofGeneric := trie256p.GetProofGeneric(tr, key)
+func (m *CommitmentModel) Proof(key []byte, tr trie.NodeStore) *Proof {
+	proofGeneric := trie.GetProofGeneric(tr, key)
 	if proofGeneric == nil {
 		return nil
 	}
@@ -56,9 +56,9 @@ func (m *CommitmentModel) Proof(key []byte, tr trie256p.NodeStore) *Proof {
 			elemKeyPosition++
 		} else {
 			switch proofGeneric.Ending {
-			case trie256p.EndingTerminal:
+			case trie.EndingTerminal:
 				childIndex = 256
-			case trie256p.EndingExtend, trie256p.EndingSplit:
+			case trie.EndingExtend, trie.EndingSplit:
 				childIndex = 257
 			default:
 				panic("wrong ending code")

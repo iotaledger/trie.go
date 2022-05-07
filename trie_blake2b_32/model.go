@@ -6,7 +6,7 @@ import (
 	"io"
 
 	trie_go "github.com/iotaledger/trie.go"
-	"github.com/iotaledger/trie.go/trie256p"
+	"github.com/iotaledger/trie.go/trie"
 	"golang.org/x/crypto/blake2b"
 	"golang.org/x/xerrors"
 )
@@ -45,7 +45,7 @@ func (m *CommitmentModel) NewVectorCommitment() trie_go.VCommitment {
 
 // UpdateNodeCommitment computes update to the node data and, optionally, updates existing commitment
 // In blake2b implementation delta it just means computing the hash of data
-func (m *CommitmentModel) UpdateNodeCommitment(mutate *trie256p.NodeData, childUpdates map[byte]trie_go.VCommitment, _ bool, newTerminalUpdate trie_go.TCommitment, update *trie_go.VCommitment) {
+func (m *CommitmentModel) UpdateNodeCommitment(mutate *trie.NodeData, childUpdates map[byte]trie_go.VCommitment, _ bool, newTerminalUpdate trie_go.TCommitment, update *trie_go.VCommitment) {
 	var hashes [258]*[hashSize]byte
 
 	deleted := make([]byte, 0, 256)
@@ -81,7 +81,7 @@ func (m *CommitmentModel) UpdateNodeCommitment(mutate *trie256p.NodeData, childU
 
 // CalcNodeCommitment computes commitment of the node. It is suboptimal in KZG trie.
 // Used in computing root commitment
-func (m *CommitmentModel) CalcNodeCommitment(par *trie256p.NodeData) trie_go.VCommitment {
+func (m *CommitmentModel) CalcNodeCommitment(par *trie.NodeData) trie_go.VCommitment {
 	var hashes [258]*[hashSize]byte
 
 	if len(par.ChildCommitments) == 0 && par.Terminal == nil {
@@ -108,7 +108,7 @@ func (m *CommitmentModel) CommitToData(data []byte) trie_go.TCommitment {
 }
 
 func (m *CommitmentModel) Description() string {
-	return "trie256p commitment model implementation based on blake2b 256 bit hashing"
+	return "trie commitment model implementation based on blake2b 256 bit hashing"
 }
 
 func (m *CommitmentModel) ShortName() string {

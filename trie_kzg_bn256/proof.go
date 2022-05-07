@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	trie_go "github.com/iotaledger/trie.go"
-	"github.com/iotaledger/trie.go/trie256p"
+	"github.com/iotaledger/trie.go/trie"
 	"go.dedis.ch/kyber/v3"
 	"golang.org/x/xerrors"
 	"io"
@@ -48,9 +48,9 @@ func ProofOfInclusionFromBytes(data []byte) (*ProofOfInclusion, error) {
 
 // ProofOfInclusion converts generic proof path of existing key to the verifiable proof path
 // Returns nil, false if path does not exist
-func (m *CommitmentModel) ProofOfInclusion(key []byte, tr trie256p.NodeStore) (*ProofOfInclusion, bool) {
-	proofGeneric := trie256p.GetProofGeneric(tr, key)
-	if proofGeneric == nil || len(proofGeneric.Path) == 0 || proofGeneric.Ending != trie256p.EndingTerminal {
+func (m *CommitmentModel) ProofOfInclusion(key []byte, tr trie.NodeStore) (*ProofOfInclusion, bool) {
+	proofGeneric := trie.GetProofGeneric(tr, key)
+	if proofGeneric == nil || len(proofGeneric.Path) == 0 || proofGeneric.Ending != trie.EndingTerminal {
 		// key is not present in the state
 		return nil, false
 	}
@@ -62,13 +62,13 @@ func (m *CommitmentModel) ProofOfInclusion(key []byte, tr trie256p.NodeStore) (*
 	}
 
 	proofLength := len(proofGeneric.Path)
-	nodes := make([]*trie256p.NodeData, proofLength)
+	nodes := make([]*trie.NodeData, proofLength)
 
 	for i, k := range proofGeneric.Path {
 		n, ok := tr.GetNode(k)
 		trie_go.Assert(ok, "can't find node with key '%x'", k)
 
-		nodes[i] = &trie256p.NodeData{
+		nodes[i] = &trie.NodeData{
 			PathFragment:     n.PathFragment(),
 			ChildCommitments: n.ChildCommitments(),
 			Terminal:         n.Terminal(),
@@ -101,7 +101,7 @@ func (m *CommitmentModel) ProofOfInclusion(key []byte, tr trie256p.NodeStore) (*
 // ProofOfPath returns proof of path along the key, if key is absent. If key is present, it returns nil, false,
 // The proof of path can be used as a proof of absence of the key in the state, i.e. to prove that something else is
 // committed in the state instead of what should be committed if the key would be present
-func (m *CommitmentModel) ProofOfPath(key []byte, tr trie256p.NodeStore) (*ProofOfPath, bool) {
+func (m *CommitmentModel) ProofOfPath(key []byte, tr trie.NodeStore) (*ProofOfPath, bool) {
 	panic("implement me")
 }
 

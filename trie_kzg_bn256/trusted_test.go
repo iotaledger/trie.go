@@ -3,7 +3,7 @@ package trie_kzg_bn256
 import (
 	"encoding/hex"
 	trie_go "github.com/iotaledger/trie.go"
-	"github.com/iotaledger/trie.go/trie256p"
+	"github.com/iotaledger/trie.go/trie"
 	"go.dedis.ch/kyber/v3"
 	"math/big"
 	"math/rand"
@@ -234,14 +234,14 @@ func TestStaticTrustedSetup(t *testing.T) {
 	model := New()
 	require.EqualValues(t, 258, model.D)
 
-	runTest := func(arity trie256p.PathArity) {
+	runTest := func(arity trie.PathArity) {
 		store := trie_go.NewInMemoryKVStore()
-		tr := trie256p.New(model, store, arity, false)
+		tr := trie.New(model, store, arity, false)
 
 		tr.Update(nil, []byte("kuku"))
 		tr.Commit()
 	}
-	runTest(trie256p.PathArity256)
-	runTest(trie256p.PathArity16)
-	runTest(trie256p.PathArity2)
+	runTest(trie.PathArity256)
+	runTest(trie.PathArity16)
+	runTest(trie.PathArity2)
 }

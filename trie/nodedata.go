@@ -1,4 +1,4 @@
-package trie256p
+package trie
 
 import (
 	"bytes"
@@ -81,8 +81,6 @@ const (
 	serializeTerminalValueFlag = 0x02
 	serializeChildrenFlag      = 0x04
 	serializePathFragmentFlag  = 0x08
-	optimizedPathArityFlag     = 0x10 // if set, it is binary or hexary
-	binaryPath                 = 0x20 // is set, it is binary, otherwise hexary. Only makes sense if optimizedPathArityFlag is set.
 )
 
 // cflags 256 flags, one for each child

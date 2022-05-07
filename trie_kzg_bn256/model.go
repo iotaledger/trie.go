@@ -2,7 +2,7 @@ package trie_kzg_bn256
 
 import (
 	trie_go "github.com/iotaledger/trie.go"
-	"github.com/iotaledger/trie.go/trie256p"
+	"github.com/iotaledger/trie.go/trie"
 	"go.dedis.ch/kyber/v3"
 	"go.dedis.ch/kyber/v3/pairing/bn256"
 	"golang.org/x/crypto/blake2b"
@@ -92,7 +92,7 @@ func New() *CommitmentModel {
 }
 
 func (m *CommitmentModel) Description() string {
-	return "trie256p commitment model implementation based on KZG (Kate) polynomial commitments and bn256 curve frm Dedis.Kyber library"
+	return "trie commitment model implementation based on KZG (Kate) polynomial commitments and bn256 curve frm Dedis.Kyber library"
 }
 
 func (m *CommitmentModel) ShortName() string {
@@ -131,7 +131,7 @@ func (m *CommitmentModel) UpdateVCommitment(c *trie_go.VCommitment, delta trie_g
 }
 
 // UpdateNodeCommitment updates mutated part of node's data and, optionaly, upper
-func (m *CommitmentModel) UpdateNodeCommitment(mutate *trie256p.NodeData, childUpdates map[byte]trie_go.VCommitment, calcDelta bool, terminal trie_go.TCommitment, update *trie_go.VCommitment) {
+func (m *CommitmentModel) UpdateNodeCommitment(mutate *trie.NodeData, childUpdates map[byte]trie_go.VCommitment, calcDelta bool, terminal trie_go.TCommitment, update *trie_go.VCommitment) {
 	var deltas map[int]kyber.Scalar
 
 	trie_go.Assert(!calcDelta || (update != nil && *update != nil), "UpdateNodeCommitment: inconsistent parameters")
@@ -205,24 +205,24 @@ func (m *CommitmentModel) UpdateNodeCommitment(mutate *trie256p.NodeData, childU
 	}
 }
 
-func (m *CommitmentModel) CalcNodeCommitment(data *trie256p.NodeData) trie_go.VCommitment {
+func (m *CommitmentModel) CalcNodeCommitment(data *trie.NodeData) trie_go.VCommitment {
 	return m.calcNodeCommitment(data)
 }
 
-func (m *CommitmentModel) calcNodeCommitment(data *trie256p.NodeData) *vectorCommitment {
+func (m *CommitmentModel) calcNodeCommitment(data *trie.NodeData) *vectorCommitment {
 	var vect [258]kyber.Scalar
 	makeVector(data, &m.TrustedSetup, &vect)
 	return &vectorCommitment{Point: m.TrustedSetup.commit(vect[:])}
 }
 
-func (m *CommitmentModel) calcProof(data *trie256p.NodeData, index int) kyber.Point {
+func (m *CommitmentModel) calcProof(data *trie.NodeData, index int) kyber.Point {
 	var vect [258]kyber.Scalar
 	makeVector(data, &m.TrustedSetup, &vect)
 	return m.TrustedSetup.prove(vect[:], index)
 }
 
 // Vector extracts vector from the node
-func makeVector(n *trie256p.NodeData, ts *TrustedSetup, ret *[258]kyber.Scalar) {
+func makeVector(n *trie.NodeData, ts *TrustedSetup, ret *[258]kyber.Scalar) {
 	for i, p := range n.ChildCommitments {
 		if p == nil {
 			continue

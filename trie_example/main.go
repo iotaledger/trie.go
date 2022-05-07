@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 	trie_go "github.com/iotaledger/trie.go"
-	"github.com/iotaledger/trie.go/trie256p"
+	"github.com/iotaledger/trie.go/trie"
 	"github.com/iotaledger/trie.go/trie_blake2b_32"
 )
 
@@ -15,7 +15,7 @@ func main() {
 	model := trie_blake2b_32.New()
 
 	// create the trie
-	tr := trie256p.New(model, store)
+	tr := trie.New(model, store, trie.PathArity2, false)
 
 	// add some key/value pairs to the trie
 	keys := []string{"abc", "klm", "oprs"}
@@ -26,7 +26,7 @@ func main() {
 	tr.Commit()
 
 	// retrieve root commitment (normally it is taken from the 3rd party)
-	rootCommitment := trie256p.RootCommitment(tr)
+	rootCommitment := trie.RootCommitment(tr)
 
 	// prove that key 'abc' is in the state against the root
 	proof := model.Proof([]byte(keys[0]), tr)

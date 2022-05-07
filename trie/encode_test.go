@@ -1,4 +1,4 @@
-package trie256p
+package trie
 
 import (
 	"encoding/hex"

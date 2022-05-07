@@ -7,7 +7,7 @@ import (
 	"github.com/iotaledger/hive.go/kvstore/mapdb"
 	trie_go "github.com/iotaledger/trie.go"
 	"github.com/iotaledger/trie.go/hive_adaptor"
-	"github.com/iotaledger/trie.go/trie256p"
+	"github.com/iotaledger/trie.go/trie"
 	"github.com/iotaledger/trie.go/trie_blake2b_20"
 	"github.com/iotaledger/trie.go/trie_blake2b_32"
 	"golang.org/x/crypto/blake2b"
@@ -23,7 +23,7 @@ const usage = "generate random key/value pairs. USAGE: trie_bench [-20|-32] -gen
 	"check consistency of the DB. USAGE: trie_bench [-20|-32] -scandbbadger <name>\n"
 
 var (
-	model trie256p.CommitmentModel
+	model trie.CommitmentModel
 	tag   string
 )
 
@@ -120,7 +120,9 @@ func genrnd(size int, name string, hashKV bool) {
 	fname := getFname(name)
 	fileWriter, err := trie_go.CreateKVStreamFile(fname)
 	must(err)
-	defer fileWriter.Close()
+	defer func(fileWriter *trie_go.BinaryStreamFileWriter) {
+		_ = fileWriter.Close()
+	}(fileWriter)
 
 	count := 0
 	wrote := 0
@@ -209,8 +211,8 @@ func scandbbadger(name string) {
 	fmt.Printf("TRIE: number of nodes: %d, avg key len: %d, avg node size: %d\n",
 		recCounter, keyByteCounter/recCounter, valueByteCounter/recCounter)
 
-	trie := trie256p.NewTrieReader(trieKVS, model)
-	root := trie256p.RootCommitment(trie)
+	tr := trie.NewTrieReader(model, trieKVS, trie.PathArity2)
+	root := trie.RootCommitment(tr)
 	fmt.Printf("root commitment: %s\n", root)
 
 	recCounter = 1
@@ -220,13 +222,13 @@ func scandbbadger(name string) {
 	valueKVS.Iterate(func(k []byte, v []byte) bool {
 		switch m := model.(type) {
 		case *trie_blake2b_20.CommitmentModel:
-			proof := m.Proof(k, trie)
+			proof := m.Proof(k, tr)
 			proofBytes += len(proof.Bytes())
 			proofLen += len(proof.Path)
 			err = proof.Validate(root, v)
 
 		case *trie_blake2b_32.CommitmentModel:
-			proof := m.Proof(k, trie)
+			proof := m.Proof(k, tr)
 			proofBytes += len(proof.Bytes())
 			proofLen += len(proof.Path)
 			err = proof.Validate(root, v)
@@ -257,7 +259,7 @@ func file2kvs(fname string, kvs kvstore.KVStore) {
 
 	tm := newTimer()
 	counterRec := 1
-	trie := trie256p.NewTrieReader(hive_adaptor.NewHiveKVStoreAdaptor(kvs, triePrefix), model)
+	tr := trie.NewTrieReader(hive_adaptor.NewHiveKVStoreAdaptor(kvs, triePrefix), model)
 	updater, err := hive_adaptor.NewHiveBatchedUpdater(kvs, model, triePrefix, valueStorePrefix)
 	must(err)
 	err = streamIn.Iterate(func(k []byte, v []byte) bool {
@@ -276,7 +278,7 @@ func file2kvs(fname string, kvs kvstore.KVStore) {
 	}
 	fmt.Printf("Speed: %f records/sec\n", float64(counterRec)/tm.Duration().Seconds())
 
-	fmt.Printf("root commitment: %s\n", trie256p.RootCommitment(trie))
+	fmt.Printf("root commitment: %s\n", trie.RootCommitment(tr))
 }
 
 func newTimer() timer {

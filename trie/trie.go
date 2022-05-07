@@ -1,10 +1,10 @@
-// Package trie256p implements functionality of generic verkle trie with 256 child commitment in each node
+// Package trie implements functionality of generic verkle trie with 256 child commitment in each node
 // + Terminal commitment + commitment to the path fragment: 258 commitments in total.
 // It mainly follows the definition from https://hackmd.io/@Evaldas/H13YFOVGt (except commitment to the path fragment)
 // The commitment to the path fragment is needed to provide proofs of absence of keys
 //
 // The specific implementation of the commitment model is presented as a CommitmentModel interface
-package trie256p
+package trie
 
 import (
 	"bytes"

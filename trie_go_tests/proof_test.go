@@ -2,7 +2,7 @@ package trie_go_tests
 
 import (
 	trie_go "github.com/iotaledger/trie.go"
-	"github.com/iotaledger/trie.go/trie256p"
+	"github.com/iotaledger/trie.go/trie"
 	"github.com/iotaledger/trie.go/trie_blake2b_20"
 	"github.com/iotaledger/trie.go/trie_blake2b_32"
 	"github.com/iotaledger/trie.go/trie_kzg_bn256"
@@ -11,19 +11,19 @@ import (
 )
 
 func TestTrieProofBlake2b32(t *testing.T) {
-	runTest20 := func(arity trie256p.PathArity) {
+	runTest20 := func(arity trie.PathArity) {
 		model := trie_blake2b_20.New()
 		t.Run("proof empty trie"+" "+arity.String(), func(t *testing.T) {
 			store := trie_go.NewInMemoryKVStore()
-			tr := trie256p.New(model, store, arity, false)
-			require.EqualValues(t, nil, trie256p.RootCommitment(tr))
+			tr := trie.New(model, store, arity, false)
+			require.EqualValues(t, nil, trie.RootCommitment(tr))
 
 			proof := model.Proof(nil, tr)
 			require.EqualValues(t, 0, len(proof.Path))
 		})
 		t.Run("proof one entry 1"+" "+arity.String(), func(t *testing.T) {
 			store := trie_go.NewInMemoryKVStore()
-			tr := trie256p.New(model, store, arity, false)
+			tr := trie.New(model, store, arity, false)
 
 			tr.Update(nil, []byte("1"))
 			tr.Commit()
@@ -31,7 +31,7 @@ func TestTrieProofBlake2b32(t *testing.T) {
 			proof := model.Proof(nil, tr)
 			require.EqualValues(t, 1, len(proof.Path))
 
-			rootC := trie256p.RootCommitment(tr)
+			rootC := trie.RootCommitment(tr)
 			err := proof.Validate(rootC)
 			require.NoError(t, err)
 
@@ -47,7 +47,7 @@ func TestTrieProofBlake2b32(t *testing.T) {
 			proof = model.Proof([]byte("a"), tr)
 			require.EqualValues(t, 1, len(proof.Path))
 
-			rootC = trie256p.RootCommitment(tr)
+			rootC = trie.RootCommitment(tr)
 			err = proof.Validate(rootC)
 			require.NoError(t, err)
 			require.True(t, proof.IsProofOfAbsence())
@@ -55,14 +55,14 @@ func TestTrieProofBlake2b32(t *testing.T) {
 		})
 		t.Run("proof one entry 2"+" "+arity.String(), func(t *testing.T) {
 			store := trie_go.NewInMemoryKVStore()
-			tr := trie256p.New(model, store, arity, false)
+			tr := trie.New(model, store, arity, false)
 
 			tr.Update([]byte("1"), []byte("2"))
 			tr.Commit()
 			proof := model.Proof(nil, tr)
 			require.EqualValues(t, 1, len(proof.Path))
 
-			rootC := trie256p.RootCommitment(tr)
+			rootC := trie.RootCommitment(tr)
 			err := proof.Validate(rootC)
 			require.NoError(t, err)
 			require.True(t, proof.IsProofOfAbsence())
@@ -81,19 +81,19 @@ func TestTrieProofBlake2b32(t *testing.T) {
 			require.True(t, trie_go.EqualCommitments(c, c1))
 		})
 	}
-	runTest32 := func(arity trie256p.PathArity) {
+	runTest32 := func(arity trie.PathArity) {
 		model := trie_blake2b_32.New()
 		t.Run("proof empty trie"+" "+arity.String(), func(t *testing.T) {
 			store := trie_go.NewInMemoryKVStore()
-			tr := trie256p.New(model, store, arity, false)
-			require.EqualValues(t, nil, trie256p.RootCommitment(tr))
+			tr := trie.New(model, store, arity, false)
+			require.EqualValues(t, nil, trie.RootCommitment(tr))
 
 			proof := model.Proof(nil, tr)
 			require.EqualValues(t, 0, len(proof.Path))
 		})
 		t.Run("proof one entry 1"+" "+arity.String(), func(t *testing.T) {
 			store := trie_go.NewInMemoryKVStore()
-			tr := trie256p.New(model, store, arity, false)
+			tr := trie.New(model, store, arity, false)
 
 			tr.Update(nil, []byte("1"))
 			tr.Commit()
@@ -101,7 +101,7 @@ func TestTrieProofBlake2b32(t *testing.T) {
 			proof := model.Proof(nil, tr)
 			require.EqualValues(t, 1, len(proof.Path))
 
-			rootC := trie256p.RootCommitment(tr)
+			rootC := trie.RootCommitment(tr)
 			err := proof.Validate(rootC)
 			require.NoError(t, err)
 
@@ -117,7 +117,7 @@ func TestTrieProofBlake2b32(t *testing.T) {
 			proof = model.Proof([]byte("a"), tr)
 			require.EqualValues(t, 1, len(proof.Path))
 
-			rootC = trie256p.RootCommitment(tr)
+			rootC = trie.RootCommitment(tr)
 			err = proof.Validate(rootC)
 			require.NoError(t, err)
 			require.True(t, proof.IsProofOfAbsence())
@@ -125,14 +125,14 @@ func TestTrieProofBlake2b32(t *testing.T) {
 		})
 		t.Run("proof one entry 2"+" "+arity.String(), func(t *testing.T) {
 			store := trie_go.NewInMemoryKVStore()
-			tr := trie256p.New(model, store, arity, false)
+			tr := trie.New(model, store, arity, false)
 
 			tr.Update([]byte("1"), []byte("2"))
 			tr.Commit()
 			proof := model.Proof(nil, tr)
 			require.EqualValues(t, 1, len(proof.Path))
 
-			rootC := trie256p.RootCommitment(tr)
+			rootC := trie.RootCommitment(tr)
 			err := proof.Validate(rootC)
 			require.NoError(t, err)
 			require.True(t, proof.IsProofOfAbsence())
@@ -151,22 +151,22 @@ func TestTrieProofBlake2b32(t *testing.T) {
 			require.True(t, trie_go.EqualCommitments(c, c1))
 		})
 	}
-	runTest20(trie256p.PathArity256)
-	runTest20(trie256p.PathArity16)
-	runTest20(trie256p.PathArity2)
-	runTest32(trie256p.PathArity256)
-	runTest32(trie256p.PathArity16)
-	runTest32(trie256p.PathArity2)
+	runTest20(trie.PathArity256)
+	runTest20(trie.PathArity16)
+	runTest20(trie.PathArity2)
+	runTest32(trie.PathArity256)
+	runTest32(trie.PathArity16)
+	runTest32(trie.PathArity2)
 }
 
 func TestTrieProofWithDeletesBlake2b32(t *testing.T) {
-	var tr1 *trie256p.Trie
+	var tr1 *trie.Trie
 	var rootC trie_go.VCommitment
 	Model := trie_blake2b_32.New()
 
-	initTrie := func(dataAdd []string, arity trie256p.PathArity) {
+	initTrie := func(dataAdd []string, arity trie.PathArity) {
 		store := trie_go.NewInMemoryKVStore()
-		tr1 = trie256p.New(Model, store, arity, false)
+		tr1 = trie.New(Model, store, arity, false)
 		for _, s := range dataAdd {
 			tr1.Update([]byte(s), []byte(s+"++"))
 		}
@@ -178,10 +178,10 @@ func TestTrieProofWithDeletesBlake2b32(t *testing.T) {
 	}
 	commitTrie := func() trie_go.VCommitment {
 		tr1.Commit()
-		return trie256p.RootCommitment(tr1)
+		return trie.RootCommitment(tr1)
 	}
 	data := []string{"a", "ab", "ac", "abc", "abd", "ad", "ada", "adb", "adc", "c", "ad+dddgsssisd"}
-	runTest := func(arity trie256p.PathArity) {
+	runTest := func(arity trie.PathArity) {
 		t.Run("proof many entries 1"+" "+arity.String(), func(t *testing.T) {
 			initTrie(data, arity)
 			rootC = commitTrie()
@@ -315,7 +315,7 @@ func TestTrieProofWithDeletesBlake2b32(t *testing.T) {
 				store.Set([]byte("1"+s), []byte(s+"2"))
 			}
 			trieStore := trie_go.NewInMemoryKVStore()
-			tr1 = trie256p.New(Model, trieStore, arity, false)
+			tr1 = trie.New(Model, trieStore, arity, false)
 			store.Iterate(func(k, v []byte) bool {
 				tr1.Update([]byte(k), v)
 				return true
@@ -325,19 +325,19 @@ func TestTrieProofWithDeletesBlake2b32(t *testing.T) {
 			require.EqualValues(t, 0, len(diff))
 		})
 	}
-	runTest(trie256p.PathArity256)
-	runTest(trie256p.PathArity16)
-	runTest(trie256p.PathArity2)
+	runTest(trie.PathArity256)
+	runTest(trie.PathArity16)
+	runTest(trie.PathArity2)
 }
 
 func TestTrieProofWithDeletesBlake2b20(t *testing.T) {
-	var tr1 *trie256p.Trie
+	var tr1 *trie.Trie
 	var rootC trie_go.VCommitment
 	Model := trie_blake2b_20.New()
 
-	initTrie := func(dataAdd []string, arity trie256p.PathArity) {
+	initTrie := func(dataAdd []string, arity trie.PathArity) {
 		store := trie_go.NewInMemoryKVStore()
-		tr1 = trie256p.New(Model, store, arity, false)
+		tr1 = trie.New(Model, store, arity, false)
 		for _, s := range dataAdd {
 			tr1.Update([]byte(s), []byte(s+"++"))
 		}
@@ -349,10 +349,10 @@ func TestTrieProofWithDeletesBlake2b20(t *testing.T) {
 	}
 	commitTrie := func() trie_go.VCommitment {
 		tr1.Commit()
-		return trie256p.RootCommitment(tr1)
+		return trie.RootCommitment(tr1)
 	}
 	data := []string{"a", "ab", "ac", "abc", "abd", "ad", "ada", "adb", "adc", "c", "ad+dddgsssisd"}
-	runTest := func(arity trie256p.PathArity) {
+	runTest := func(arity trie.PathArity) {
 		t.Run("proof many entries 1"+" "+arity.String(), func(t *testing.T) {
 			initTrie(data, arity)
 			rootC = commitTrie()
@@ -486,7 +486,7 @@ func TestTrieProofWithDeletesBlake2b20(t *testing.T) {
 				store.Set([]byte("1"+s), []byte(s+"2"))
 			}
 			trieStore := trie_go.NewInMemoryKVStore()
-			tr1 = trie256p.New(Model, trieStore, arity, true)
+			tr1 = trie.New(Model, trieStore, arity, true)
 			store.Iterate(func(k, v []byte) bool {
 				tr1.Update([]byte(k), v)
 				return true
@@ -496,18 +496,18 @@ func TestTrieProofWithDeletesBlake2b20(t *testing.T) {
 			require.EqualValues(t, 0, len(diff))
 		})
 	}
-	runTest(trie256p.PathArity256)
-	runTest(trie256p.PathArity16)
-	runTest(trie256p.PathArity2)
+	runTest(trie.PathArity256)
+	runTest(trie.PathArity16)
+	runTest(trie.PathArity2)
 }
 
 func TestTrieProofKZG(t *testing.T) {
 	Model := trie_kzg_bn256.New()
-	runTest := func(arity trie256p.PathArity) {
+	runTest := func(arity trie.PathArity) {
 		t.Run("proof empty trie"+" "+arity.String(), func(t *testing.T) {
 			store := trie_go.NewInMemoryKVStore()
-			tr := trie256p.New(Model, store, arity, false)
-			require.EqualValues(t, nil, trie256p.RootCommitment(tr))
+			tr := trie.New(Model, store, arity, false)
+			require.EqualValues(t, nil, trie.RootCommitment(tr))
 
 			proof, ok := Model.ProofOfInclusion(nil, tr)
 			require.False(t, ok)
@@ -515,7 +515,7 @@ func TestTrieProofKZG(t *testing.T) {
 		})
 		t.Run("proof one entry 1"+" "+arity.String(), func(t *testing.T) {
 			store := trie_go.NewInMemoryKVStore()
-			tr := trie256p.New(Model, store, arity, false)
+			tr := trie.New(Model, store, arity, false)
 
 			tr.Update(nil, []byte("1"))
 			tr.Commit()
@@ -524,7 +524,7 @@ func TestTrieProofKZG(t *testing.T) {
 			require.True(t, ok)
 			require.EqualValues(t, 1, len(proof.Path))
 
-			rootC := trie256p.RootCommitment(tr)
+			rootC := trie.RootCommitment(tr)
 			err := proof.Validate(rootC)
 			require.NoError(t, err)
 
@@ -532,7 +532,7 @@ func TestTrieProofKZG(t *testing.T) {
 		})
 		t.Run("proof one entry 2"+" "+arity.String(), func(t *testing.T) {
 			store := trie_go.NewInMemoryKVStore()
-			tr := trie256p.New(Model, store, arity, false)
+			tr := trie.New(Model, store, arity, false)
 
 			tr.Update([]byte("100"), []byte("1"))
 			tr.Commit()
@@ -541,7 +541,7 @@ func TestTrieProofKZG(t *testing.T) {
 			require.True(t, ok)
 			require.EqualValues(t, 1, len(proof.Path))
 
-			rootC := trie256p.RootCommitment(tr)
+			rootC := trie.RootCommitment(tr)
 			err := proof.Validate(rootC)
 			require.NoError(t, err)
 
@@ -549,7 +549,7 @@ func TestTrieProofKZG(t *testing.T) {
 		})
 		t.Run("proof some entries"+" "+arity.String(), func(t *testing.T) {
 			store := trie_go.NewInMemoryKVStore()
-			tr := trie256p.New(Model, store, arity, false)
+			tr := trie.New(Model, store, arity, false)
 
 			//data := genRnd4()[:1000]
 			data := []string{"a", "ab", "abc", "ac", "acb", "adb", "bcdddd"}
@@ -559,7 +559,7 @@ func TestTrieProofKZG(t *testing.T) {
 			}
 			tr.Commit()
 
-			rootC := trie256p.RootCommitment(tr)
+			rootC := trie.RootCommitment(tr)
 
 			for _, d := range data {
 				poi, ok := Model.ProofOfInclusion([]byte(d), tr)
@@ -575,7 +575,7 @@ func TestTrieProofKZG(t *testing.T) {
 		})
 		t.Run("proof many entries"+" "+arity.String(), func(t *testing.T) {
 			store := trie_go.NewInMemoryKVStore()
-			tr := trie256p.New(Model, store, arity, false)
+			tr := trie.New(Model, store, arity, false)
 
 			data := genRnd4()[:00]
 
@@ -584,7 +584,7 @@ func TestTrieProofKZG(t *testing.T) {
 			}
 			tr.Commit()
 
-			rootC := trie256p.RootCommitment(tr)
+			rootC := trie.RootCommitment(tr)
 
 			for _, d := range data {
 				//t.Logf("POI #%d': key = %s'", i, d)
@@ -596,7 +596,7 @@ func TestTrieProofKZG(t *testing.T) {
 			}
 		})
 	}
-	runTest(trie256p.PathArity256)
-	runTest(trie256p.PathArity16)
-	runTest(trie256p.PathArity2)
+	runTest(trie.PathArity256)
+	runTest(trie.PathArity16)
+	runTest(trie.PathArity2)
 }
