@@ -17,7 +17,7 @@ func TestNodeSerialization(t *testing.T) {
 			n := trie.NewNodeData()
 			n.ChildCommitments[1] = model.NewVectorCommitment()
 			n.ChildCommitments[6] = model.NewVectorCommitment()
-			n.ChildCommitments[255] = model.NewVectorCommitment()
+			n.ChildCommitments[byte(arity)] = model.NewVectorCommitment()
 
 			var buf bytes.Buffer
 			key := []byte("abc")

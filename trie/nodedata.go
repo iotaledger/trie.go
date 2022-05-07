@@ -137,7 +137,7 @@ func (n *NodeData) Write(w io.Writer, arity PathArity, isKeyCommitment bool) err
 	var err error
 	if len(n.PathFragment) > 0 {
 		smallFlags |= serializePathFragmentFlag
-		if pathFragmentEncoded, err = encodeUnpackedBytes(n.PathFragment, arity); err != nil {
+		if pathFragmentEncoded, err = EncodeUnpackedBytes(n.PathFragment, arity); err != nil {
 			return err
 		}
 	}
@@ -190,7 +190,7 @@ func (n *NodeData) Read(r io.Reader, model CommitmentModel, unpackedKey []byte, 
 		if err != nil {
 			return err
 		}
-		if n.PathFragment, err = decodeToUnpackedBytes(encoded, arity); err != nil {
+		if n.PathFragment, err = DecodeToUnpackedBytes(encoded, arity); err != nil {
 			return err
 		}
 	} else {

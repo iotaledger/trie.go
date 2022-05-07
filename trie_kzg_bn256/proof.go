@@ -49,6 +49,8 @@ func ProofOfInclusionFromBytes(data []byte) (*ProofOfInclusion, error) {
 // ProofOfInclusion converts generic proof path of existing key to the verifiable proof path
 // Returns nil, false if path does not exist
 func (m *CommitmentModel) ProofOfInclusion(key []byte, tr trie.NodeStore) (*ProofOfInclusion, bool) {
+	trie_go.Assert(tr.PathArity() == trie.PathArity256, "for KZG commitment model only 256-ary trie is supported")
+
 	proofGeneric := trie.GetProofGeneric(tr, key)
 	if proofGeneric == nil || len(proofGeneric.Path) == 0 || proofGeneric.Ending != trie.EndingTerminal {
 		// key is not present in the state

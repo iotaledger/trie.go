@@ -9,10 +9,11 @@ import (
 	"io"
 )
 
-// blake2b 32 byte model-specific proof of inclusion
+// Proof blake2b 32 byte model-specific proof of inclusion
 type Proof struct {
-	Key  []byte
-	Path []*ProofElement
+	PathArity trie.PathArity
+	Key       []byte
+	Path      []*ProofElement
 }
 
 type ProofElement struct {
@@ -32,13 +33,15 @@ func ProofFromBytes(data []byte) (*Proof, error) {
 
 // Proof converts generic proof path to the Merkle proof path
 func (m *CommitmentModel) Proof(key []byte, tr trie.NodeStore) *Proof {
-	proofGeneric := trie.GetProofGeneric(tr, key)
+	unpackedKey := trie.UnpackBytes(key, tr.PathArity())
+	proofGeneric := trie.GetProofGeneric(tr, unpackedKey)
 	if proofGeneric == nil {
 		return nil
 	}
 	ret := &Proof{
-		Key:  proofGeneric.Key,
-		Path: make([]*ProofElement, len(proofGeneric.Path)),
+		PathArity: tr.PathArity(),
+		Key:       proofGeneric.Key,
+		Path:      make([]*ProofElement, len(proofGeneric.Path)),
 	}
 	var elemKeyPosition int
 	var isLast bool
@@ -52,7 +55,7 @@ func (m *CommitmentModel) Proof(key []byte, tr trie.NodeStore) *Proof {
 		isLast = i == len(proofGeneric.Path)-1
 		if !isLast {
 			elemKeyPosition += len(node.PathFragment())
-			childIndex = int(key[elemKeyPosition])
+			childIndex = int(unpackedKey[elemKeyPosition])
 			elemKeyPosition++
 		} else {
 			switch proofGeneric.Ending {
@@ -73,12 +76,12 @@ func (m *CommitmentModel) Proof(key []byte, tr trie.NodeStore) *Proof {
 		if node.Terminal() != nil {
 			em.Terminal = node.Terminal().(*terminalCommitment)
 		}
-		for k, v := range node.ChildCommitments() {
-			if int(k) == childIndex {
+		for idx, v := range node.ChildCommitments() {
+			if int(idx) == childIndex {
 				// skipping the commitment which must come from the next child
 				continue
 			}
-			em.Children[k] = v.(*vectorCommitment)
+			em.Children[idx] = v.(*vectorCommitment)
 		}
 		ret.Path[i] = em
 	}
@@ -223,14 +226,22 @@ func (e *ProofElement) hashIt(missingCommitment *[hashSize]byte) [hashSize]byte 
 }
 
 func (p *Proof) Write(w io.Writer) error {
-	if err := trie_go.WriteBytes16(w, p.Key); err != nil {
+	var err error
+	if err = trie_go.WriteByte(w, byte(p.PathArity)); err != nil {
 		return err
 	}
-	if err := trie_go.WriteUint16(w, uint16(len(p.Path))); err != nil {
+	encodedKey, err := trie.EncodeUnpackedBytes(p.Key, p.PathArity)
+	if err != nil {
+		return err
+	}
+	if err = trie_go.WriteBytes16(w, encodedKey); err != nil {
+		return err
+	}
+	if err = trie_go.WriteUint16(w, uint16(len(p.Path))); err != nil {
 		return err
 	}
 	for _, e := range p.Path {
-		if err := e.Write(w); err != nil {
+		if err = e.Write(w, p.PathArity); err != nil {
 			return err
 		}
 	}
@@ -238,8 +249,16 @@ func (p *Proof) Write(w io.Writer) error {
 }
 
 func (p *Proof) Read(r io.Reader) error {
-	var err error
-	if p.Key, err = trie_go.ReadBytes16(r); err != nil {
+	b, err := trie_go.ReadByte(r)
+	if err != nil {
+		return err
+	}
+	p.PathArity = trie.PathArity(b)
+	var encodedKey []byte
+	if encodedKey, err = trie_go.ReadBytes16(r); err != nil {
+		return err
+	}
+	if p.Key, err = trie.DecodeToUnpackedBytes(encodedKey, p.PathArity); err != nil {
 		return err
 	}
 	var size uint16
@@ -249,7 +268,7 @@ func (p *Proof) Read(r io.Reader) error {
 	p.Path = make([]*ProofElement, size)
 	for i := range p.Path {
 		p.Path[i] = &ProofElement{}
-		if err = p.Path[i].Read(r); err != nil {
+		if err = p.Path[i].Read(r, p.PathArity); err != nil {
 			return err
 		}
 	}
@@ -261,8 +280,12 @@ const (
 	hasChildrenFlag      = 0x02
 )
 
-func (e *ProofElement) Write(w io.Writer) error {
-	if err := trie_go.WriteBytes16(w, e.PathFragment); err != nil {
+func (e *ProofElement) Write(w io.Writer, arity trie.PathArity) error {
+	encodedPathFragment, err := trie.EncodeUnpackedBytes(e.PathFragment, arity)
+	if err != nil {
+		return err
+	}
+	if err := trie_go.WriteBytes16(w, encodedPathFragment); err != nil {
 		return err
 	}
 	if err := trie_go.WriteUint16(w, uint16(e.ChildIndex)); err != nil {
@@ -305,9 +328,13 @@ func (e *ProofElement) Write(w io.Writer) error {
 	return nil
 }
 
-func (e *ProofElement) Read(r io.Reader) error {
+func (e *ProofElement) Read(r io.Reader, arity trie.PathArity) error {
 	var err error
-	if e.PathFragment, err = trie_go.ReadBytes16(r); err != nil {
+	var encodedPathFragment []byte
+	if encodedPathFragment, err = trie_go.ReadBytes16(r); err != nil {
+		return err
+	}
+	if e.PathFragment, err = trie.DecodeToUnpackedBytes(encodedPathFragment, arity); err != nil {
 		return err
 	}
 	var idx uint16
@@ -344,5 +371,4 @@ func (e *ProofElement) Read(r io.Reader) error {
 		}
 	}
 	return nil
-
 }

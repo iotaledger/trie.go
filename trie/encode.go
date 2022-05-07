@@ -140,7 +140,7 @@ func UnpackBytes(src []byte, arity PathArity) []byte {
 	panic(ErrWrongArity)
 }
 
-func encodeUnpackedBytes(unpacked []byte, arity PathArity) ([]byte, error) {
+func EncodeUnpackedBytes(unpacked []byte, arity PathArity) ([]byte, error) {
 	if len(unpacked) == 0 {
 		return nil, nil
 	}
@@ -156,12 +156,15 @@ func encodeUnpackedBytes(unpacked []byte, arity PathArity) ([]byte, error) {
 }
 
 func mustEncodeUnpackedBytes(unpacked []byte, arity PathArity) []byte {
-	ret, err := encodeUnpackedBytes(unpacked, arity)
+	ret, err := EncodeUnpackedBytes(unpacked, arity)
 	trie_go.Assert(err == nil, "%v", err)
 	return ret
 }
 
-func decodeToUnpackedBytes(encoded []byte, arity PathArity) ([]byte, error) {
+func DecodeToUnpackedBytes(encoded []byte, arity PathArity) ([]byte, error) {
+	if len(encoded) == 0 {
+		return nil, nil
+	}
 	switch arity {
 	case PathArity256:
 		return encoded, nil

@@ -23,7 +23,7 @@ func newNodeStore(store trie_go.KVReader, model CommitmentModel, arity PathArity
 
 func (sr *nodeStore) getNode(unpackedKey []byte) (*nodeReadOnly, bool) {
 	// original (unpacked) unpackedKey is encoded to access the node in the kvstore
-	encodedKey, err := encodeUnpackedBytes(unpackedKey, sr.arity)
+	encodedKey, err := EncodeUnpackedBytes(unpackedKey, sr.arity)
 	trie_go.Assert(err == nil, "nodeStore::getNode: %v", err)
 
 	nodeBin := sr.store.Get(encodedKey)

@@ -47,10 +47,10 @@ func (p *ProofGeneric) String() string {
 // GetProofGeneric returns generic proof path. Contains references trie node cache.
 // Should be immediately converted into the specific proof model independent of the trie
 // Normally only called by the model
-func GetProofGeneric(tr NodeStore, originalKey []byte) *ProofGeneric {
-	p, _, ending := proofPath(tr, UnpackBytes(originalKey, tr.PathArity()))
+func GetProofGeneric(tr NodeStore, unpackedKey []byte) *ProofGeneric {
+	p, _, ending := proofPath(tr, unpackedKey)
 	return &ProofGeneric{
-		Key:    originalKey,
+		Key:    unpackedKey,
 		Path:   p,
 		Ending: ending,
 	}

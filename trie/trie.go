@@ -419,7 +419,7 @@ func (tr *Trie) VectorCommitmentFromBytes(data []byte) (trie_go.VCommitment, err
 func (tr *Trie) Reconcile(store trie_go.KVIterator) [][]byte {
 	ret := make([][]byte, 0)
 	store.Iterate(func(k, v []byte) bool {
-		p, _, ending := proofPath(tr, []byte(k))
+		p, _, ending := proofPath(tr, UnpackBytes(k, tr.PathArity()))
 		if ending == EndingTerminal {
 			lastKey := p[len(p)-1]
 			n, ok := tr.GetNode(lastKey)
