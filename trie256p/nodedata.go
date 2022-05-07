@@ -85,14 +85,37 @@ const (
 	binaryPath                 = 0x20 // is set, it is binary, otherwise hexary. Only makes sense if optimizedPathArityFlag is set.
 )
 
-// cflags256 256 flags, one for each child
-type cflags256 [32]byte
+// cflags 256 flags, one for each child
+type cflags []byte
 
-func (fl *cflags256) setFlag(i byte) {
+func cflagsSize(arity PathArity) int {
+	if ret := (int(arity) + 1) / 8; ret != 0 {
+		return ret
+	}
+	return 1
+}
+
+func newCflags(arity PathArity) cflags {
+	return make(cflags, cflagsSize(arity))
+}
+
+func readCflags(r io.Reader, arity PathArity) (cflags, error) {
+	ret := newCflags(arity)
+	n, err := r.Read(ret)
+	if err != nil {
+		return nil, err
+	}
+	if n != cflagsSize(arity) {
+		return nil, fmt.Errorf("expected %d bytes, got %d", cflagsSize(arity), n)
+	}
+	return ret, nil
+}
+
+func (fl cflags) setFlag(i byte) {
 	fl[i/8] |= 0x1 << (i % 8)
 }
 
-func (fl *cflags256) hasFlag(i byte) bool {
+func (fl cflags) hasFlag(i byte) bool {
 	return fl[i/8]&(0x1<<(i%8)) != 0
 }
 
@@ -107,12 +130,7 @@ func (n *NodeData) Write(w io.Writer, arity PathArity, isKeyCommitment bool) err
 	if len(n.ChildCommitments) > 0 {
 		smallFlags |= serializeChildrenFlag
 	}
-	var childrenFlags cflags256
 	if smallFlags&serializeChildrenFlag != 0 {
-		// compress children childrenFlags 32 bytes, if any
-		for i := range n.ChildCommitments {
-			childrenFlags.setFlag(i)
-		}
 	}
 	if smallFlags == 0 {
 		return xerrors.New("non-committing node can't be serialized")
@@ -141,10 +159,15 @@ func (n *NodeData) Write(w io.Writer, arity PathArity, isKeyCommitment bool) err
 	}
 	// write child commitments if any
 	if smallFlags&serializeChildrenFlag != 0 {
-		if _, err = w.Write(childrenFlags[:]); err != nil {
+		childrenFlags := newCflags(arity)
+		// compress children childrenFlags 32 bytes, if any
+		for i := range n.ChildCommitments {
+			childrenFlags.setFlag(i)
+		}
+		if _, err = w.Write(childrenFlags); err != nil {
 			return err
 		}
-		for i := 0; i < 256; i++ {
+		for i := 0; i < int(arity)+1; i++ {
 			child, ok := n.ChildCommitments[uint8(i)]
 			if !ok {
 				continue
@@ -193,11 +216,11 @@ func (n *NodeData) Read(r io.Reader, model CommitmentModel, unpackedKey []byte, 
 		}
 	}
 	if smallFlags&serializeChildrenFlag != 0 {
-		var flags cflags256
-		if _, err = r.Read(flags[:]); err != nil {
+		var flags cflags
+		if flags, err = readCflags(r, arity); err != nil {
 			return err
 		}
-		for i := 0; i < 256; i++ {
+		for i := 0; i < int(arity)+1; i++ {
 			ib := uint8(i)
 			if flags.hasFlag(ib) {
 				n.ChildCommitments[ib] = model.NewVectorCommitment()
