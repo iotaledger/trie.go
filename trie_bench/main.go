@@ -22,7 +22,7 @@ const usage = "USAGE: trie_bench [-n=<num kv pairs>] [-blake2b=20|32] [-arity=2|
 var (
 	model    trie.CommitmentModel
 	hashsize = flag.Int("blake2b", 20, "must be 20 or 32")
-	arityPar = flag.Int("arity", 2, "must be 2, 16 or 256")
+	arityPar = flag.Int("arity", 16, "must be 2, 16 or 256")
 	num      = flag.Int("n", 1000, "number of k/v pairs")
 	hashkv   = flag.Bool("hashkv", false, "hash keys and value")
 	optkey   = flag.Bool("optkey", false, "optimize hash commitments")

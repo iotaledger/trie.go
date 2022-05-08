@@ -89,6 +89,14 @@ and for each key/value pair:
   * collects statistics
 * `trie_bench mkdbbadgernotrie <name>` just loads key/value pairs to DB
 
+Flags:
+
+* `-n=<num>` number of key value pairs to generate. Default is `1000`.
+* `-arity=2|16|32` default is `16`
+* `-blake2b=20|32` default is `20`
+* `-hashkv` if present, keys and values will be hashed to 32 bytes while generating random file. Defaults to `false`
+* `-optkey` if present, `key commitment` optimization will be enabled. Default is `false`
+
 Statistics on the 2.8 GhZ 32 GB RAM SDD laptop. 
 `trie_bench` run over the key/value database of 1 mil key/value pairs and `trie_blake2b` commitment model:
 
