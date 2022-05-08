@@ -42,6 +42,8 @@ func (m *CommitmentModel) NewVectorCommitment() trie_go.VCommitment {
 	return &vectorCommitment{}
 }
 
+// TODO optimize vector size wrt path arity
+
 // UpdateNodeCommitment computes update to the node data and, optionally, updates existing commitment
 // In blake2b implementation delta it just means computing the hash of data
 func (m *CommitmentModel) UpdateNodeCommitment(mutate *trie.NodeData, childUpdates map[byte]trie_go.VCommitment, _ bool, newTerminalUpdate trie_go.TCommitment, update *trie_go.VCommitment) {
