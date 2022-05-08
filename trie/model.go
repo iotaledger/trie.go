@@ -7,6 +7,8 @@ import (
 
 // CommitmentModel abstracts 256+ Trie logic from the commitment logic/cryptography
 type CommitmentModel interface {
+	// PathArity is used by implementations to optimize operations
+	PathArity() PathArity
 	// NewVectorCommitment creates empty trie_go.VCommitment
 	NewVectorCommitment() trie_go.VCommitment
 	// NewTerminalCommitment creates empty trie_go.TCommitment
@@ -43,4 +45,32 @@ func (a PathArity) String() string {
 	default:
 		return "PathArity(wrong)"
 	}
+}
+
+func (a PathArity) TerminalCommitmentIndex() int {
+	switch a {
+	case PathArity256:
+		return 256
+	case PathArity16:
+		return 16
+	case PathArity2:
+		return 2
+	}
+	panic("wrong path arity")
+}
+
+func (a PathArity) PathFragmentCommitmentIndex() int {
+	return a.TerminalCommitmentIndex() + 1
+}
+
+func (a PathArity) VectorLength() int {
+	return int(a) + 3
+}
+
+func (a PathArity) IsChildIndex(i int) bool {
+	return i <= int(a)
+}
+
+func (a PathArity) NumChildren() int {
+	return int(a) + 1
 }

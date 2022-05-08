@@ -50,9 +50,13 @@ func RootCommitment(tr NodeStore) trie_go.VCommitment {
 // Trie implements NodeStore interface. It buffers all TrieReader for optimization purposes: multiple updates of trie do not require DB TrieReader
 var _ NodeStore = &Trie{}
 
-func New(model CommitmentModel, store trie_go.KVReader, arity PathArity, optimizeKeyCommitments bool) *Trie {
+func New(model CommitmentModel, store trie_go.KVReader, optimizeKeyCommitments ...bool) *Trie {
+	o := false
+	if len(optimizeKeyCommitments) > 0 {
+		o = optimizeKeyCommitments[0]
+	}
 	ret := &Trie{
-		nodeStore: newNodeStoreBuffered(model, store, arity, optimizeKeyCommitments),
+		nodeStore: newNodeStoreBuffered(model, store, model.PathArity(), o),
 	}
 	return ret
 }
@@ -462,9 +466,9 @@ func (tr *Trie) DangerouslyDumpCacheToString() string {
 // TrieReader implements NodeStore
 var _ NodeStore = &TrieReader{}
 
-func NewTrieReader(model CommitmentModel, store trie_go.KVReader, arity PathArity) *TrieReader {
+func NewTrieReader(model CommitmentModel, store trie_go.KVReader) *TrieReader {
 	return &TrieReader{
-		reader: newNodeStore(store, model, arity),
+		reader: newNodeStore(store, model, model.PathArity()),
 	}
 }
 

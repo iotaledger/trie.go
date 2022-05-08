@@ -26,10 +26,17 @@ type vectorCommitment [hashSize]byte
 
 // CommitmentModel provides commitment model implementation for the 256+ trie
 type CommitmentModel struct {
+	arity trie.PathArity
 }
 
-func New() *CommitmentModel {
-	return &CommitmentModel{}
+// New creates new CommitmentModel. Optional arity, if is specified and is less that trie.PathArity256,
+// optimizes certain operations
+func New(arity trie.PathArity) *CommitmentModel {
+	return &CommitmentModel{arity: arity}
+}
+
+func (m *CommitmentModel) PathArity() trie.PathArity {
+	return m.arity
 }
 
 // NewTerminalCommitment creates empty terminal commitment
@@ -47,7 +54,7 @@ func (m *CommitmentModel) NewVectorCommitment() trie_go.VCommitment {
 // UpdateNodeCommitment computes update to the node data and, optionally, updates existing commitment
 // In blake2b implementation delta it just means computing the hash of data
 func (m *CommitmentModel) UpdateNodeCommitment(mutate *trie.NodeData, childUpdates map[byte]trie_go.VCommitment, _ bool, newTerminalUpdate trie_go.TCommitment, update *trie_go.VCommitment) {
-	var hashes [258]*[hashSize]byte
+	hashes := make([]*[hashSize]byte, m.arity.VectorLength())
 
 	deleted := make([]byte, 0, 256)
 	for i, upd := range childUpdates {
@@ -61,21 +68,21 @@ func (m *CommitmentModel) UpdateNodeCommitment(mutate *trie.NodeData, childUpdat
 		delete(mutate.ChildCommitments, i)
 	}
 	for i, c := range mutate.ChildCommitments {
+		trie_go.Assert(int(i) < m.arity.VectorLength(), "int(i)<m.arity.VectorLength()")
 		hashes[i] = (*[hashSize]byte)(c.(*vectorCommitment))
 	}
 	mutate.Terminal = newTerminalUpdate // for hash commitment just replace
 	if mutate.Terminal != nil {
-		// 256 is the position of the terminal commitment, if any
-		hashes[256] = &mutate.Terminal.(*terminalCommitment).bytes
+		// arity+1 is the position of the terminal commitment, if any
+		hashes[m.arity.TerminalCommitmentIndex()] = &mutate.Terminal.(*terminalCommitment).bytes
 	}
 	if len(mutate.ChildCommitments) == 0 && mutate.Terminal == nil {
 		return
 	}
-	tmp := commitToData(mutate.PathFragment)
-
-	hashes[257] = &tmp
+	commitmentToPathFragment := commitToData(mutate.PathFragment)
+	hashes[m.arity.PathFragmentCommitmentIndex()] = &commitmentToPathFragment
 	if update != nil {
-		c := (vectorCommitment)(hashVector(&hashes))
+		c := (vectorCommitment)(hashVector(hashes))
 		*update = &c
 	}
 }
@@ -83,20 +90,21 @@ func (m *CommitmentModel) UpdateNodeCommitment(mutate *trie.NodeData, childUpdat
 // CalcNodeCommitment computes commitment of the node. It is suboptimal in KZG trie.
 // Used in computing root commitment
 func (m *CommitmentModel) CalcNodeCommitment(par *trie.NodeData) trie_go.VCommitment {
-	var hashes [258]*[hashSize]byte
+	hashes := make([]*[hashSize]byte, m.arity.VectorLength())
 
 	if len(par.ChildCommitments) == 0 && par.Terminal == nil {
 		return nil
 	}
 	for i, c := range par.ChildCommitments {
+		trie_go.Assert(int(i) < m.arity.VectorLength(), "int(i)<m.arity.VectorLength()")
 		hashes[i] = (*[hashSize]byte)(c.(*vectorCommitment))
 	}
 	if par.Terminal != nil {
-		hashes[256] = &par.Terminal.(*terminalCommitment).bytes
+		hashes[m.arity.TerminalCommitmentIndex()] = &par.Terminal.(*terminalCommitment).bytes
 	}
-	tmp := commitToData(par.PathFragment)
-	hashes[257] = &tmp
-	c := (vectorCommitment)(hashVector(&hashes))
+	commitmentToPathFragment := commitToData(par.PathFragment)
+	hashes[m.arity.PathFragmentCommitmentIndex()] = &commitmentToPathFragment
+	c := (vectorCommitment)(hashVector(hashes))
 	return &c
 }
 
@@ -212,18 +220,6 @@ func (t *terminalCommitment) value() ([]byte, bool) {
 	return t.bytes[:t.lenPlus1-1], t.lenPlus1 == 0
 }
 
-func hashVector(hashes *[258]*[hashSize]byte) [hashSize]byte {
-	var buf [258 * hashSize]byte
-	for i, h := range hashes {
-		if h == nil {
-			continue
-		}
-		pos := hashSize * int(i)
-		copy(buf[pos:pos+hashSize], h[:])
-	}
-	return trie_go.Blake2b160(buf[:])
-}
-
 func commitToData(data []byte) (ret [hashSize]byte) {
 	if len(data) <= hashSize {
 		copy(ret[:], data)
@@ -241,4 +237,16 @@ func commitToTerminal(data []byte) *terminalCommitment {
 		ret.lenPlus1 = uint8(len(data)) + 1 // 1-33
 	}
 	return ret
+}
+
+func hashVector(hashes []*[hashSize]byte) [hashSize]byte {
+	buf := make([]byte, len(hashes)*hashSize)
+	for i, h := range hashes {
+		if h == nil {
+			continue
+		}
+		pos := hashSize * int(i)
+		copy(buf[pos:pos+hashSize], h[:])
+	}
+	return trie_go.Blake2b160(buf[:])
 }

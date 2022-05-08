@@ -91,6 +91,10 @@ func New() *CommitmentModel {
 	}
 }
 
+func (m *CommitmentModel) PathArity() trie.PathArity {
+	return trie.PathArity256 // only can be used with 256-ary
+}
+
 func (m *CommitmentModel) Description() string {
 	return "trie commitment model implementation based on KZG (Kate) polynomial commitments and bn256 curve frm Dedis.Kyber library"
 }

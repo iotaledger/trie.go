@@ -9,7 +9,7 @@ import (
 	"io"
 )
 
-// Proof blake2b 32 byte model-specific proof of inclusion
+// Proof blake2b 20 byte model-specific proof of inclusion
 type Proof struct {
 	PathArity trie.PathArity
 	Key       []byte
@@ -60,9 +60,9 @@ func (m *CommitmentModel) Proof(key []byte, tr trie.NodeStore) *Proof {
 		} else {
 			switch proofGeneric.Ending {
 			case trie.EndingTerminal:
-				childIndex = 256
+				childIndex = m.arity.TerminalCommitmentIndex()
 			case trie.EndingExtend, trie.EndingSplit:
-				childIndex = 257
+				childIndex = m.arity.PathFragmentCommitmentIndex()
 			default:
 				panic("wrong ending code")
 			}
@@ -103,18 +103,18 @@ func (p *Proof) MustKeyWithTerminal() ([]byte, []byte, bool) {
 	}
 	lastElem := p.Path[len(p.Path)-1]
 	switch {
-	case lastElem.ChildIndex < 256:
+	case p.PathArity.IsChildIndex(lastElem.ChildIndex):
 		if _, ok := lastElem.Children[byte(lastElem.ChildIndex)]; ok {
 			panic("nil child commitment expected for proof of absence")
 		}
 		return p.Key, nil, false
-	case lastElem.ChildIndex == 256:
+	case lastElem.ChildIndex == p.PathArity.TerminalCommitmentIndex():
 		if lastElem.Terminal == nil {
 			return p.Key, nil, false
 		}
 		d, ishash := lastElem.Terminal.value()
 		return p.Key, d, ishash
-	case lastElem.ChildIndex == 257:
+	case lastElem.ChildIndex == p.PathArity.PathFragmentCommitmentIndex():
 		return p.Key, nil, false
 	}
 	panic("wrong lastElem.ChildIndex")
@@ -162,7 +162,7 @@ func (p *Proof) CommitmentToTheTerminalNode() trie_go.VCommitment {
 	if len(p.Path) == 0 {
 		return nil
 	}
-	ret := p.Path[len(p.Path)-1].hashIt(nil)
+	ret := p.Path[len(p.Path)-1].hashIt(nil, p.PathArity)
 	return (*vectorCommitment)(&ret)
 }
 
@@ -179,7 +179,7 @@ func (p *Proof) verify(pathIdx, keyIdx int) ([hashSize]byte, error) {
 	}
 	if !last {
 		trie_go.Assert(isPrefix, "assertion: isPrefix")
-		if elem.ChildIndex > 255 {
+		if !p.PathArity.IsChildIndex(elem.ChildIndex) {
 			return [hashSize]byte{}, fmt.Errorf("wrong proof: wrong child index. Path position: %d, key position %d", pathIdx, keyIdx)
 		}
 		if _, ok := elem.Children[byte(elem.ChildIndex)]; ok {
@@ -193,36 +193,38 @@ func (p *Proof) verify(pathIdx, keyIdx int) ([hashSize]byte, error) {
 		if err != nil {
 			return [hashSize]byte{}, err
 		}
-		return elem.hashIt(&c), nil
+		return elem.hashIt(&c, p.PathArity), nil
 	}
 	// it is the last in the path
-	if elem.ChildIndex < 256 {
+	if p.PathArity.IsChildIndex(elem.ChildIndex) {
 		c := elem.Children[byte(elem.ChildIndex)]
 		if c != nil {
 			return [hashSize]byte{}, fmt.Errorf("wrong proof: child commitment of the last element expected to be nil. Path position: %d, key position %d", pathIdx, keyIdx)
 		}
-		return elem.hashIt(nil), nil
+		return elem.hashIt(nil, p.PathArity), nil
 	}
-	if elem.ChildIndex != 256 && elem.ChildIndex != 257 {
-		return [hashSize]byte{}, fmt.Errorf("wrong proof: child index expected to be 256 or 257. Path position: %d, key position %d", pathIdx, keyIdx)
+	if elem.ChildIndex != p.PathArity.TerminalCommitmentIndex() && elem.ChildIndex != p.PathArity.PathFragmentCommitmentIndex() {
+		return [hashSize]byte{}, fmt.Errorf("wrong proof: child index expected to be %d or %d. Path position: %d, key position %d",
+			p.PathArity.TerminalCommitmentIndex(), p.PathArity.PathFragmentCommitmentIndex(), pathIdx, keyIdx)
 	}
-	return elem.hashIt(nil), nil
+	return elem.hashIt(nil, p.PathArity), nil
 }
 
-func (e *ProofElement) hashIt(missingCommitment *[hashSize]byte) [hashSize]byte {
-	var hashes [258]*[hashSize]byte
+func (e *ProofElement) hashIt(missingCommitment *[hashSize]byte, arity trie.PathArity) [hashSize]byte {
+	hashes := make([]*[hashSize]byte, arity.VectorLength())
 	for idx, c := range e.Children {
+		trie_go.Assert(arity.IsChildIndex(int(idx)), "arity.IsChildIndex(int(idx)")
 		hashes[idx] = (*[hashSize]byte)(c)
 	}
 	if e.Terminal != nil {
-		hashes[256] = &e.Terminal.bytes
+		hashes[arity.TerminalCommitmentIndex()] = &e.Terminal.bytes
 	}
 	cd := commitToData(e.PathFragment)
-	hashes[257] = &cd
-	if e.ChildIndex < 256 {
+	hashes[arity.PathFragmentCommitmentIndex()] = &cd
+	if arity.IsChildIndex(e.ChildIndex) {
 		hashes[e.ChildIndex] = missingCommitment
 	}
-	return hashVector(&hashes)
+	return hashVector(hashes)
 }
 
 func (p *Proof) Write(w io.Writer) error {
@@ -315,7 +317,7 @@ func (e *ProofElement) Write(w io.Writer, arity trie.PathArity) error {
 		if _, err := w.Write(flags[:]); err != nil {
 			return err
 		}
-		for i := 0; i < 256; i++ {
+		for i := 0; i < arity.VectorLength(); i++ {
 			child, ok := e.Children[uint8(i)]
 			if !ok {
 				continue
@@ -360,7 +362,7 @@ func (e *ProofElement) Read(r io.Reader, arity trie.PathArity) error {
 		if _, err := r.Read(flags[:]); err != nil {
 			return err
 		}
-		for i := 0; i < 256; i++ {
+		for i := 0; i < arity.NumChildren(); i++ {
 			ib := uint8(i)
 			if flags[i/8]&(0x1<<(i%8)) != 0 {
 				e.Children[ib] = &vectorCommitment{}

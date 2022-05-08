@@ -11,12 +11,11 @@ import (
 )
 
 func TestNodeSerialization(t *testing.T) {
-	model := New()
 	runTest := func(arity trie.PathArity) {
+		model := New(arity)
 		t.Run(fmt.Sprintf("1: %s", arity), func(t *testing.T) {
 			n := trie.NewNodeData()
-			n.ChildCommitments[1] = model.NewVectorCommitment()
-			n.ChildCommitments[6] = model.NewVectorCommitment()
+			n.ChildCommitments[0] = model.NewVectorCommitment()
 			n.ChildCommitments[byte(arity)] = model.NewVectorCommitment()
 
 			var buf bytes.Buffer
