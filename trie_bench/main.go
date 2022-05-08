@@ -30,7 +30,6 @@ var (
 	name     string
 	fname    string
 	dbdir    string
-	arity    trie.PathArity
 )
 
 func main() {
@@ -49,16 +48,7 @@ func main() {
 		os.Exit(1)
 	}
 	name = tail[1]
-	switch *hashsize {
-	case 20:
-		model = trie_blake2b_20.New()
-	case 32:
-		model = trie_blake2b_32.New()
-	default:
-		fmt.Printf(usage)
-		os.Exit(1)
-	}
-	fmt.Printf("Commitment model: '%s'\n", model.Description())
+	var arity trie.PathArity
 	switch *arityPar {
 	case 2:
 		arity = trie.PathArity2
@@ -70,7 +60,17 @@ func main() {
 		fmt.Printf(usage)
 		os.Exit(1)
 	}
-	fmt.Printf("%s\n", arity)
+
+	switch *hashsize {
+	case 20:
+		model = trie_blake2b_20.New(arity)
+	case 32:
+		model = trie_blake2b_32.New(arity)
+	default:
+		fmt.Printf(usage)
+		os.Exit(1)
+	}
+	fmt.Printf("Commitment model: '%s'\n", model.Description())
 	fmt.Printf("Optimize key commitments: %v\n", *optkey)
 	fname = name + ".bin"
 	dbdir = fmt.Sprintf("%s.%d.%d.dbdir", name, *hashsize, *arityPar)
@@ -230,7 +230,7 @@ func scandbbadger() {
 	fmt.Printf("TRIE: number of nodes: %d, avg key len: %d, avg node size: %d\n",
 		recCounter, keyByteCounter/recCounter, valueByteCounter/recCounter)
 
-	tr := trie.NewTrieReader(model, trieKVS, arity)
+	tr := trie.NewTrieReader(model, trieKVS)
 	root := trie.RootCommitment(tr)
 	fmt.Printf("root commitment: %s\n", root)
 
@@ -278,8 +278,8 @@ func file2kvs(kvs kvstore.KVStore) {
 
 	tm := newTimer()
 	counterRec := 1
-	tr := trie.NewTrieReader(model, hive_adaptor.NewHiveKVStoreAdaptor(kvs, triePrefix), arity)
-	updater, err := hive_adaptor.NewHiveBatchedUpdater(kvs, model, triePrefix, valueStorePrefix, arity, *optkey)
+	tr := trie.NewTrieReader(model, hive_adaptor.NewHiveKVStoreAdaptor(kvs, triePrefix))
+	updater, err := hive_adaptor.NewHiveBatchedUpdater(kvs, model, triePrefix, valueStorePrefix, *optkey)
 	must(err)
 	var mem runtime.MemStats
 	err = streamIn.Iterate(func(k []byte, v []byte) bool {

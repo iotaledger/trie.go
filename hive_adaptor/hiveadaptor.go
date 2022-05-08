@@ -77,10 +77,10 @@ type HiveBatchedUpdater struct {
 }
 
 // NewHiveBatchedUpdater creates new batch updater with the hive.go batch as a backend
-func NewHiveBatchedUpdater(kvs kvstore.KVStore, model trie.CommitmentModel, triePrefix, storePrefix []byte, arity trie.PathArity, optimizeKeyCommitments bool) (*HiveBatchedUpdater, error) {
+func NewHiveBatchedUpdater(kvs kvstore.KVStore, model trie.CommitmentModel, triePrefix, storePrefix []byte, optimizeKeyCommitments bool) (*HiveBatchedUpdater, error) {
 	ret := &HiveBatchedUpdater{
 		kvs:              kvs,
-		trie:             trie.New(model, NewHiveKVStoreAdaptor(kvs, triePrefix), arity, optimizeKeyCommitments),
+		trie:             trie.New(model, NewHiveKVStoreAdaptor(kvs, triePrefix), optimizeKeyCommitments),
 		triePrefix:       triePrefix,
 		valueStorePrefix: storePrefix,
 	}

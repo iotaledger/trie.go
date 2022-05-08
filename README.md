@@ -106,27 +106,27 @@ Statistics on the 2.8 GhZ 32 GB RAM SDD laptop.
 ### Benchmark for 256-ary trie
 | Parameter                                                              | blake2b 160 bit<br/>model | 
 |------------------------------------------------------------------------|---------------------------|
-| Load 1 mil records into the DB <br> with trie generation (cached trie) | 32100 kv pairs/sec        |
+| Load 1 mil records into the DB <br> with trie generation (cached trie) | 30000 kv pairs/sec        |
 | Badger DB size                                                         | 408 MB                    |
-| Retrieve proof + validation (not-cached trie)                          | 3520 proofs/sec           |
+| Retrieve proof + validation (not-cached trie)                          | 3340 proofs/sec           |
 | Average length of the proof path                                       | 4.04                      |
-| Average size of serialized proof                                       | 10.7 kB                   |
+| Average size of serialized proof                                       | 10.6 kB                   |
 
 ### Benchmark for 16-ary trie hexary)
 | Parameter                                                              | blake2b 160 bit<br/>model |
 |------------------------------------------------------------------------|---------------------------|
-| Load 1 mil records into the DB <br> with trie generation (cached trie) | 28800 kv pairs/sec        |
+| Load 1 mil records into the DB <br> with trie generation (cached trie) | 32000 kv pairs/sec        |
 | Badger DB size                                                         | 424 MB                    |
-| Retrieve proof + validation (not-cached trie)                          | 7200 proofs/sec           |
+| Retrieve proof + validation (not-cached trie)                          | 14400 proofs/sec          |
 | Average length of the proof path                                       | 6.6                       |
 | Average size of serialized proof                                       | 1.75 kB                   |
 
 ### Benchmarks for 2-ary trie (binary)
 | Parameter                                                              | blake2b 160 bit<br/>model |
 |------------------------------------------------------------------------|---------------------------|
-| Load 1 mil records into the DB <br> with trie generation (cached trie) | 11000 kv pairs/sec        |
+| Load 1 mil records into the DB <br> with trie generation (cached trie) | 13800 kv pairs/sec        |
 | Badger DB size                                                         | 540 MB                    |
-| Retrieve proof + validation (not-cached trie)                          | 3160 proofs/sec           |
+| Retrieve proof + validation (not-cached trie)                          | 7580 proofs/sec           |
 | Average length of the proof path                                       | 21.1                      |
 | Average size of serialized proof                                       | 1.3 kB                    |
 

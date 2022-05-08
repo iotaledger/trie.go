@@ -3,6 +3,7 @@ package trie_blake2b_32
 
 import (
 	"encoding/hex"
+	"fmt"
 	"io"
 
 	trie_go "github.com/iotaledger/trie.go"
@@ -116,7 +117,7 @@ func (m *CommitmentModel) CommitToData(data []byte) trie_go.TCommitment {
 }
 
 func (m *CommitmentModel) Description() string {
-	return "trie commitment model implementation based on blake2b 160 bit hashing"
+	return fmt.Sprintf("trie commitment model implementation based on blake2b 256 bit hashing, %s", m.arity)
 }
 
 func (m *CommitmentModel) ShortName() string {
