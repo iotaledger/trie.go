@@ -74,19 +74,20 @@ implemented in the `hive.go`.
 Contains `trie_bench` program made for testing and benchmarking of different functions of `trie` with `tre_blake2b` 
 commitment model. The `trie_bench` uses `Badger` key/value database via `hive_adaptor`.
 
-In the directory of the package run `go install`. Then you can run the program one of the following ways 
-(options `[-20|-32]` means choice between `blake2b` 160 and 256 bit commitment model implementations):
+In the directory of the package run `go install` and run the program with options and commands. 
 
-* `trie_bench [-20|-32] -gen <size> <name>` generates a binary file `<name>.bin` of `<size>` random keys and values. Key and value are of variable length.
-* `trie_bench [-20|-32]-genhash <size> <name>` generates a binary file `<name>.bin` of `<size>` random keys and values. Keys and values have fixed length of 32 bytes.
-* `trie_bench [-20|-32] -mkdbmem <name>` loads file `<name>.bin` into the in-memory k/v database, both values and the trie. Outputs statistics.  
-* `trie_bench [-20|-32] -mkdbbadger <name>` loads file `<name>.bin` into the `Badger` k/v database on directory `<name>.dbdir`, both values and the trie. 
+Commands:
+
+* `trie_bench [flags] gen <name>` generates a binary file `<name>.bin` of `<size>` random keys and values.
+* `trie_bench [flags] mkdbmem <name>` loads file `<name>.bin` into the in-memory k/v database, both values and the trie. Outputs statistics.  
+* `trie_bench [flags] mkdbbadger <name>` loads file `<name>.bin` into the `Badger` k/v database on directory `<name>.dbdir`, both values and the trie. 
 Outputs statistics.
-* `trie_bench [-20|-32] -scandbbadger <name>` scans database and outputs statistics. Then it iterates over all keys and value in the database 
+* `trie_bench [flags] scandbbadger <name>` scans database and outputs statistics. Then it iterates over all keys and value in the database 
 and for each key/value pair:
   * retrieves proof of inclusion for the key from the trie
   * runs validation of the proof
   * collects statistics
+* `trie_bench mkdbbadgernotrie <name>` just loads key/value pairs to DB
 
 Statistics on the 2.8 GhZ 32 GB RAM SDD laptop. 
 `trie_bench` run over the key/value database of 1 mil key/value pairs and `trie_blake2b` commitment model:
