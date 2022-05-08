@@ -95,7 +95,7 @@ Statistics on the 2.8 GhZ 32 GB RAM SDD laptop.
 * 1 mil key/value pairs in Badger DB (no trie): 162 MB
 
 ### Benchmark for 256-ary trie
-| Parameter                                                              | blake2b 256 bit<br/>model | 
+| Parameter                                                              | blake2b 160 bit<br/>model | 
 |------------------------------------------------------------------------|---------------------------|
 | Load 1 mil records into the DB <br> with trie generation (cached trie) | 32100 kv pairs/sec        |
 | Badger DB size                                                         | 408 MB                    |
@@ -104,7 +104,7 @@ Statistics on the 2.8 GhZ 32 GB RAM SDD laptop.
 | Average size of serialized proof                                       | 10.7 kB                   |
 
 ### Benchmark for 16-ary trie hexary)
-| Parameter                                                              | blake2b 256 bit<br/>model |
+| Parameter                                                              | blake2b 160 bit<br/>model |
 |------------------------------------------------------------------------|---------------------------|
 | Load 1 mil records into the DB <br> with trie generation (cached trie) | 28800 kv pairs/sec        |
 | Badger DB size                                                         | 424 MB                    |
@@ -113,7 +113,7 @@ Statistics on the 2.8 GhZ 32 GB RAM SDD laptop.
 | Average size of serialized proof                                       | 1.75 kB                   |
 
 ### Benchmarks for 2-ary trie (binary)
-| Parameter                                                              | blake2b 256 bit<br/>model |
+| Parameter                                                              | blake2b 160 bit<br/>model |
 |------------------------------------------------------------------------|---------------------------|
 | Load 1 mil records into the DB <br> with trie generation (cached trie) | 11000 kv pairs/sec        |
 | Badger DB size                                                         | 540 MB                    |
