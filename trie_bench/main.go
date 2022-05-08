@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"github.com/iotaledger/hive.go/kvstore"
 	"github.com/iotaledger/hive.go/kvstore/badger"
@@ -12,77 +13,89 @@ import (
 	"github.com/iotaledger/trie.go/trie_blake2b_32"
 	"golang.org/x/crypto/blake2b"
 	"os"
-	"strconv"
+	"runtime"
 	"time"
 )
 
-const usage = "generate random key/value pairs. USAGE: trie_bench [-20|-32] -gen <size> <name>\n" +
-	"generate random key/value pairs with 32 byte random keys. USAGE: trie_bench [-20|-32] -genhash <size> <name>\n" +
-	"make badger DB with trie from file. USAGE: trie_bench [-20|-32] -mkdbbadger <name>\n" +
-	"make in-memory DB with trie from file. USAGE: trie_bench [-20|-32] -mkdbmem <name>\n" +
-	"check consistency of the DB. USAGE: trie_bench [-20|-32] -scandbbadger <name>\n"
+const usage = "USAGE: trie_bench [-n=<num kv pairs>] [-blake2b=20|32] [-arity=2|16|26] [-optkey] <gen|mkdbbadger|mkdbmem|scandbbadger|mkdbbadgernotrie> <name>\n"
 
 var (
-	model trie.CommitmentModel
-	tag   string
+	model    trie.CommitmentModel
+	hashsize = flag.Int("blake2b", 20, "must be 20 or 32")
+	arityPar = flag.Int("arity", 2, "must be 2, 16 or 256")
+	num      = flag.Int("n", 1000, "number of k/v pairs")
+	hashkv   = flag.Bool("hashkv", false, "hash keys and value")
+	optkey   = flag.Bool("optkey", false, "optimize hash commitments")
+	cmd      string
+	name     string
+	fname    string
+	dbdir    string
+	arity    trie.PathArity
 )
 
 func main() {
-	if len(os.Args) < 3 {
+	flag.Parse()
+	tail := flag.Args()
+	if len(tail) < 2 {
 		fmt.Printf(usage)
 		os.Exit(1)
 	}
-	switch os.Args[1] {
-	case "-20":
+	cmd = tail[0]
+
+	switch cmd {
+	case "gen", "mkdbbadger", "mkdbmem", "scandbbadger", "mkdbbadgernotrie":
+	default:
+		fmt.Printf(usage)
+		os.Exit(1)
+	}
+	name = tail[1]
+	switch *hashsize {
+	case 20:
 		model = trie_blake2b_20.New()
-		tag = "20"
-	case "-32":
+	case 32:
 		model = trie_blake2b_32.New()
-		tag = "32"
 	default:
 		fmt.Printf(usage)
 		os.Exit(1)
 	}
 	fmt.Printf("Commitment model: '%s'\n", model.Description())
-	switch os.Args[2] {
-	case "-gen":
-		if len(os.Args) != 5 {
-			fmt.Printf(usage)
-			os.Exit(1)
-		}
-		size, err := strconv.Atoi(os.Args[3])
-		must(err)
-		genrnd(size, os.Args[4], false)
+	switch *arityPar {
+	case 2:
+		arity = trie.PathArity2
+	case 16:
+		arity = trie.PathArity16
+	case 256:
+		arity = trie.PathArity256
+	default:
+		fmt.Printf(usage)
+		os.Exit(1)
+	}
+	fmt.Printf("%s\n", arity)
+	fmt.Printf("Optimize key commitments: %v\n", *optkey)
+	fname = name + ".bin"
+	dbdir = fmt.Sprintf("%s.%d.%d.dbdir", name, *hashsize, *arityPar)
 
-	case "-genhash":
-		if len(os.Args) != 5 {
-			fmt.Printf(usage)
-			os.Exit(1)
+	switch cmd {
+	case "gen":
+		fmt.Printf("number of key/value pairs to generate: %d\n", *num)
+		if *hashkv {
+			fmt.Printf("generated keys and values will be hashed into 32 bytes\n")
 		}
-		size, err := strconv.Atoi(os.Args[3])
-		must(err)
-		genrnd(size, os.Args[4], true)
+		fmt.Printf("generating file '%s'\n", fname)
+		genrnd()
 
-	case "-mkdbbadger":
-		if len(os.Args) != 4 {
-			fmt.Printf(usage)
-			os.Exit(1)
-		}
-		mkdbbadger(os.Args[3])
+	case "mkdbbadgernotrie":
+		dbdir += ".notrie"
+		mkdbbadgerNoTrie()
 
-	case "-mkdbmem":
-		if len(os.Args) != 4 {
-			fmt.Printf(usage)
-			os.Exit(1)
-		}
-		mkdbmem(os.Args[3])
+	case "mkdbbadger":
+		mkdbbadger()
 
-	case "-scandbbadger":
-		if len(os.Args) != 4 {
-			fmt.Printf(usage)
-			os.Exit(1)
-		}
-		scandbbadger(os.Args[3])
+	case "mkdbmem":
+		mkdbmem()
+
+	case "scandbbadger":
+		scandbbadger()
 
 	default:
 		fmt.Printf(usage)
@@ -102,27 +115,16 @@ const (
 	MaxValue = 32
 )
 
-func getFname(name string) string {
-	return name + "." + tag + ".bin"
-}
-
-func getDbDir(name string) string {
-	return name + "." + tag + ".dbdir"
-}
-
-func genrnd(size int, name string, hashKV bool) {
+func genrnd() {
 	rndIterator := trie_go.NewRandStreamIterator(trie_go.RandStreamParams{
 		Seed:       time.Now().UnixNano(),
-		NumKVPairs: size,
+		NumKVPairs: *num,
 		MaxKey:     MaxKey,
 		MaxValue:   MaxValue,
 	})
-	fname := getFname(name)
 	fileWriter, err := trie_go.CreateKVStreamFile(fname)
 	must(err)
-	defer func(fileWriter *trie_go.BinaryStreamFileWriter) {
-		_ = fileWriter.Close()
-	}(fileWriter)
+	defer fileWriter.Close()
 
 	count := 0
 	wrote := 0
@@ -130,7 +132,7 @@ func genrnd(size int, name string, hashKV bool) {
 		if (count+1)%100000 == 0 {
 			fmt.Printf("writing key/value pair %d. Wrote %d bytes\n", count+1, wrote)
 		}
-		if hashKV {
+		if *hashkv {
 			t := blake2b.Sum256(k)
 			k = t[:]
 			if len(v) > 0 {
@@ -150,41 +152,58 @@ func genrnd(size int, name string, hashKV bool) {
 // all values loads in memory
 const flushEach = 100_000
 
-func mkdbmem(name string) {
-	fname := name + ".bin"
+func mkdbmem() {
 	kvs := mapdb.NewMapDB()
-	file2kvs(fname, kvs)
+	file2kvs(kvs)
 }
 
 // all value and trie in badger db. Flushes every 100_000 records
 
-func mkdbbadger(name string) {
-	dbDir := getDbDir(name)
-	fname := getFname(name)
-	if _, err := os.Stat(dbDir); !os.IsNotExist(err) {
-		fmt.Printf("directory %s already exists. Can't create new database\n", dbDir)
+func mkdbbadger() {
+	if _, err := os.Stat(dbdir); !os.IsNotExist(err) {
+		fmt.Printf("directory %s already exists. Can't create new database\n", dbdir)
 		os.Exit(1)
 	}
-	fmt.Printf("creating new database '%s'\n", dbDir)
+	fmt.Printf("creating new Badger database '%s'\n", dbdir)
 
-	db, err := badger.CreateDB(dbDir)
+	db, err := badger.CreateDB(dbdir)
 	must(err)
+	defer db.Close()
+
 	kvs := badger.New(db)
 	must(err)
 
-	file2kvs(fname, kvs)
+	file2kvs(kvs)
 }
 
-func scandbbadger(name string) {
-	dbDir := getDbDir(name)
-	if _, err := os.Stat(dbDir); os.IsNotExist(err) {
-		fmt.Printf("directory %s does not exist\n", dbDir)
+func mkdbbadgerNoTrie() {
+	if _, err := os.Stat(dbdir); !os.IsNotExist(err) {
+		fmt.Printf("directory %s already exists. Can't create new database\n", dbdir)
 		os.Exit(1)
 	}
-	fmt.Printf("opening database '%s'\n", dbDir)
+	fmt.Printf("creating new Badger database. No trie '%s'\n", dbdir)
 
-	db, err := badger.CreateDB(dbDir)
+	db, err := badger.CreateDB(dbdir)
 	must(err)
+	defer db.Close()
+
+	kvs := badger.New(db)
+	must(err)
+
+	file2kvsNoTrie(kvs)
+}
+
+func scandbbadger() {
+	if _, err := os.Stat(dbdir); os.IsNotExist(err) {
+		fmt.Printf("directory %s does not exist\n", dbdir)
+		os.Exit(1)
+	}
+	fmt.Printf("opening database '%s'\n", dbdir)
+
+	db, err := badger.CreateDB(dbdir)
+	must(err)
+	defer db.Close()
+
 	kvs := badger.New(db)
 	trieKVS := hive_adaptor.NewHiveKVStoreAdaptor(kvs, triePrefix)
 	valueKVS := hive_adaptor.NewHiveKVStoreAdaptor(kvs, valueStorePrefix)
@@ -211,7 +230,7 @@ func scandbbadger(name string) {
 	fmt.Printf("TRIE: number of nodes: %d, avg key len: %d, avg node size: %d\n",
 		recCounter, keyByteCounter/recCounter, valueByteCounter/recCounter)
 
-	tr := trie.NewTrieReader(model, trieKVS, trie.PathArity2)
+	tr := trie.NewTrieReader(model, trieKVS, arity)
 	root := trie.RootCommitment(tr)
 	fmt.Printf("root commitment: %s\n", root)
 
@@ -252,21 +271,27 @@ var (
 	valueStorePrefix = []byte{0x02}
 )
 
-func file2kvs(fname string, kvs kvstore.KVStore) {
+func file2kvs(kvs kvstore.KVStore) {
 	streamIn, err := trie_go.OpenKVStreamFile(fname)
 	must(err)
 	defer streamIn.Close()
 
 	tm := newTimer()
 	counterRec := 1
-	tr := trie.NewTrieReader(hive_adaptor.NewHiveKVStoreAdaptor(kvs, triePrefix), model)
-	updater, err := hive_adaptor.NewHiveBatchedUpdater(kvs, model, triePrefix, valueStorePrefix)
+	tr := trie.NewTrieReader(model, hive_adaptor.NewHiveKVStoreAdaptor(kvs, triePrefix), arity)
+	updater, err := hive_adaptor.NewHiveBatchedUpdater(kvs, model, triePrefix, valueStorePrefix, arity, *optkey)
 	must(err)
+	var mem runtime.MemStats
 	err = streamIn.Iterate(func(k []byte, v []byte) bool {
 		updater.Update(k, v)
 		if counterRec%flushEach == 0 {
 			must(updater.Commit())
-			fmt.Printf("commited %d records. Duration: %v\n", counterRec, tm.Duration())
+			runtime.ReadMemStats(&mem)
+
+			fmt.Printf("commited %d records. rec/sec: %v, mem alloc: %f MB\n",
+				counterRec, counterRec/int(tm.Duration().Seconds()),
+				float32(mem.Alloc)/(1024*1024),
+			)
 		}
 		counterRec++
 		return true
@@ -279,6 +304,45 @@ func file2kvs(fname string, kvs kvstore.KVStore) {
 	fmt.Printf("Speed: %f records/sec\n", float64(counterRec)/tm.Duration().Seconds())
 
 	fmt.Printf("root commitment: %s\n", trie.RootCommitment(tr))
+}
+
+func file2kvsNoTrie(kvs kvstore.KVStore) {
+	streamIn, err := trie_go.OpenKVStreamFile(fname)
+	must(err)
+	defer streamIn.Close()
+
+	tm := newTimer()
+	counterRec := 1
+	must(err)
+
+	var batched kvstore.BatchedMutations
+	var mem runtime.MemStats
+	err = streamIn.Iterate(func(k []byte, v []byte) bool {
+		if batched == nil {
+			batched, err = kvs.Batched()
+			must(err)
+		}
+		must(batched.Set(k, v))
+		if counterRec%10_000 == 0 {
+			must(batched.Commit())
+			batched = nil
+			must(kvs.Flush())
+			runtime.ReadMemStats(&mem)
+
+			sec := int(tm.Duration().Seconds())
+			if sec == 0 {
+				sec = 1
+			}
+			fmt.Printf("wrote %d records. rec/sec: %v, mem alloc: %f MB\n",
+				counterRec, counterRec/sec,
+				float32(mem.Alloc)/(1024*1024),
+			)
+		}
+		counterRec++
+		return true
+	})
+	must(err)
+	fmt.Printf("Speed: %f records/sec\n", float64(counterRec)/tm.Duration().Seconds())
 }
 
 func newTimer() timer {
