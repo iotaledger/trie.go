@@ -8,6 +8,7 @@ package trie
 
 import (
 	"bytes"
+	"fmt"
 	trie_go "github.com/iotaledger/trie.go"
 )
 
@@ -30,6 +31,7 @@ type NodeStore interface {
 	GetNode(unpackedKey []byte) (Node, bool)
 	Model() CommitmentModel
 	PathArity() PathArity
+	Info() string
 }
 
 // RootCommitment computes root commitment from the root node of the trie represented as a NodeStore
@@ -73,6 +75,12 @@ func (tr *Trie) PathArity() PathArity {
 // GetNode fetches node from the trie
 func (tr *Trie) GetNode(unpackedKey []byte) (Node, bool) {
 	return tr.nodeStore.getNode(unpackedKey)
+}
+
+func (tr *Trie) Info() string {
+	return fmt.Sprintf("Trie( model dscr: '%s', path arity: %s, optimize key commitments: %v)",
+		tr.nodeStore.reader.m.Description(), tr.nodeStore.reader.arity, tr.nodeStore.optimizeKeyCommitments,
+	)
 }
 
 // PersistMutations persists the cache to the unpackedKey/value store
@@ -470,4 +478,10 @@ func (tr *TrieReader) Model() CommitmentModel {
 
 func (tr *TrieReader) PathArity() PathArity {
 	return tr.reader.arity
+}
+
+func (tr *TrieReader) Info() string {
+	return fmt.Sprintf("TrieReader ( model: %s, path arity: %s )",
+		tr.reader.m.Description(), tr.reader.arity,
+	)
 }

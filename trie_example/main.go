@@ -4,43 +4,61 @@ import (
 	"fmt"
 	trie_go "github.com/iotaledger/trie.go"
 	"github.com/iotaledger/trie.go/trie"
-	"github.com/iotaledger/trie.go/trie_blake2b_32"
+	"github.com/iotaledger/trie.go/trie_blake2b_20"
 )
+
+var data = []string{"a", "abc", "abcd", "b", "abd", "klmn", "oprst", "ab", "bcd"}
 
 func main() {
 	// create store where trie nodes will be stored
 	store := trie_go.NewInMemoryKVStore()
 
-	// create blake2b commitment model
-	model := trie_blake2b_32.New()
+	// create blake2b 20 bytes (160 bit) commitment model
+	model := trie_blake2b_20.New()
 
-	// create the trie
+	// create the trie with binary keys
 	tr := trie.New(model, store, trie.PathArity2, false)
+	fmt.Printf("\nExample of trie.\n%s\n", tr.Info())
 
-	// add some key/value pairs to the trie
-	keys := []string{"abc", "klm", "oprs"}
-	tr.Update([]byte(keys[0]), []byte("dummy1"))
-	tr.Update([]byte(keys[1]), []byte("dummy2"))
-
+	// add data key/value pairs to the trie
+	for _, s := range data {
+		fmt.Printf("add key '%s' into the trie\n", s)
+		tr.UpdateStr(s, s+"$")
+	}
 	// recalculate commitments in the trie
 	tr.Commit()
-
-	// retrieve root commitment (normally it is taken from the 3rd party)
 	rootCommitment := trie.RootCommitment(tr)
-
-	// prove that key 'abc' is in the state against the root
-	proof := model.Proof([]byte(keys[0]), tr)
-	err := proof.Validate(rootCommitment)
-	if err == nil {
-		fmt.Printf("key '%s' is in the state\n", keys[0])
+	fmt.Printf("root commitment: %s\n", rootCommitment)
+	// remove some keys from the trie
+	for i := range []int{1, 5, 6} {
+		fmt.Printf("remove key '%s' from the trie\n", data[i])
+		tr.DeleteStr(data[i])
 	}
+	// recalc trie again
+	tr.Commit()
+	rootCommitment = trie.RootCommitment(tr)
+	fmt.Printf("root commitment: %s\n", rootCommitment)
 
-	// prove that key 'oprs' is not in the state
-	proof = model.Proof([]byte(keys[2]), tr)
-	err = proof.Validate(rootCommitment)
-	if err == nil && proof.IsProofOfAbsence() {
-		// proof is valid, however it proves inclusion of something else in the state and effectively
-		// proves absence of the target key
-		fmt.Printf("key '%s' is NOT in the state\n", keys[2])
+	// check PoI for all data
+	for _, s := range data {
+		// retrieve proof
+		proof := model.Proof([]byte(s), tr)
+		fmt.Printf("PoI of the key '%s': length %d, serialized size %d bytes\n",
+			s, len(proof.Path), trie_go.MustSize(proof))
+		// validate proof
+		err := proof.Validate(rootCommitment)
+		errstr := "OK"
+		if err != nil {
+			errstr = err.Error()
+		}
+		if err != nil {
+			fmt.Printf("validating PoI for '%s': %s\n", s, errstr)
+			continue
+		}
+		if proof.IsProofOfAbsence() {
+			fmt.Printf("key '%s' is NOT IN THE STATE\n", s)
+		} else {
+			fmt.Printf("key '%s' is IN THE STATE\n", s)
+		}
 	}
 }
