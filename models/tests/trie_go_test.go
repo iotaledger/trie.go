@@ -1,13 +1,13 @@
-package trie_go_tests
+package tests
 
 import (
 	"bytes"
 	"fmt"
 	trie_go "github.com/iotaledger/trie.go"
+	"github.com/iotaledger/trie.go/models/trie_blake2b_20"
+	"github.com/iotaledger/trie.go/models/trie_blake2b_32"
+	"github.com/iotaledger/trie.go/models/trie_kzg_bn256"
 	"github.com/iotaledger/trie.go/trie"
-	"github.com/iotaledger/trie.go/trie_blake2b_20"
-	"github.com/iotaledger/trie.go/trie_blake2b_32"
-	"github.com/iotaledger/trie.go/trie_kzg_bn256"
 	"github.com/stretchr/testify/require"
 	"io"
 	"math"

@@ -6,7 +6,7 @@ package main
 import (
 	"encoding/hex"
 	"fmt"
-	"github.com/iotaledger/trie.go/trie_kzg_bn256"
+	trie_kzg_bn2562 "github.com/iotaledger/trie.go/models/trie_kzg_bn256"
 	"io/ioutil"
 	"math/rand"
 	"os"
@@ -20,7 +20,7 @@ import (
 
 const (
 	minSeed     = 20
-	defaultFile = "example.setup"
+	defaultFile = "examples.setup"
 	D           = 258
 )
 
@@ -64,8 +64,8 @@ func main() {
 	s := suite.G1().Scalar()
 	s.SetBytes(h[:])
 	h = [32]byte{} // destroy secret
-	omega, _ := trie_kzg_bn256.GenRootOfUnityQuasiPrimitive(suite, D)
-	tr, err := trie_kzg_bn256.TrustedSetupFromSecretPowers(suite, D, omega, s)
+	omega, _ := trie_kzg_bn2562.GenRootOfUnityQuasiPrimitive(suite, D)
+	tr, err := trie_kzg_bn2562.TrustedSetupFromSecretPowers(suite, D, omega, s)
 	s.Zero() // // destroy secret
 	if err != nil {
 		panic(err)
@@ -73,14 +73,14 @@ func main() {
 	writeToFile(tr, fname)
 }
 
-func writeToFile(tr *trie_kzg_bn256.TrustedSetup, fname string) {
+func writeToFile(tr *trie_kzg_bn2562.TrustedSetup, fname string) {
 	generateGoFile := strings.HasSuffix(fname, ".go")
 
 	if !generateGoFile {
 		err := ioutil.WriteFile(fname, tr.Bytes(), 0600)
 		checkErr(err)
 		fmt.Printf("success. The trusted setup has been generated and saved into the binary file '%s'\n", fname)
-		if _, err := trie_kzg_bn256.TrustedSetupFromFile(suite, fname); err != nil {
+		if _, err := trie_kzg_bn2562.TrustedSetupFromFile(suite, fname); err != nil {
 			fmt.Printf("reading trusted setup back from file '%s': %v\nFAIL\n", fname, err)
 		} else {
 			fmt.Printf("reading trusted setup back from file '%s': OK\nSUCCESS\n", fname)

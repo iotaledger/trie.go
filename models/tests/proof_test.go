@@ -1,19 +1,19 @@
-package trie_go_tests
+package tests
 
 import (
 	"bytes"
 	trie_go "github.com/iotaledger/trie.go"
+	trie_blake2b_202 "github.com/iotaledger/trie.go/models/trie_blake2b_20"
+	trie_blake2b_322 "github.com/iotaledger/trie.go/models/trie_blake2b_32"
+	"github.com/iotaledger/trie.go/models/trie_kzg_bn256"
 	"github.com/iotaledger/trie.go/trie"
-	"github.com/iotaledger/trie.go/trie_blake2b_20"
-	"github.com/iotaledger/trie.go/trie_blake2b_32"
-	"github.com/iotaledger/trie.go/trie_kzg_bn256"
 	"github.com/stretchr/testify/require"
 	"testing"
 )
 
 func TestTrieProofBlake2b(t *testing.T) {
 	runTest20 := func(arity trie.PathArity) {
-		model := trie_blake2b_20.New(arity)
+		model := trie_blake2b_202.New(arity)
 		t.Run("proof empty trie"+tn(model), func(t *testing.T) {
 			store := trie_go.NewInMemoryKVStore()
 			tr := trie.New(model, store)
@@ -84,7 +84,7 @@ func TestTrieProofBlake2b(t *testing.T) {
 		})
 	}
 	runTest32 := func(arity trie.PathArity) {
-		model := trie_blake2b_32.New(arity)
+		model := trie_blake2b_322.New(arity)
 		t.Run("proof empty trie"+tn(model), func(t *testing.T) {
 			store := trie_go.NewInMemoryKVStore()
 			tr := trie.New(model, store)
@@ -164,10 +164,10 @@ func TestTrieProofBlake2b(t *testing.T) {
 func TestTrieProofWithDeletesBlake2b32(t *testing.T) {
 	var tr1 *trie.Trie
 	var rootC trie_go.VCommitment
-	var model *trie_blake2b_32.CommitmentModel
+	var model *trie_blake2b_322.CommitmentModel
 
 	initTrie := func(dataAdd []string, arity trie.PathArity) {
-		model = trie_blake2b_32.New(arity)
+		model = trie_blake2b_322.New(arity)
 		store := trie_go.NewInMemoryKVStore()
 		tr1 = trie.New(model, store)
 		for _, s := range dataAdd {
@@ -240,7 +240,7 @@ func TestTrieProofWithDeletesBlake2b32(t *testing.T) {
 
 				proofBin := proof.Bytes()
 				require.EqualValues(t, len(proofBin), sz)
-				proofBack, err := trie_blake2b_32.ProofFromBytes(proofBin)
+				proofBack, err := trie_blake2b_322.ProofFromBytes(proofBin)
 				require.NoError(t, err)
 				err = proofBack.Validate(rootC)
 				require.NoError(t, err)
@@ -258,7 +258,7 @@ func TestTrieProofWithDeletesBlake2b32(t *testing.T) {
 
 				proofBin := proof.Bytes()
 				require.EqualValues(t, len(proofBin), sz)
-				proofBack, err := trie_blake2b_32.ProofFromBytes(proofBin)
+				proofBack, err := trie_blake2b_322.ProofFromBytes(proofBin)
 				require.NoError(t, err)
 				err = proofBack.Validate(rootC)
 				require.NoError(t, err)
@@ -340,10 +340,10 @@ func ar(arity trie.PathArity) string {
 func TestTrieProofWithDeletesBlake2b20(t *testing.T) {
 	var tr1 *trie.Trie
 	var rootC trie_go.VCommitment
-	var Model *trie_blake2b_20.CommitmentModel
+	var Model *trie_blake2b_202.CommitmentModel
 
 	initTrie := func(dataAdd []string, arity trie.PathArity) {
-		Model = trie_blake2b_20.New(arity)
+		Model = trie_blake2b_202.New(arity)
 		store := trie_go.NewInMemoryKVStore()
 		tr1 = trie.New(Model, store)
 		for _, s := range dataAdd {
@@ -416,7 +416,7 @@ func TestTrieProofWithDeletesBlake2b20(t *testing.T) {
 
 				proofBin := proof.Bytes()
 				require.EqualValues(t, len(proofBin), sz)
-				proofBack, err := trie_blake2b_20.ProofFromBytes(proofBin)
+				proofBack, err := trie_blake2b_202.ProofFromBytes(proofBin)
 				require.NoError(t, err)
 				err = proofBack.Validate(rootC)
 				require.NoError(t, err)
@@ -434,7 +434,7 @@ func TestTrieProofWithDeletesBlake2b20(t *testing.T) {
 
 				proofBin := proof.Bytes()
 				require.EqualValues(t, len(proofBin), sz)
-				proofBack, err := trie_blake2b_20.ProofFromBytes(proofBin)
+				proofBack, err := trie_blake2b_202.ProofFromBytes(proofBin)
 				require.NoError(t, err)
 				err = proofBack.Validate(rootC)
 				require.NoError(t, err)

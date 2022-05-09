@@ -3,8 +3,8 @@ package main
 import (
 	"fmt"
 	trie_go "github.com/iotaledger/trie.go"
+	"github.com/iotaledger/trie.go/models/trie_blake2b_20"
 	"github.com/iotaledger/trie.go/trie"
-	"github.com/iotaledger/trie.go/trie_blake2b_20"
 )
 
 var data = []string{"a", "abc", "abcd", "b", "abd", "klmn", "oprst", "ab", "bcd"}
@@ -14,10 +14,10 @@ func main() {
 	store := trie_go.NewInMemoryKVStore()
 
 	// create blake2b 20 bytes (160 bit) commitment model
-	model := trie_blake2b_20.New()
+	model := trie_blake2b_20.New(trie.PathArity2)
 
 	// create the trie with binary keys
-	tr := trie.New(model, store, trie.PathArity2, false)
+	tr := trie.New(model, store)
 	fmt.Printf("\nExample of trie.\n%s\n", tr.Info())
 
 	// add data key/value pairs to the trie

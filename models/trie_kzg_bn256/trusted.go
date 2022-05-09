@@ -16,7 +16,7 @@ import (
 // The domain of Lagrange polynomials is either defined by powers of omega, assuming omega^i != 1 for any 0<=i<D
 // or, of omega == 0, it is 0, 1, 2, ..., D-1
 // The secret itself must be destroyed immediately after trusted setup is generated.
-// The trusted setup is a public value stored for example in a file.
+// The trusted setup is a public value stored for examples in a file.
 // It is impossible to restore secret from the trusted setup
 // [x]1 means a projection of scalar x to the G1 curve. [x]1 = xG, where G is the generating element
 // [x]2 means a projection of scalar x to the G2 curve. [x]2 = xH, where H is the generating element

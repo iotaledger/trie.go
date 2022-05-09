@@ -187,7 +187,7 @@ func TestValidate1Load(t *testing.T) {
 	t.SkipNow() // require file
 
 	suite := bn256.NewSuite()
-	tr, err := TrustedSetupFromFile(suite, "example.setup")
+	tr, err := TrustedSetupFromFile(suite, "examples.setup")
 	require.NoError(t, err)
 
 	vect := make([]kyber.Scalar, D)
@@ -203,7 +203,7 @@ func TestValidate2Load(t *testing.T) {
 	t.SkipNow() // require file
 
 	suite := bn256.NewSuite()
-	tr, err := TrustedSetupFromFile(suite, "example.setup")
+	tr, err := TrustedSetupFromFile(suite, "examples.setup")
 	require.NoError(t, err)
 
 	vect := make([]kyber.Scalar, D)
@@ -234,14 +234,9 @@ func TestStaticTrustedSetup(t *testing.T) {
 	model := New()
 	require.EqualValues(t, 258, model.D)
 
-	runTest := func(arity trie.PathArity) {
-		store := trie_go.NewInMemoryKVStore()
-		tr := trie.New(model, store, arity, false)
+	store := trie_go.NewInMemoryKVStore()
+	tr := trie.New(model, store)
 
-		tr.Update(nil, []byte("kuku"))
-		tr.Commit()
-	}
-	runTest(trie.PathArity256)
-	runTest(trie.PathArity16)
-	runTest(trie.PathArity2)
+	tr.Update(nil, []byte("kuku"))
+	tr.Commit()
 }

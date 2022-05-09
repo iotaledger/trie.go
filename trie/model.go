@@ -21,7 +21,7 @@ type CommitmentModel interface {
 	// It also (optionally, if 'update' != nil) updates previous commitment to the node
 	// If update != nil and *update != nil, parameter calcDelta specifies if commitment is calculated
 	// from scratch using CalcNodeCommitment, or it can be calculated by applying additive delta
-	// I can be used by implementation to optimize the computation of update. For example KZG implementation
+	// I can be used by implementation to optimize the computation of update. For examples KZG implementation
 	// can be made dramatically faster this way than strictly computing each time whole expensive vector commitment
 	// This interface takes into account different ways how updates are propagated in the trie
 	UpdateNodeCommitment(mutate *NodeData, childUpdates map[byte]trie_go.VCommitment, calcDelta bool, terminal trie_go.TCommitment, update *trie_go.VCommitment)
