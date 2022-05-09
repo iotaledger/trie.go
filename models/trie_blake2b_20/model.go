@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 
-	trie_go "github.com/iotaledger/trie.go"
 	"github.com/iotaledger/trie.go/trie"
 	"golang.org/x/xerrors"
 )
@@ -41,12 +40,12 @@ func (m *CommitmentModel) PathArity() trie.PathArity {
 }
 
 // NewTerminalCommitment creates empty terminal commitment
-func (m *CommitmentModel) NewTerminalCommitment() trie_go.TCommitment {
+func (m *CommitmentModel) NewTerminalCommitment() trie.TCommitment {
 	return &terminalCommitment{}
 }
 
 // NewVectorCommitment create empty vector commitment
-func (m *CommitmentModel) NewVectorCommitment() trie_go.VCommitment {
+func (m *CommitmentModel) NewVectorCommitment() trie.VCommitment {
 	return &vectorCommitment{}
 }
 
@@ -54,7 +53,7 @@ func (m *CommitmentModel) NewVectorCommitment() trie_go.VCommitment {
 
 // UpdateNodeCommitment computes update to the node data and, optionally, updates existing commitment
 // In blake2b implementation delta it just means computing the hash of data
-func (m *CommitmentModel) UpdateNodeCommitment(mutate *trie.NodeData, childUpdates map[byte]trie_go.VCommitment, _ bool, newTerminalUpdate trie_go.TCommitment, update *trie_go.VCommitment) {
+func (m *CommitmentModel) UpdateNodeCommitment(mutate *trie.NodeData, childUpdates map[byte]trie.VCommitment, _ bool, newTerminalUpdate trie.TCommitment, update *trie.VCommitment) {
 	hashes := make([]*[hashSize]byte, m.arity.VectorLength())
 
 	deleted := make([]byte, 0, 256)
@@ -69,7 +68,7 @@ func (m *CommitmentModel) UpdateNodeCommitment(mutate *trie.NodeData, childUpdat
 		delete(mutate.ChildCommitments, i)
 	}
 	for i, c := range mutate.ChildCommitments {
-		trie_go.Assert(int(i) < m.arity.VectorLength(), "int(i)<m.arity.VectorLength()")
+		trie.Assert(int(i) < m.arity.VectorLength(), "int(i)<m.arity.VectorLength()")
 		hashes[i] = (*[hashSize]byte)(c.(*vectorCommitment))
 	}
 	mutate.Terminal = newTerminalUpdate // for hash commitment just replace
@@ -90,14 +89,14 @@ func (m *CommitmentModel) UpdateNodeCommitment(mutate *trie.NodeData, childUpdat
 
 // CalcNodeCommitment computes commitment of the node. It is suboptimal in KZG trie.
 // Used in computing root commitment
-func (m *CommitmentModel) CalcNodeCommitment(par *trie.NodeData) trie_go.VCommitment {
+func (m *CommitmentModel) CalcNodeCommitment(par *trie.NodeData) trie.VCommitment {
 	hashes := make([]*[hashSize]byte, m.arity.VectorLength())
 
 	if len(par.ChildCommitments) == 0 && par.Terminal == nil {
 		return nil
 	}
 	for i, c := range par.ChildCommitments {
-		trie_go.Assert(int(i) < m.arity.VectorLength(), "int(i)<m.arity.VectorLength()")
+		trie.Assert(int(i) < m.arity.VectorLength(), "int(i)<m.arity.VectorLength()")
 		hashes[i] = (*[hashSize]byte)(c.(*vectorCommitment))
 	}
 	if par.Terminal != nil {
@@ -109,7 +108,7 @@ func (m *CommitmentModel) CalcNodeCommitment(par *trie.NodeData) trie_go.VCommit
 	return &c
 }
 
-func (m *CommitmentModel) CommitToData(data []byte) trie_go.TCommitment {
+func (m *CommitmentModel) CommitToData(data []byte) trie.TCommitment {
 	if len(data) == 0 {
 		// empty slice -> no data (deleted)
 		return nil
@@ -126,10 +125,10 @@ func (m *CommitmentModel) ShortName() string {
 }
 
 // *vectorCommitment implements trie_go.VCommitment
-var _ trie_go.VCommitment = &vectorCommitment{}
+var _ trie.VCommitment = &vectorCommitment{}
 
 func (v *vectorCommitment) Bytes() []byte {
-	return trie_go.MustBytes(v)
+	return trie.MustBytes(v)
 }
 
 func (v *vectorCommitment) Read(r io.Reader) error {
@@ -146,7 +145,7 @@ func (v *vectorCommitment) String() string {
 	return hex.EncodeToString(v[:])
 }
 
-func (v *vectorCommitment) Clone() trie_go.VCommitment {
+func (v *vectorCommitment) Clone() trie.VCommitment {
 	if v == nil {
 		return nil
 	}
@@ -154,7 +153,7 @@ func (v *vectorCommitment) Clone() trie_go.VCommitment {
 	return &ret
 }
 
-func (v *vectorCommitment) Update(delta trie_go.VCommitment) {
+func (v *vectorCommitment) Update(delta trie.VCommitment) {
 	m, ok := delta.(*vectorCommitment)
 	if !ok {
 		panic("hash commitment expected")
@@ -163,10 +162,10 @@ func (v *vectorCommitment) Update(delta trie_go.VCommitment) {
 }
 
 // *terminalCommitment implements trie_go.TCommitment
-var _ trie_go.TCommitment = &terminalCommitment{}
+var _ trie.TCommitment = &terminalCommitment{}
 
 func (t *terminalCommitment) Write(w io.Writer) error {
-	if err := trie_go.WriteByte(w, t.lenPlus1); err != nil {
+	if err := trie.WriteByte(w, t.lenPlus1); err != nil {
 		return err
 	}
 	l := byte(hashSize)
@@ -179,7 +178,7 @@ func (t *terminalCommitment) Write(w io.Writer) error {
 
 func (t *terminalCommitment) Read(r io.Reader) error {
 	var err error
-	if t.lenPlus1, err = trie_go.ReadByte(r); err != nil {
+	if t.lenPlus1, err = trie.ReadByte(r); err != nil {
 		return err
 	}
 	if t.lenPlus1 > 33 {
@@ -201,14 +200,14 @@ func (t *terminalCommitment) Read(r io.Reader) error {
 }
 
 func (t *terminalCommitment) Bytes() []byte {
-	return trie_go.MustBytes(t)
+	return trie.MustBytes(t)
 }
 
 func (t *terminalCommitment) String() string {
 	return hex.EncodeToString(t.bytes[:])
 }
 
-func (t *terminalCommitment) Clone() trie_go.TCommitment {
+func (t *terminalCommitment) Clone() trie.TCommitment {
 	if t == nil {
 		return nil
 	}
@@ -225,7 +224,7 @@ func commitToData(data []byte) (ret [hashSize]byte) {
 	if len(data) <= hashSize {
 		copy(ret[:], data)
 	} else {
-		ret = trie_go.Blake2b160(data)
+		ret = trie.Blake2b160(data)
 	}
 	return
 }
@@ -249,5 +248,5 @@ func hashVector(hashes []*[hashSize]byte) [hashSize]byte {
 		pos := hashSize * int(i)
 		copy(buf[pos:pos+hashSize], h[:])
 	}
-	return trie_go.Blake2b160(buf[:])
+	return trie.Blake2b160(buf[:])
 }

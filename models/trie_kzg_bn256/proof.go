@@ -3,7 +3,6 @@ package trie_kzg_bn256
 import (
 	"bytes"
 	"fmt"
-	trie_go "github.com/iotaledger/trie.go"
 	"github.com/iotaledger/trie.go/trie"
 	"go.dedis.ch/kyber/v3"
 	"golang.org/x/xerrors"
@@ -49,7 +48,7 @@ func ProofOfInclusionFromBytes(data []byte) (*ProofOfInclusion, error) {
 // ProofOfInclusion converts generic proof path of existing key to the verifiable proof path
 // Returns nil, false if path does not exist
 func (m *CommitmentModel) ProofOfInclusion(key []byte, tr trie.NodeStore) (*ProofOfInclusion, bool) {
-	trie_go.Assert(tr.PathArity() == trie.PathArity256, "for KZG commitment model only 256-ary trie is supported")
+	trie.Assert(tr.PathArity() == trie.PathArity256, "for KZG commitment model only 256-ary trie is supported")
 
 	proofGeneric := trie.GetProofGeneric(tr, key)
 	if proofGeneric == nil || len(proofGeneric.Path) == 0 || proofGeneric.Ending != trie.EndingTerminal {
@@ -68,7 +67,7 @@ func (m *CommitmentModel) ProofOfInclusion(key []byte, tr trie.NodeStore) (*Proo
 
 	for i, k := range proofGeneric.Path {
 		n, ok := tr.GetNode(k)
-		trie_go.Assert(ok, "can't find node with key '%x'", k)
+		trie.Assert(ok, "can't find node with key '%x'", k)
 
 		nodes[i] = &trie.NodeData{
 			PathFragment:     n.PathFragment(),
@@ -108,22 +107,22 @@ func (m *CommitmentModel) ProofOfPath(key []byte, tr trie.NodeStore) (*ProofOfPa
 }
 
 func (p *ProofOfInclusion) Bytes() []byte {
-	return trie_go.MustBytes(p)
+	return trie.MustBytes(p)
 }
 
 // Validate check the proof against the provided root commitments
 // if 'value' is specified, checks if commitment to that value is the terminal of the last element in path
-func (p *ProofOfInclusion) Validate(root trie_go.VCommitment, value ...[]byte) error {
+func (p *ProofOfInclusion) Validate(root trie.VCommitment, value ...[]byte) error {
 	if len(value) > 0 {
 		ct := commitToData(value[0], Model.Suite)
-		if !trie_go.EqualCommitments(ct, &terminalCommitment{Scalar: p.Terminal}) {
+		if !trie.EqualCommitments(ct, &terminalCommitment{Scalar: p.Terminal}) {
 			return xerrors.New("terminal commitment not equal to the provided value")
 		}
 	}
 	if len(p.Path) == 0 {
 		return xerrors.New("proof path is empty")
 	}
-	if !trie_go.EqualCommitments(root, &vectorCommitment{Point: p.Path[0].C}) {
+	if !trie.EqualCommitments(root, &vectorCommitment{Point: p.Path[0].C}) {
 		return xerrors.New("provided commitment and commitment to the first element are not equal")
 	}
 	var val kyber.Scalar
@@ -142,13 +141,13 @@ func (p *ProofOfInclusion) Validate(root trie_go.VCommitment, value ...[]byte) e
 }
 
 func (p *ProofOfInclusion) Write(w io.Writer) error {
-	if err := trie_go.WriteBytes16(w, p.Key); err != nil {
+	if err := trie.WriteBytes16(w, p.Key); err != nil {
 		return err
 	}
 	if _, err := p.Terminal.MarshalTo(w); err != nil {
 		return err
 	}
-	if err := trie_go.WriteUint16(w, uint16(len(p.Path))); err != nil {
+	if err := trie.WriteUint16(w, uint16(len(p.Path))); err != nil {
 		return err
 	}
 	for _, e := range p.Path {
@@ -161,7 +160,7 @@ func (p *ProofOfInclusion) Write(w io.Writer) error {
 
 func (p *ProofOfInclusion) Read(r io.Reader) error {
 	var err error
-	if p.Key, err = trie_go.ReadBytes16(r); err != nil {
+	if p.Key, err = trie.ReadBytes16(r); err != nil {
 		return err
 	}
 	p.Terminal = Model.Suite.G1().Scalar()
@@ -169,7 +168,7 @@ func (p *ProofOfInclusion) Read(r io.Reader) error {
 		return err
 	}
 	var size uint16
-	if err = trie_go.ReadUint16(r, &size); err != nil {
+	if err = trie.ReadUint16(r, &size); err != nil {
 		return err
 	}
 	p.Path = make([]*ProofElement, size)
@@ -186,7 +185,7 @@ func (e *ProofElement) Write(w io.Writer) error {
 	if _, err := e.C.MarshalTo(w); err != nil {
 		return err
 	}
-	if err := trie_go.WriteUint16(w, e.VectorIndex); err != nil {
+	if err := trie.WriteUint16(w, e.VectorIndex); err != nil {
 		return err
 	}
 	if _, err := e.Proof.MarshalTo(w); err != nil {
@@ -200,7 +199,7 @@ func (e *ProofElement) Read(r io.Reader) error {
 	if _, err := e.C.UnmarshalFrom(r); err != nil {
 		return err
 	}
-	if err := trie_go.ReadUint16(r, &e.VectorIndex); err != nil {
+	if err := trie.ReadUint16(r, &e.VectorIndex); err != nil {
 		return err
 	}
 	e.Proof = Model.Suite.G1().Point()

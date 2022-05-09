@@ -1,4 +1,4 @@
-package trie_go
+package trie
 
 import (
 	"errors"

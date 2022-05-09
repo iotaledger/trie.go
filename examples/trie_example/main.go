@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	trie_go "github.com/iotaledger/trie.go"
 	"github.com/iotaledger/trie.go/models/trie_blake2b_20"
 	"github.com/iotaledger/trie.go/trie"
 )
@@ -11,7 +10,7 @@ var data = []string{"a", "abc", "abcd", "b", "abd", "klmn", "oprst", "ab", "bcd"
 
 func main() {
 	// create store where trie nodes will be stored
-	store := trie_go.NewInMemoryKVStore()
+	store := trie.NewInMemoryKVStore()
 
 	// create blake2b 20 bytes (160 bit) commitment model
 	model := trie_blake2b_20.New(trie.PathArity2)
@@ -44,7 +43,7 @@ func main() {
 		// retrieve proof
 		proof := model.Proof([]byte(s), tr)
 		fmt.Printf("PoI of the key '%s': length %d, serialized size %d bytes\n",
-			s, len(proof.Path), trie_go.MustSize(proof))
+			s, len(proof.Path), trie.MustSize(proof))
 		// validate proof
 		err := proof.Validate(rootCommitment)
 		errstr := "OK"

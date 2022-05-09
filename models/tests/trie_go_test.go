@@ -3,7 +3,6 @@ package tests
 import (
 	"bytes"
 	"fmt"
-	trie_go "github.com/iotaledger/trie.go"
 	"github.com/iotaledger/trie.go/models/trie_blake2b_20"
 	"github.com/iotaledger/trie.go/models/trie_blake2b_32"
 	"github.com/iotaledger/trie.go/models/trie_kzg_bn256"
@@ -39,7 +38,7 @@ func TestNode(t *testing.T) {
 
 			nBack, err := trie.NodeDataFromBytes(m, buf.Bytes(), unpackedKey, m.PathArity())
 			require.NoError(t, err)
-			require.True(t, trie_go.EqualCommitments(n.Terminal, nBack.Terminal))
+			require.True(t, trie.EqualCommitments(n.Terminal, nBack.Terminal))
 
 			h := m.CalcNodeCommitment(n)
 			hBack := m.CalcNodeCommitment(nBack)
@@ -50,7 +49,7 @@ func TestNode(t *testing.T) {
 			unpackedKey := trie.UnpackBytes([]byte("abc"), m.PathArity())
 			unpackedPathFragment := trie.UnpackBytes([]byte("d"), m.PathArity())
 			unpackedValue := trie.UnpackBytes([]byte("abcd"), m.PathArity())
-			require.EqualValues(t, unpackedValue, trie_go.Concat(unpackedKey, unpackedPathFragment))
+			require.EqualValues(t, unpackedValue, trie.Concat(unpackedKey, unpackedPathFragment))
 
 			var buf bytes.Buffer
 			n := trie.NewNodeData()
@@ -62,11 +61,11 @@ func TestNode(t *testing.T) {
 			nBack, err := trie.NodeDataFromBytes(m, buf.Bytes(), unpackedKey, m.PathArity())
 			require.NoError(t, err)
 			require.EqualValues(t, n.PathFragment, nBack.PathFragment)
-			require.True(t, trie_go.EqualCommitments(n.Terminal, nBack.Terminal))
+			require.True(t, trie.EqualCommitments(n.Terminal, nBack.Terminal))
 
 			h := m.CalcNodeCommitment(n)
 			hBack := m.CalcNodeCommitment(nBack)
-			require.True(t, trie_go.EqualCommitments(h, hBack))
+			require.True(t, trie.EqualCommitments(h, hBack))
 			t.Logf("commitment = %s", h)
 		})
 		t.Run("base short terminal"+tn(m), func(t *testing.T) {
@@ -146,7 +145,7 @@ func TestTrieBase(t *testing.T) {
 	var data3 = []string{"", "a", "ab", "abc", "abcd", "abcdAAA", "abd", "abe", "abcd"}
 	runTest := func(t *testing.T, m trie.CommitmentModel) {
 		t.Run("base1"+tn(m), func(t *testing.T) {
-			store := trie_go.NewInMemoryKVStore()
+			store := trie.NewInMemoryKVStore()
 			tr := trie.New(m, store)
 			require.EqualValues(t, nil, trie.RootCommitment(tr))
 
@@ -171,7 +170,7 @@ func TestTrieBase(t *testing.T) {
 		})
 		t.Run("base2"+tn(m), func(t *testing.T) {
 			data := data1
-			store1 := trie_go.NewInMemoryKVStore()
+			store1 := trie.NewInMemoryKVStore()
 			tr1 := trie.New(m, store1)
 
 			for i := range data {
@@ -180,7 +179,7 @@ func TestTrieBase(t *testing.T) {
 			}
 			c1 := trie.RootCommitment(tr1)
 
-			store2 := trie_go.NewInMemoryKVStore()
+			store2 := trie.NewInMemoryKVStore()
 			tr2 := trie.New(m, store2)
 
 			for i := range data {
@@ -189,11 +188,11 @@ func TestTrieBase(t *testing.T) {
 			tr2.Commit()
 			c2 := trie.RootCommitment(tr2)
 
-			require.True(t, trie_go.EqualCommitments(c1, c2))
+			require.True(t, trie.EqualCommitments(c1, c2))
 		})
 		t.Run("base2-rev"+tn(m), func(t *testing.T) {
 			data := data1
-			store1 := trie_go.NewInMemoryKVStore()
+			store1 := trie.NewInMemoryKVStore()
 			tr1 := trie.New(m, store1)
 
 			for i := range data {
@@ -202,7 +201,7 @@ func TestTrieBase(t *testing.T) {
 			}
 			c1 := trie.RootCommitment(tr1)
 
-			store2 := trie_go.NewInMemoryKVStore()
+			store2 := trie.NewInMemoryKVStore()
 			tr2 := trie.New(m, store2)
 
 			for j := range data {
@@ -212,12 +211,12 @@ func TestTrieBase(t *testing.T) {
 			tr2.Commit()
 			c2 := trie.RootCommitment(tr2)
 
-			require.True(t, trie_go.EqualCommitments(c1, c2))
+			require.True(t, trie.EqualCommitments(c1, c2))
 		})
 		t.Run("base2-1"+tn(m), func(t *testing.T) {
 			data := []string{"a", "ab", "abc"}
 			t.Logf("%+v", data)
-			store1 := trie_go.NewInMemoryKVStore()
+			store1 := trie.NewInMemoryKVStore()
 			tr1 := trie.New(m, store1)
 
 			for i := range data {
@@ -228,7 +227,7 @@ func TestTrieBase(t *testing.T) {
 
 			c1 := trie.RootCommitment(tr1)
 
-			store2 := trie_go.NewInMemoryKVStore()
+			store2 := trie.NewInMemoryKVStore()
 			tr2 := trie.New(m, store2)
 
 			for i := range data {
@@ -238,11 +237,11 @@ func TestTrieBase(t *testing.T) {
 			t.Logf("SECOND:\n%s", tr2.DangerouslyDumpCacheToString())
 			c2 := trie.RootCommitment(tr2)
 
-			require.True(t, trie_go.EqualCommitments(c1, c2))
+			require.True(t, trie.EqualCommitments(c1, c2))
 		})
 		t.Run("base2-2"+tn(m), func(t *testing.T) {
 			data := data3
-			store1 := trie_go.NewInMemoryKVStore()
+			store1 := trie.NewInMemoryKVStore()
 			tr1 := trie.New(m, store1)
 
 			for i := range data {
@@ -251,7 +250,7 @@ func TestTrieBase(t *testing.T) {
 			}
 			c1 := trie.RootCommitment(tr1)
 
-			store2 := trie_go.NewInMemoryKVStore()
+			store2 := trie.NewInMemoryKVStore()
 			tr2 := trie.New(m, store2)
 
 			for i := range data {
@@ -260,10 +259,10 @@ func TestTrieBase(t *testing.T) {
 			tr2.Commit()
 			c2 := trie.RootCommitment(tr2)
 
-			require.True(t, trie_go.EqualCommitments(c1, c2))
+			require.True(t, trie.EqualCommitments(c1, c2))
 		})
 		t.Run("base3"+tn(m), func(t *testing.T) {
-			store1 := trie_go.NewInMemoryKVStore()
+			store1 := trie.NewInMemoryKVStore()
 			tr1 := trie.New(m, store1)
 
 			data := data2[:5]
@@ -273,7 +272,7 @@ func TestTrieBase(t *testing.T) {
 			}
 			c1 := trie.RootCommitment(tr1)
 
-			store2 := trie_go.NewInMemoryKVStore()
+			store2 := trie.NewInMemoryKVStore()
 			tr2 := trie.New(m, store2)
 
 			for i := range data {
@@ -281,10 +280,10 @@ func TestTrieBase(t *testing.T) {
 			}
 			tr2.Commit()
 			c2 := trie.RootCommitment(tr2)
-			require.True(t, trie_go.EqualCommitments(c1, c2))
+			require.True(t, trie.EqualCommitments(c1, c2))
 		})
 		t.Run("base4"+tn(m), func(t *testing.T) {
-			store1 := trie_go.NewInMemoryKVStore()
+			store1 := trie.NewInMemoryKVStore()
 			tr1 := trie.New(m, store1)
 
 			data := []string{"001", "002", "010"}
@@ -294,7 +293,7 @@ func TestTrieBase(t *testing.T) {
 			}
 			c1 := trie.RootCommitment(tr1)
 
-			store2 := trie_go.NewInMemoryKVStore()
+			store2 := trie.NewInMemoryKVStore()
 			tr2 := trie.New(m, store2)
 
 			for i := range data {
@@ -302,11 +301,11 @@ func TestTrieBase(t *testing.T) {
 			}
 			tr2.Commit()
 			c2 := trie.RootCommitment(tr2)
-			require.True(t, trie_go.EqualCommitments(c1, c2))
+			require.True(t, trie.EqualCommitments(c1, c2))
 		})
 
 		t.Run("reverse short"+tn(m), func(t *testing.T) {
-			store1 := trie_go.NewInMemoryKVStore()
+			store1 := trie.NewInMemoryKVStore()
 			tr1 := trie.New(m, store1)
 
 			tr1.Update([]byte("a"), []byte("k"))
@@ -314,7 +313,7 @@ func TestTrieBase(t *testing.T) {
 			tr1.Commit()
 			c1 := trie.RootCommitment(tr1)
 
-			store2 := trie_go.NewInMemoryKVStore()
+			store2 := trie.NewInMemoryKVStore()
 			tr2 := trie.New(m, store2)
 
 			tr2.Update([]byte("ab"), []byte("l"))
@@ -323,11 +322,11 @@ func TestTrieBase(t *testing.T) {
 			c2 := trie.RootCommitment(tr2)
 			t.Logf("root1 = %s", c1)
 			t.Logf("root2 = %s", c2)
-			require.True(t, trie_go.EqualCommitments(c1, c2))
+			require.True(t, trie.EqualCommitments(c1, c2))
 		})
 		t.Run("reverse full"+tn(m), func(t *testing.T) {
 			data := data2
-			store1 := trie_go.NewInMemoryKVStore()
+			store1 := trie.NewInMemoryKVStore()
 			tr1 := trie.New(m, store1)
 
 			for i := range data {
@@ -336,7 +335,7 @@ func TestTrieBase(t *testing.T) {
 			tr1.Commit()
 			c1 := trie.RootCommitment(tr1)
 
-			store2 := trie_go.NewInMemoryKVStore()
+			store2 := trie.NewInMemoryKVStore()
 			tr2 := trie.New(m, store2)
 
 			for i := len(data) - 1; i >= 0; i-- {
@@ -346,13 +345,13 @@ func TestTrieBase(t *testing.T) {
 			c2 := trie.RootCommitment(tr2)
 			t.Logf("root1 = %s", c1)
 			t.Logf("root2 = %s", c2)
-			require.True(t, trie_go.EqualCommitments(c1, c2))
+			require.True(t, trie.EqualCommitments(c1, c2))
 		})
 		t.Run("reverse long"+tn(m), func(t *testing.T) {
 			data := genData1()
 			require.EqualValues(t, 16*16*16, len(data))
 
-			store1 := trie_go.NewInMemoryKVStore()
+			store1 := trie.NewInMemoryKVStore()
 			tr1 := trie.New(m, store1)
 
 			for i := range data {
@@ -361,7 +360,7 @@ func TestTrieBase(t *testing.T) {
 			tr1.Commit()
 			c1 := trie.RootCommitment(tr1)
 
-			store2 := trie_go.NewInMemoryKVStore()
+			store2 := trie.NewInMemoryKVStore()
 			tr2 := trie.New(m, store2)
 
 			for i := len(data) - 1; i >= 0; i-- {
@@ -371,10 +370,10 @@ func TestTrieBase(t *testing.T) {
 			c2 := trie.RootCommitment(tr2)
 			t.Logf("root1 = %s", c1)
 			t.Logf("root2 = %s", c2)
-			require.True(t, trie_go.EqualCommitments(c1, c2))
+			require.True(t, trie.EqualCommitments(c1, c2))
 		})
 		t.Run("deletion edge cases 1"+tn(m), func(t *testing.T) {
-			store := trie_go.NewInMemoryKVStore()
+			store := trie.NewInMemoryKVStore()
 			tr := trie.New(m, store)
 
 			tr.UpdateStr("ab1", []byte("1"))
@@ -384,7 +383,7 @@ func TestTrieBase(t *testing.T) {
 			tr.Commit()
 			c1 := trie.RootCommitment(tr)
 
-			store = trie_go.NewInMemoryKVStore()
+			store = trie.NewInMemoryKVStore()
 			tr = trie.New(m, store)
 
 			tr.UpdateStr("ab1", []byte("1"))
@@ -393,10 +392,10 @@ func TestTrieBase(t *testing.T) {
 			tr.Commit()
 			c2 := trie.RootCommitment(tr)
 
-			require.True(t, trie_go.EqualCommitments(c1, c2))
+			require.True(t, trie.EqualCommitments(c1, c2))
 		})
 		t.Run("deletion edge cases 2"+tn(m), func(t *testing.T) {
-			store := trie_go.NewInMemoryKVStore()
+			store := trie.NewInMemoryKVStore()
 			tr := trie.New(m, store)
 
 			tr.UpdateStr("abc", []byte("1"))
@@ -408,7 +407,7 @@ func TestTrieBase(t *testing.T) {
 			tr.Commit()
 			c1 := trie.RootCommitment(tr)
 
-			store = trie_go.NewInMemoryKVStore()
+			store = trie.NewInMemoryKVStore()
 			tr = trie.New(m, store)
 
 			tr.UpdateStr("abc", []byte("1"))
@@ -421,10 +420,10 @@ func TestTrieBase(t *testing.T) {
 			tr.Commit()
 			c2 := trie.RootCommitment(tr)
 
-			require.True(t, trie_go.EqualCommitments(c1, c2))
+			require.True(t, trie.EqualCommitments(c1, c2))
 		})
 		t.Run("deletion edge cases 3"+tn(m), func(t *testing.T) {
-			store := trie_go.NewInMemoryKVStore()
+			store := trie.NewInMemoryKVStore()
 			tr := trie.New(m, store)
 
 			tr.UpdateStr("abcd", []byte("1"))
@@ -433,7 +432,7 @@ func TestTrieBase(t *testing.T) {
 			tr.Commit()
 			c1 := trie.RootCommitment(tr)
 
-			store = trie_go.NewInMemoryKVStore()
+			store = trie.NewInMemoryKVStore()
 			tr = trie.New(m, store)
 
 			tr.UpdateStr("abcd", []byte("1"))
@@ -443,7 +442,7 @@ func TestTrieBase(t *testing.T) {
 			tr.Commit()
 			c2 := trie.RootCommitment(tr)
 
-			require.True(t, trie_go.EqualCommitments(c1, c2))
+			require.True(t, trie.EqualCommitments(c1, c2))
 		})
 	}
 	runTest(t, trie_blake2b_32.New(trie.PathArity256))
@@ -535,7 +534,7 @@ func TestTrieRnd(t *testing.T) {
 	runTest := func(t *testing.T, m trie.CommitmentModel, shortData bool) {
 		t.Run("determinism1"+tn(m), func(t *testing.T) {
 			data := genData1()
-			store1 := trie_go.NewInMemoryKVStore()
+			store1 := trie.NewInMemoryKVStore()
 			tr1 := trie.New(m, store1)
 
 			for i := range data {
@@ -544,7 +543,7 @@ func TestTrieRnd(t *testing.T) {
 			tr1.Commit()
 			c1 := trie.RootCommitment(tr1)
 
-			store2 := trie_go.NewInMemoryKVStore()
+			store2 := trie.NewInMemoryKVStore()
 			tr2 := trie.New(m, store2)
 
 			rnd := rand.New(rand.NewSource(time.Now().UnixNano()))
@@ -556,11 +555,11 @@ func TestTrieRnd(t *testing.T) {
 			c2 := trie.RootCommitment(tr2)
 			t.Logf("root1 = %s", c1)
 			t.Logf("root2 = %s", c2)
-			require.True(t, trie_go.EqualCommitments(c1, c2))
+			require.True(t, trie.EqualCommitments(c1, c2))
 		})
 		t.Run("determinism2"+tn(m), func(t *testing.T) {
 			data := genData2()
-			store1 := trie_go.NewInMemoryKVStore()
+			store1 := trie.NewInMemoryKVStore()
 			tr1 := trie.New(m, store1)
 
 			for i := range data {
@@ -569,7 +568,7 @@ func TestTrieRnd(t *testing.T) {
 			tr1.Commit()
 			c1 := trie.RootCommitment(tr1)
 
-			store2 := trie_go.NewInMemoryKVStore()
+			store2 := trie.NewInMemoryKVStore()
 			tr2 := trie.New(m, store2)
 
 			rnd := rand.New(rand.NewSource(time.Now().UnixNano()))
@@ -581,11 +580,11 @@ func TestTrieRnd(t *testing.T) {
 			c2 := trie.RootCommitment(tr2)
 			t.Logf("root1 = %s", c1)
 			t.Logf("root2 = %s", c2)
-			require.True(t, trie_go.EqualCommitments(c1, c2))
+			require.True(t, trie.EqualCommitments(c1, c2))
 		})
 		t.Run("determinism3"+tn(m), func(t *testing.T) {
 			data := genRnd3()
-			store1 := trie_go.NewInMemoryKVStore()
+			store1 := trie.NewInMemoryKVStore()
 			tr1 := trie.New(m, store1)
 
 			for i := range data {
@@ -594,7 +593,7 @@ func TestTrieRnd(t *testing.T) {
 			tr1.Commit()
 			c1 := trie.RootCommitment(tr1)
 
-			store2 := trie_go.NewInMemoryKVStore()
+			store2 := trie.NewInMemoryKVStore()
 			tr2 := trie.New(m, store2)
 
 			rnd := rand.New(rand.NewSource(time.Now().UnixNano()))
@@ -606,14 +605,14 @@ func TestTrieRnd(t *testing.T) {
 			c2 := trie.RootCommitment(tr2)
 			t.Logf("root1 = %s", c1)
 			t.Logf("root2 = %s", c2)
-			require.True(t, trie_go.EqualCommitments(c1, c2))
+			require.True(t, trie.EqualCommitments(c1, c2))
 		})
 		t.Run("determinism4"+tn(m), func(t *testing.T) {
 			data := genRnd4()
 			if shortData {
 				data = data[:1000]
 			}
-			store1 := trie_go.NewInMemoryKVStore()
+			store1 := trie.NewInMemoryKVStore()
 			tr1 := trie.New(m, store1)
 
 			for i := range data {
@@ -622,7 +621,7 @@ func TestTrieRnd(t *testing.T) {
 			tr1.Commit()
 			c1 := trie.RootCommitment(tr1)
 
-			store2 := trie_go.NewInMemoryKVStore()
+			store2 := trie.NewInMemoryKVStore()
 			tr2 := trie.New(m, store2)
 
 			rnd := rand.New(rand.NewSource(time.Now().UnixNano()))
@@ -634,11 +633,11 @@ func TestTrieRnd(t *testing.T) {
 			c2 := trie.RootCommitment(tr2)
 			t.Logf("root1 = %s", c1)
 			t.Logf("root2 = %s", c2)
-			require.True(t, trie_go.EqualCommitments(c1, c2))
+			require.True(t, trie.EqualCommitments(c1, c2))
 
 			tr2.PersistMutations(store2)
-			trieSize := trie_go.ByteSize(store2)
-			numEntries := trie_go.NumEntries(store2)
+			trieSize := trie.ByteSize(store2)
+			numEntries := trie.NumEntries(store2)
 			t.Logf("key entries = %d", len(data))
 			t.Logf("Trie entries = %d", numEntries)
 			t.Logf("Trie bytes = %d KB", trieSize/1024)
@@ -649,7 +648,7 @@ func TestTrieRnd(t *testing.T) {
 			if shortData {
 				data = data[:1000]
 			}
-			store1 := trie_go.NewInMemoryKVStore()
+			store1 := trie.NewInMemoryKVStore()
 			tr1 := trie.New(m, store1)
 
 			for i := range data {
@@ -658,7 +657,7 @@ func TestTrieRnd(t *testing.T) {
 			}
 			c1 := trie.RootCommitment(tr1)
 
-			store2 := trie_go.NewInMemoryKVStore()
+			store2 := trie.NewInMemoryKVStore()
 			tr2 := trie.New(m, store2)
 			for i := range data {
 				tr2.Update([]byte(data[i]), []byte(data[i]))
@@ -668,7 +667,7 @@ func TestTrieRnd(t *testing.T) {
 			c2 := trie.RootCommitment(tr2)
 			t.Logf("root1 = %s", c1)
 			t.Logf("root2 = %s", c2)
-			require.True(t, trie_go.EqualCommitments(c1, c2))
+			require.True(t, trie.EqualCommitments(c1, c2))
 		})
 	}
 	runTest(t, trie_blake2b_32.New(trie.PathArity256), false)
@@ -684,7 +683,7 @@ func TestTrieRndKeyCommitment(t *testing.T) {
 	runTest := func(t *testing.T, m trie.CommitmentModel, shortData bool) {
 		t.Run("determ key commitment1"+tn(m), func(t *testing.T) {
 			data := genData1()
-			store1 := trie_go.NewInMemoryKVStore()
+			store1 := trie.NewInMemoryKVStore()
 			tr1 := trie.New(m, store1)
 
 			for _, d := range data {
@@ -695,7 +694,7 @@ func TestTrieRndKeyCommitment(t *testing.T) {
 			tr1.Commit()
 			c1 := trie.RootCommitment(tr1)
 
-			store2 := trie_go.NewInMemoryKVStore()
+			store2 := trie.NewInMemoryKVStore()
 			tr2 := trie.New(m, store2)
 			permutation := rand.Perm(len(data))
 			for _, i := range permutation {
@@ -707,11 +706,11 @@ func TestTrieRndKeyCommitment(t *testing.T) {
 			c2 := trie.RootCommitment(tr2)
 			t.Logf("root1 = %s", c1)
 			t.Logf("root2 = %s", c2)
-			require.True(t, trie_go.EqualCommitments(c1, c2))
+			require.True(t, trie.EqualCommitments(c1, c2))
 		})
 		t.Run("determ key commitment2"+tn(m), func(t *testing.T) {
 			data := genData2()
-			store1 := trie_go.NewInMemoryKVStore()
+			store1 := trie.NewInMemoryKVStore()
 			tr1 := trie.New(m, store1)
 
 			for i := range data {
@@ -722,7 +721,7 @@ func TestTrieRndKeyCommitment(t *testing.T) {
 			tr1.Commit()
 			c1 := trie.RootCommitment(tr1)
 
-			store2 := trie_go.NewInMemoryKVStore()
+			store2 := trie.NewInMemoryKVStore()
 			tr2 := trie.New(m, store2)
 
 			permutation := rand.Perm(len(data))
@@ -735,11 +734,11 @@ func TestTrieRndKeyCommitment(t *testing.T) {
 			c2 := trie.RootCommitment(tr2)
 			t.Logf("root1 = %s", c1)
 			t.Logf("root2 = %s", c2)
-			require.True(t, trie_go.EqualCommitments(c1, c2))
+			require.True(t, trie.EqualCommitments(c1, c2))
 		})
 		t.Run("determ key commitment3"+tn(m), func(t *testing.T) {
 			data := genRnd3()
-			store1 := trie_go.NewInMemoryKVStore()
+			store1 := trie.NewInMemoryKVStore()
 			tr1 := trie.New(m, store1)
 
 			for i := range data {
@@ -750,7 +749,7 @@ func TestTrieRndKeyCommitment(t *testing.T) {
 			tr1.Commit()
 			c1 := trie.RootCommitment(tr1)
 
-			store2 := trie_go.NewInMemoryKVStore()
+			store2 := trie.NewInMemoryKVStore()
 			tr2 := trie.New(m, store2)
 
 			permutation := rand.Perm(len(data))
@@ -763,14 +762,14 @@ func TestTrieRndKeyCommitment(t *testing.T) {
 			c2 := trie.RootCommitment(tr2)
 			t.Logf("root1 = %s", c1)
 			t.Logf("root2 = %s", c2)
-			require.True(t, trie_go.EqualCommitments(c1, c2))
+			require.True(t, trie.EqualCommitments(c1, c2))
 		})
 		t.Run("determ key commitment4"+tn(m), func(t *testing.T) {
 			data := genRnd4()
 			if shortData {
 				data = data[:1000]
 			}
-			store1 := trie_go.NewInMemoryKVStore()
+			store1 := trie.NewInMemoryKVStore()
 			tr1 := trie.New(m, store1)
 
 			for i := range data {
@@ -781,7 +780,7 @@ func TestTrieRndKeyCommitment(t *testing.T) {
 			tr1.Commit()
 			c1 := trie.RootCommitment(tr1)
 
-			store2 := trie_go.NewInMemoryKVStore()
+			store2 := trie.NewInMemoryKVStore()
 			tr2 := trie.New(m, store2)
 
 			permutation := rand.Perm(len(data))
@@ -794,11 +793,11 @@ func TestTrieRndKeyCommitment(t *testing.T) {
 			c2 := trie.RootCommitment(tr2)
 			t.Logf("root1 = %s", c1)
 			t.Logf("root2 = %s", c2)
-			require.True(t, trie_go.EqualCommitments(c1, c2))
+			require.True(t, trie.EqualCommitments(c1, c2))
 
 			tr2.PersistMutations(store2)
-			trieSize := trie_go.ByteSize(store2)
-			numEntries := trie_go.NumEntries(store2)
+			trieSize := trie.ByteSize(store2)
+			numEntries := trie.NumEntries(store2)
 			t.Logf("key entries = %d", len(data))
 			t.Logf("Trie entries = %d", numEntries)
 			t.Logf("Trie bytes = %d KB", trieSize/1024)
@@ -809,7 +808,7 @@ func TestTrieRndKeyCommitment(t *testing.T) {
 			if shortData {
 				data = data[:1000]
 			}
-			store1 := trie_go.NewInMemoryKVStore()
+			store1 := trie.NewInMemoryKVStore()
 			tr1 := trie.New(m, store1)
 
 			for i := range data {
@@ -820,7 +819,7 @@ func TestTrieRndKeyCommitment(t *testing.T) {
 			}
 			c1 := trie.RootCommitment(tr1)
 
-			store2 := trie_go.NewInMemoryKVStore()
+			store2 := trie.NewInMemoryKVStore()
 			tr2 := trie.New(m, store2)
 			for i := range data {
 				if len(data[i]) > 0 {
@@ -832,7 +831,7 @@ func TestTrieRndKeyCommitment(t *testing.T) {
 			c2 := trie.RootCommitment(tr2)
 			t.Logf("root1 = %s", c1)
 			t.Logf("root2 = %s", c2)
-			require.True(t, trie_go.EqualCommitments(c1, c2))
+			require.True(t, trie.EqualCommitments(c1, c2))
 		})
 	}
 	runTest(t, trie_blake2b_32.New(trie.PathArity256), false)
@@ -848,8 +847,8 @@ func TestKeyCommitmentOptimization(t *testing.T) {
 	data := genRnd4()[:10_000]
 	runTest := func(model trie.CommitmentModel) {
 		t.Run(tn(model), func(t *testing.T) {
-			store1 := trie_go.NewInMemoryKVStore()
-			store2 := trie_go.NewInMemoryKVStore()
+			store1 := trie.NewInMemoryKVStore()
+			store2 := trie.NewInMemoryKVStore()
 			tr1 := trie.New(model, store1, true)
 			tr2 := trie.New(model, store2, false)
 
@@ -871,10 +870,10 @@ func TestKeyCommitmentOptimization(t *testing.T) {
 			tr2.Commit()
 			tr2.PersistMutations(store2)
 
-			size1 := trie_go.ByteSize(store1)
-			size2 := trie_go.ByteSize(store2)
-			numEntries := trie_go.NumEntries(store1)
-			require.EqualValues(t, numEntries, trie_go.NumEntries(store2))
+			size1 := trie.ByteSize(store1)
+			size2 := trie.ByteSize(store2)
+			numEntries := trie.NumEntries(store1)
+			require.EqualValues(t, numEntries, trie.NumEntries(store2))
 
 			require.True(t, size1 < size2)
 			t.Logf("num entries: %d", numEntries)
@@ -894,7 +893,7 @@ func TestKeyCommitmentOptimization(t *testing.T) {
 func TestKeyCommitmentOptimizationOptions(t *testing.T) {
 	data := genRnd4()[:10_000]
 	runTest := func(model trie.CommitmentModel, optKeys bool) int {
-		store1 := trie_go.NewInMemoryKVStore()
+		store1 := trie.NewInMemoryKVStore()
 		tr1 := trie.New(model, store1, optKeys)
 
 		for _, d := range data {
@@ -905,7 +904,7 @@ func TestKeyCommitmentOptimizationOptions(t *testing.T) {
 		tr1.Commit()
 		tr1.PersistMutations(store1)
 
-		return trie_go.ByteSize(store1)
+		return trie.ByteSize(store1)
 	}
 	arity := trie.PathArity256
 	size1 := runTest(trie_blake2b_32.New(arity), true)
@@ -932,7 +931,7 @@ func TestKeyCommitmentOptimizationOptions(t *testing.T) {
 func Test20Vs32(t *testing.T) {
 	data := genRnd4()[:10_000]
 	runTest := func(model trie.CommitmentModel) int {
-		store := trie_go.NewInMemoryKVStore()
+		store := trie.NewInMemoryKVStore()
 		tr1 := trie.New(model, store)
 
 		for _, d := range data {
@@ -943,7 +942,7 @@ func Test20Vs32(t *testing.T) {
 		tr1.Commit()
 		tr1.PersistMutations(store)
 
-		return trie_go.ByteSize(store)
+		return trie.ByteSize(store)
 	}
 	arity := trie.PathArity256
 	size1 := runTest(trie_blake2b_32.New(arity))
@@ -972,9 +971,9 @@ func TestTrieWithDeletion(t *testing.T) {
 	var tr1, tr2 *trie.Trie
 	runTest := func(t *testing.T, m trie.CommitmentModel) {
 		initTest := func() {
-			store1 := trie_go.NewInMemoryKVStore()
+			store1 := trie.NewInMemoryKVStore()
 			tr1 = trie.New(m, store1)
-			store2 := trie_go.NewInMemoryKVStore()
+			store2 := trie.NewInMemoryKVStore()
 			tr2 = trie.New(m, store2)
 		}
 		t.Run("del1"+tn(m), func(t *testing.T) {
@@ -993,7 +992,7 @@ func TestTrieWithDeletion(t *testing.T) {
 			tr2.Commit()
 			c2 := trie.RootCommitment(tr1)
 
-			require.True(t, trie_go.EqualCommitments(c1, c2))
+			require.True(t, trie.EqualCommitments(c1, c2))
 		})
 		t.Run("del2"+tn(m), func(t *testing.T) {
 			initTest()
@@ -1012,7 +1011,7 @@ func TestTrieWithDeletion(t *testing.T) {
 			tr2.Commit()
 			c2 := trie.RootCommitment(tr1)
 
-			require.True(t, trie_go.EqualCommitments(c1, c2))
+			require.True(t, trie.EqualCommitments(c1, c2))
 		})
 		t.Run("del3"+tn(m), func(t *testing.T) {
 			initTest()
@@ -1031,7 +1030,7 @@ func TestTrieWithDeletion(t *testing.T) {
 			tr2.Commit()
 			c2 := trie.RootCommitment(tr1)
 
-			require.True(t, trie_go.EqualCommitments(c1, c2))
+			require.True(t, trie.EqualCommitments(c1, c2))
 		})
 		t.Run("del4"+tn(m), func(t *testing.T) {
 			initTest()
@@ -1051,7 +1050,7 @@ func TestTrieWithDeletion(t *testing.T) {
 			tr2.Commit()
 			c2 := trie.RootCommitment(tr1)
 
-			require.True(t, trie_go.EqualCommitments(c1, c2))
+			require.True(t, trie.EqualCommitments(c1, c2))
 		})
 		t.Run("del5"+tn(m), func(t *testing.T) {
 			initTest()
@@ -1066,19 +1065,19 @@ func TestTrieWithDeletion(t *testing.T) {
 				tr2.Commit()
 			}
 			c2 := trie.RootCommitment(tr1)
-			require.True(t, trie_go.EqualCommitments(c1, c2))
+			require.True(t, trie.EqualCommitments(c1, c2))
 
 			tr2.Delete([]byte(data[1]))
 			tr2.Commit()
 
 			c2 = trie.RootCommitment(tr2)
-			require.False(t, trie_go.EqualCommitments(c1, c2))
+			require.False(t, trie.EqualCommitments(c1, c2))
 
 			tr2.Update([]byte(data[1]), []byte(data[1]))
 			tr2.Commit()
 			c2 = trie.RootCommitment(tr1)
 
-			require.True(t, trie_go.EqualCommitments(c1, c2))
+			require.True(t, trie.EqualCommitments(c1, c2))
 		})
 		t.Run("del all"+tn(m), func(t *testing.T) {
 			initTest()
@@ -1113,9 +1112,9 @@ func TestTrieWithDeletionDeterm(t *testing.T) {
 	var tr1, tr2 *trie.Trie
 	runTest := func(t *testing.T, m trie.CommitmentModel, shortData bool) {
 		initTest := func() {
-			store1 := trie_go.NewInMemoryKVStore()
+			store1 := trie.NewInMemoryKVStore()
 			tr1 = trie.New(m, store1)
-			store2 := trie_go.NewInMemoryKVStore()
+			store2 := trie.NewInMemoryKVStore()
 			tr2 = trie.New(m, store2)
 		}
 		t.Run("del determ 1"+tn(m), func(t *testing.T) {
@@ -1155,7 +1154,7 @@ func TestTrieWithDeletionDeterm(t *testing.T) {
 			c2 := trie.RootCommitment(tr2)
 			t.Logf("root1 = %s", c1)
 			t.Logf("root2 = %s", c2)
-			require.True(t, trie_go.EqualCommitments(c1, c2))
+			require.True(t, trie.EqualCommitments(c1, c2))
 		})
 		t.Run("del determ 2"+tn(m), func(t *testing.T) {
 			initTest()
@@ -1166,7 +1165,7 @@ func TestTrieWithDeletionDeterm(t *testing.T) {
 			t.Logf("data len = %d", len(data))
 
 			const rounds = 5
-			var c, cPrev trie_go.VCommitment
+			var c, cPrev trie.VCommitment
 
 			rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 			for i := 0; i < rounds; i++ {
@@ -1177,7 +1176,7 @@ func TestTrieWithDeletionDeterm(t *testing.T) {
 				}
 				tr1.Commit()
 				if cPrev != nil {
-					require.True(t, trie_go.EqualCommitments(c, cPrev))
+					require.True(t, trie.EqualCommitments(c, cPrev))
 				}
 				perm = rng.Perm(len(data))
 				for _, j := range perm {
@@ -1189,7 +1188,7 @@ func TestTrieWithDeletionDeterm(t *testing.T) {
 				tr1.Commit()
 				cPrev = c
 				c = trie.RootCommitment(tr1)
-				require.True(t, trie_go.EqualCommitments(c, nil))
+				require.True(t, trie.EqualCommitments(c, nil))
 			}
 		})
 	}
@@ -1217,10 +1216,10 @@ var flow = []act{
 
 func TestDeleteCommit(t *testing.T) {
 	runTest := func(t *testing.T, m trie.CommitmentModel) {
-		var c [2]trie_go.VCommitment
+		var c [2]trie.VCommitment
 		for round := range []int{0, 1} {
 			t.Logf("------- run %d", round)
-			store := trie_go.NewInMemoryKVStore()
+			store := trie.NewInMemoryKVStore()
 			tr := trie.New(m, store)
 			for i, a := range flow {
 				if a.del {
@@ -1241,7 +1240,7 @@ func TestDeleteCommit(t *testing.T) {
 			diff := tr.Reconcile(store)
 			require.EqualValues(t, 0, len(diff))
 		}
-		require.True(t, trie_go.EqualCommitments(c[0], c[1]))
+		require.True(t, trie.EqualCommitments(c[0], c[1]))
 	}
 	runTest(t, trie_blake2b_32.New(trie.PathArity256))
 	runTest(t, trie_blake2b_32.New(trie.PathArity16))
@@ -1262,29 +1261,29 @@ func TestGenTrie(t *testing.T) {
 		fname := filename + "_" + kind
 
 		t.Run("gen file "+kind, func(t *testing.T) {
-			store := trie_go.NewInMemoryKVStore()
+			store := trie.NewInMemoryKVStore()
 			data := genRnd4()
 			for _, s := range data {
 				store.Set([]byte(s), []byte("abcdefghijklmnoprstquwxyz"))
 			}
 			t.Logf("num records = %d", len(data))
-			n, err := trie_go.DumpToFile(store, fname+".bin")
+			n, err := trie.DumpToFile(store, fname+".bin")
 			require.NoError(t, err)
 			t.Logf("wrote %d bytes to '%s'", n, fname+".bin")
 		})
 		t.Run("gen trie "+kind, func(t *testing.T) {
-			store := trie_go.NewInMemoryKVStore()
-			n, err := trie_go.UnDumpFromFile(store, fname+".bin")
+			store := trie.NewInMemoryKVStore()
+			n, err := trie.UnDumpFromFile(store, fname+".bin")
 			require.NoError(t, err)
 			t.Logf("read %d bytes to '%s'", n, fname+".bin")
 
-			storeTrie := trie_go.NewInMemoryKVStore()
+			storeTrie := trie.NewInMemoryKVStore()
 			tr := trie.New(m, storeTrie)
 			tr.UpdateAll(store)
 			tr.Commit()
 			tr.PersistMutations(store)
-			t.Logf("trie len = %d", trie_go.NumEntries(store))
-			n, err = trie_go.DumpToFile(store, fname+".trie")
+			t.Logf("trie len = %d", trie.NumEntries(store))
+			n, err = trie.DumpToFile(store, fname+".trie")
 			require.NoError(t, err)
 			t.Logf("dumped trie size = %d", n)
 		})

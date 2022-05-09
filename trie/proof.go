@@ -3,7 +3,6 @@ package trie
 import (
 	"bytes"
 	"fmt"
-	trie_go "github.com/iotaledger/trie.go"
 )
 
 // ProofGeneric represents a generic proof of inclusion or a maximal path in the trie which corresponds to the 'unpackedKey'
@@ -76,7 +75,7 @@ func proofPath(trieAccess NodeStore, unpackedKey []byte) ([][]byte, []byte, Proo
 
 	for {
 		proof = append(proof, key)
-		trie_go.Assert(len(key) <= len(unpackedKey), "len(unpackedKey) <= len(unpackedKey)")
+		Assert(len(key) <= len(unpackedKey), "len(unpackedKey) <= len(unpackedKey)")
 		if bytes.Equal(unpackedKey[len(key):], n.PathFragment()) {
 			return proof, nil, EndingTerminal
 		}
@@ -85,9 +84,9 @@ func proofPath(trieAccess NodeStore, unpackedKey []byte) ([][]byte, []byte, Proo
 		if len(prefix) < len(n.PathFragment()) {
 			return proof, prefix, EndingSplit
 		}
-		trie_go.Assert(len(prefix) == len(n.PathFragment()), "len(prefix)==len(n.PathFragment)")
+		Assert(len(prefix) == len(n.PathFragment()), "len(prefix)==len(n.PathFragment)")
 		childIndexPosition := len(key) + len(prefix)
-		trie_go.Assert(childIndexPosition < len(unpackedKey), "childIndexPosition<len(unpackedKey)")
+		Assert(childIndexPosition < len(unpackedKey), "childIndexPosition<len(unpackedKey)")
 
 		key = childKey(n, unpackedKey[childIndexPosition])
 

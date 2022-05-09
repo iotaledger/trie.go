@@ -1,7 +1,6 @@
 package trie_kzg_bn256
 
 import (
-	trie_go "github.com/iotaledger/trie.go"
 	"github.com/iotaledger/trie.go/trie"
 	"go.dedis.ch/kyber/v3"
 	"go.dedis.ch/kyber/v3/pairing/bn256"
@@ -18,10 +17,10 @@ type vectorCommitment struct {
 }
 
 // *vectorCommitment implements trie_go.VCommitment
-var _ trie_go.VCommitment = &vectorCommitment{}
+var _ trie.VCommitment = &vectorCommitment{}
 
 func (v *vectorCommitment) Bytes() []byte {
-	return trie_go.MustBytes(v)
+	return trie.MustBytes(v)
 }
 
 func (v *vectorCommitment) Read(r io.Reader) error {
@@ -38,7 +37,7 @@ func (v *vectorCommitment) String() string {
 	return v.Point.String()
 }
 
-func (v *vectorCommitment) Clone() trie_go.VCommitment {
+func (v *vectorCommitment) Clone() trie.VCommitment {
 	if v == nil {
 		return nil
 	}
@@ -46,7 +45,7 @@ func (v *vectorCommitment) Clone() trie_go.VCommitment {
 }
 
 // *terminalCommitment implements trie_go.TCommitment
-var _ trie_go.TCommitment = &terminalCommitment{}
+var _ trie.TCommitment = &terminalCommitment{}
 
 func (t *terminalCommitment) Write(w io.Writer) error {
 	_, err := t.Scalar.MarshalTo(w)
@@ -59,14 +58,14 @@ func (t *terminalCommitment) Read(r io.Reader) error {
 }
 
 func (t *terminalCommitment) Bytes() []byte {
-	return trie_go.MustBytes(t)
+	return trie.MustBytes(t)
 }
 
 func (t *terminalCommitment) String() string {
 	return t.Scalar.String()
 }
 
-func (t *terminalCommitment) Clone() trie_go.TCommitment {
+func (t *terminalCommitment) Clone() trie.TCommitment {
 	if t == nil {
 		return nil
 	}
@@ -103,7 +102,7 @@ func (m *CommitmentModel) ShortName() string {
 	return "kzg"
 }
 
-func (m *CommitmentModel) NewVectorCommitment() trie_go.VCommitment {
+func (m *CommitmentModel) NewVectorCommitment() trie.VCommitment {
 	return m.newVectorCommitment()
 }
 
@@ -114,7 +113,7 @@ func (m *CommitmentModel) newVectorCommitment(p ...kyber.Point) *vectorCommitmen
 	return &vectorCommitment{Point: p[0]}
 }
 
-func (m *CommitmentModel) NewTerminalCommitment() trie_go.TCommitment {
+func (m *CommitmentModel) NewTerminalCommitment() trie.TCommitment {
 	return m.newTerminalCommitment()
 }
 
@@ -122,11 +121,11 @@ func (m *CommitmentModel) newTerminalCommitment() *terminalCommitment {
 	return &terminalCommitment{Scalar: m.Suite.G1().Scalar()}
 }
 
-func (m *CommitmentModel) CommitToData(data []byte) trie_go.TCommitment {
+func (m *CommitmentModel) CommitToData(data []byte) trie.TCommitment {
 	return commitToData(data, m.Suite)
 }
 
-func (m *CommitmentModel) UpdateVCommitment(c *trie_go.VCommitment, delta trie_go.VCommitment) {
+func (m *CommitmentModel) UpdateVCommitment(c *trie.VCommitment, delta trie.VCommitment) {
 	if *c == nil {
 		*c = m.newVectorCommitment()
 	}
@@ -135,10 +134,10 @@ func (m *CommitmentModel) UpdateVCommitment(c *trie_go.VCommitment, delta trie_g
 }
 
 // UpdateNodeCommitment updates mutated part of node's data and, optionaly, upper
-func (m *CommitmentModel) UpdateNodeCommitment(mutate *trie.NodeData, childUpdates map[byte]trie_go.VCommitment, calcDelta bool, terminal trie_go.TCommitment, update *trie_go.VCommitment) {
+func (m *CommitmentModel) UpdateNodeCommitment(mutate *trie.NodeData, childUpdates map[byte]trie.VCommitment, calcDelta bool, terminal trie.TCommitment, update *trie.VCommitment) {
 	var deltas map[int]kyber.Scalar
 
-	trie_go.Assert(!calcDelta || (update != nil && *update != nil), "UpdateNodeCommitment: inconsistent parameters")
+	trie.Assert(!calcDelta || (update != nil && *update != nil), "UpdateNodeCommitment: inconsistent parameters")
 
 	if calcDelta {
 		deltas = make(map[int]kyber.Scalar)
@@ -150,8 +149,8 @@ func (m *CommitmentModel) UpdateNodeCommitment(mutate *trie.NodeData, childUpdat
 			prevC, existsPrevC := mutate.ChildCommitments[i]
 			if childUpd == nil {
 				// deleting child
-				trie_go.Assert(prevC != nil, "prevC != nil")
-				trie_go.Assert(existsPrevC, "par.ChildCommitments[i] != nil")
+				trie.Assert(prevC != nil, "prevC != nil")
+				trie.Assert(existsPrevC, "par.ChildCommitments[i] != nil")
 				delta = scalarFromPoint(m.TrustedSetup.Suite.G1().Scalar(), prevC.(*vectorCommitment).Point)
 				delta.Neg(delta)
 			} else {
@@ -170,7 +169,7 @@ func (m *CommitmentModel) UpdateNodeCommitment(mutate *trie.NodeData, childUpdat
 			mutate.ChildCommitments[i] = childUpd
 		}
 	}
-	if calcDelta && !trie_go.EqualCommitments(mutate.Terminal, terminal) {
+	if calcDelta && !trie.EqualCommitments(mutate.Terminal, terminal) {
 		delta := m.TrustedSetup.Suite.G1().Scalar().Zero()
 		if terminal == nil {
 			if mutate.Terminal != nil {
@@ -209,7 +208,7 @@ func (m *CommitmentModel) UpdateNodeCommitment(mutate *trie.NodeData, childUpdat
 	}
 }
 
-func (m *CommitmentModel) CalcNodeCommitment(data *trie.NodeData) trie_go.VCommitment {
+func (m *CommitmentModel) CalcNodeCommitment(data *trie.NodeData) trie.VCommitment {
 	return m.calcNodeCommitment(data)
 }
 
@@ -263,7 +262,7 @@ func scalarFromBytes(ret kyber.Scalar, data []byte) kyber.Scalar {
 	return ret
 }
 
-func commitToData(data []byte, suite *bn256.Suite) trie_go.TCommitment {
+func commitToData(data []byte, suite *bn256.Suite) trie.TCommitment {
 	if len(data) == 0 {
 		return nil
 	}

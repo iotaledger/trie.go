@@ -6,7 +6,6 @@ import (
 	"github.com/iotaledger/hive.go/kvstore"
 	"github.com/iotaledger/hive.go/kvstore/badger"
 	"github.com/iotaledger/hive.go/kvstore/mapdb"
-	trie_go "github.com/iotaledger/trie.go"
 	"github.com/iotaledger/trie.go/hive_adaptor"
 	"github.com/iotaledger/trie.go/models/trie_blake2b_20"
 	"github.com/iotaledger/trie.go/models/trie_blake2b_32"
@@ -116,13 +115,13 @@ const (
 )
 
 func genrnd() {
-	rndIterator := trie_go.NewRandStreamIterator(trie_go.RandStreamParams{
+	rndIterator := trie.NewRandStreamIterator(trie.RandStreamParams{
 		Seed:       time.Now().UnixNano(),
 		NumKVPairs: *num,
 		MaxKey:     MaxKey,
 		MaxValue:   MaxValue,
 	})
-	fileWriter, err := trie_go.CreateKVStreamFile(fname)
+	fileWriter, err := trie.CreateKVStreamFile(fname)
 	must(err)
 	defer fileWriter.Close()
 
@@ -272,7 +271,7 @@ var (
 )
 
 func file2kvs(kvs kvstore.KVStore) {
-	streamIn, err := trie_go.OpenKVStreamFile(fname)
+	streamIn, err := trie.OpenKVStreamFile(fname)
 	must(err)
 	defer streamIn.Close()
 
@@ -307,7 +306,7 @@ func file2kvs(kvs kvstore.KVStore) {
 }
 
 func file2kvsNoTrie(kvs kvstore.KVStore) {
-	streamIn, err := trie_go.OpenKVStreamFile(fname)
+	streamIn, err := trie.OpenKVStreamFile(fname)
 	must(err)
 	defer streamIn.Close()
 

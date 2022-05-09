@@ -4,7 +4,6 @@ package hive_adaptor
 import (
 	"errors"
 	"github.com/iotaledger/hive.go/kvstore"
-	"github.com/iotaledger/trie.go"
 	"github.com/iotaledger/trie.go/trie"
 )
 
@@ -29,7 +28,7 @@ func makeKey(prefix, k []byte) []byte {
 	if len(prefix) == 0 {
 		return k
 	}
-	return trie_go.Concat(prefix, k)
+	return trie.Concat(prefix, k)
 }
 
 func (kvs *HiveKVStoreAdaptor) Get(key []byte) []byte {

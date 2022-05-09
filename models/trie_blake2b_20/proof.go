@@ -3,7 +3,6 @@ package trie_blake2b_20
 import (
 	"bytes"
 	"fmt"
-	trie_go "github.com/iotaledger/trie.go"
 	"github.com/iotaledger/trie.go/trie"
 	"golang.org/x/xerrors"
 	"io"
@@ -89,7 +88,7 @@ func (m *CommitmentModel) Proof(key []byte, tr trie.NodeStore) *Proof {
 }
 
 func (p *Proof) Bytes() []byte {
-	return trie_go.MustBytes(p)
+	return trie.MustBytes(p)
 }
 
 // MustKeyWithTerminal returns key and terminal commitment the proof is about. It returns:
@@ -129,7 +128,7 @@ func (p *Proof) IsProofOfAbsence() bool {
 
 // Validate check the proof agains the provided root commitments
 // if 'value' is specified, checks if commitment to that value is the terminal of the last element in path
-func (p *Proof) Validate(root trie_go.VCommitment, value ...[]byte) error {
+func (p *Proof) Validate(root trie.VCommitment, value ...[]byte) error {
 	if len(p.Path) == 0 {
 		if root != nil {
 			return xerrors.New("proof is empty")
@@ -141,13 +140,13 @@ func (p *Proof) Validate(root trie_go.VCommitment, value ...[]byte) error {
 		return err
 	}
 	cv := (vectorCommitment)(c)
-	if !trie_go.EqualCommitments(&cv, root) {
+	if !trie.EqualCommitments(&cv, root) {
 		return xerrors.New("invalid proof: commitment not equal to the root")
 	}
 	if len(value) > 0 {
 		tc := p.Path[len(p.Path)-1].Terminal
 		tc1 := commitToTerminal(value[0])
-		if !trie_go.EqualCommitments(tc1, tc) {
+		if !trie.EqualCommitments(tc1, tc) {
 			return xerrors.New("invalid proof: terminal commitment and terminal proof are not equal")
 		}
 	}
@@ -158,7 +157,7 @@ func (p *Proof) Validate(root trie_go.VCommitment, value ...[]byte) error {
 // If it is a valid proof, it s always contains terminal commitment
 // It is useful to get commitment to the sub-state. It must contain some value
 // at its nil postfix
-func (p *Proof) CommitmentToTheTerminalNode() trie_go.VCommitment {
+func (p *Proof) CommitmentToTheTerminalNode() trie.VCommitment {
 	if len(p.Path) == 0 {
 		return nil
 	}
@@ -167,8 +166,8 @@ func (p *Proof) CommitmentToTheTerminalNode() trie_go.VCommitment {
 }
 
 func (p *Proof) verify(pathIdx, keyIdx int) ([hashSize]byte, error) {
-	trie_go.Assert(pathIdx < len(p.Path), "assertion: pathIdx < lenPlus1(p.Path)")
-	trie_go.Assert(keyIdx <= len(p.Key), "assertion: keyIdx <= lenPlus1(p.Key)")
+	trie.Assert(pathIdx < len(p.Path), "assertion: pathIdx < lenPlus1(p.Path)")
+	trie.Assert(keyIdx <= len(p.Key), "assertion: keyIdx <= lenPlus1(p.Key)")
 
 	elem := p.Path[pathIdx]
 	tail := p.Key[keyIdx:]
@@ -178,7 +177,7 @@ func (p *Proof) verify(pathIdx, keyIdx int) ([hashSize]byte, error) {
 		return [hashSize]byte{}, fmt.Errorf("wrong proof: proof path does not follow the key. Path position: %d, key position %d", pathIdx, keyIdx)
 	}
 	if !last {
-		trie_go.Assert(isPrefix, "assertion: isPrefix")
+		trie.Assert(isPrefix, "assertion: isPrefix")
 		if !p.PathArity.IsChildIndex(elem.ChildIndex) {
 			return [hashSize]byte{}, fmt.Errorf("wrong proof: wrong child index. Path position: %d, key position %d", pathIdx, keyIdx)
 		}
@@ -213,7 +212,7 @@ func (p *Proof) verify(pathIdx, keyIdx int) ([hashSize]byte, error) {
 func (e *ProofElement) hashIt(missingCommitment *[hashSize]byte, arity trie.PathArity) [hashSize]byte {
 	hashes := make([]*[hashSize]byte, arity.VectorLength())
 	for idx, c := range e.Children {
-		trie_go.Assert(arity.IsChildIndex(int(idx)), "arity.IsChildIndex(int(idx)")
+		trie.Assert(arity.IsChildIndex(int(idx)), "arity.IsChildIndex(int(idx)")
 		hashes[idx] = (*[hashSize]byte)(c)
 	}
 	if e.Terminal != nil {
@@ -229,17 +228,17 @@ func (e *ProofElement) hashIt(missingCommitment *[hashSize]byte, arity trie.Path
 
 func (p *Proof) Write(w io.Writer) error {
 	var err error
-	if err = trie_go.WriteByte(w, byte(p.PathArity)); err != nil {
+	if err = trie.WriteByte(w, byte(p.PathArity)); err != nil {
 		return err
 	}
 	encodedKey, err := trie.EncodeUnpackedBytes(p.Key, p.PathArity)
 	if err != nil {
 		return err
 	}
-	if err = trie_go.WriteBytes16(w, encodedKey); err != nil {
+	if err = trie.WriteBytes16(w, encodedKey); err != nil {
 		return err
 	}
-	if err = trie_go.WriteUint16(w, uint16(len(p.Path))); err != nil {
+	if err = trie.WriteUint16(w, uint16(len(p.Path))); err != nil {
 		return err
 	}
 	for _, e := range p.Path {
@@ -251,20 +250,20 @@ func (p *Proof) Write(w io.Writer) error {
 }
 
 func (p *Proof) Read(r io.Reader) error {
-	b, err := trie_go.ReadByte(r)
+	b, err := trie.ReadByte(r)
 	if err != nil {
 		return err
 	}
 	p.PathArity = trie.PathArity(b)
 	var encodedKey []byte
-	if encodedKey, err = trie_go.ReadBytes16(r); err != nil {
+	if encodedKey, err = trie.ReadBytes16(r); err != nil {
 		return err
 	}
 	if p.Key, err = trie.DecodeToUnpackedBytes(encodedKey, p.PathArity); err != nil {
 		return err
 	}
 	var size uint16
-	if err = trie_go.ReadUint16(r, &size); err != nil {
+	if err = trie.ReadUint16(r, &size); err != nil {
 		return err
 	}
 	p.Path = make([]*ProofElement, size)
@@ -287,10 +286,10 @@ func (e *ProofElement) Write(w io.Writer, arity trie.PathArity) error {
 	if err != nil {
 		return err
 	}
-	if err := trie_go.WriteBytes16(w, encodedPathFragment); err != nil {
+	if err := trie.WriteBytes16(w, encodedPathFragment); err != nil {
 		return err
 	}
-	if err := trie_go.WriteUint16(w, uint16(e.ChildIndex)); err != nil {
+	if err := trie.WriteUint16(w, uint16(e.ChildIndex)); err != nil {
 		return err
 	}
 	var smallFlags byte
@@ -303,7 +302,7 @@ func (e *ProofElement) Write(w io.Writer, arity trie.PathArity) error {
 		flags[i/8] |= 0x1 << (i % 8)
 		smallFlags |= hasChildrenFlag
 	}
-	if err := trie_go.WriteByte(w, smallFlags); err != nil {
+	if err := trie.WriteByte(w, smallFlags); err != nil {
 		return err
 	}
 	// write terminal commitment if any
@@ -333,19 +332,19 @@ func (e *ProofElement) Write(w io.Writer, arity trie.PathArity) error {
 func (e *ProofElement) Read(r io.Reader, arity trie.PathArity) error {
 	var err error
 	var encodedPathFragment []byte
-	if encodedPathFragment, err = trie_go.ReadBytes16(r); err != nil {
+	if encodedPathFragment, err = trie.ReadBytes16(r); err != nil {
 		return err
 	}
 	if e.PathFragment, err = trie.DecodeToUnpackedBytes(encodedPathFragment, arity); err != nil {
 		return err
 	}
 	var idx uint16
-	if err := trie_go.ReadUint16(r, &idx); err != nil {
+	if err := trie.ReadUint16(r, &idx); err != nil {
 		return err
 	}
 	e.ChildIndex = int(idx)
 	var smallFlags byte
-	if smallFlags, err = trie_go.ReadByte(r); err != nil {
+	if smallFlags, err = trie.ReadByte(r); err != nil {
 		return err
 	}
 	if smallFlags&hasTerminalValueFlag != 0 {

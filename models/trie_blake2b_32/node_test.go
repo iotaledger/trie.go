@@ -3,7 +3,6 @@ package trie_blake2b_32
 import (
 	"bytes"
 	"fmt"
-	trie_go "github.com/iotaledger/trie.go"
 	"github.com/iotaledger/trie.go/trie"
 	"github.com/stretchr/testify/require"
 	"testing"
@@ -24,7 +23,7 @@ func TestNodeSerialization(t *testing.T) {
 			nBack, err := trie.NodeDataFromBytes(model, buf.Bytes(), key, arity)
 			require.NoError(t, err)
 
-			require.True(t, trie_go.EqualCommitments(model.CalcNodeCommitment(n), model.CalcNodeCommitment(nBack)))
+			require.True(t, trie.EqualCommitments(model.CalcNodeCommitment(n), model.CalcNodeCommitment(nBack)))
 		})
 		t.Run(fmt.Sprintf("2: %s", arity), func(t *testing.T) {
 			n := trie.NewNodeData()
@@ -37,7 +36,7 @@ func TestNodeSerialization(t *testing.T) {
 			nBack, err := trie.NodeDataFromBytes(model, buf.Bytes(), key, arity)
 			require.NoError(t, err)
 
-			require.True(t, trie_go.EqualCommitments(model.CalcNodeCommitment(n), model.CalcNodeCommitment(nBack)))
+			require.True(t, trie.EqualCommitments(model.CalcNodeCommitment(n), model.CalcNodeCommitment(nBack)))
 		})
 	}
 	runTest(trie.PathArity256)

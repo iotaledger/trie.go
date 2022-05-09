@@ -2,7 +2,6 @@ package trie_kzg_bn256
 
 import (
 	"encoding/hex"
-	trie_go "github.com/iotaledger/trie.go"
 	"github.com/iotaledger/trie.go/trie"
 	"go.dedis.ch/kyber/v3"
 	"math/big"
@@ -234,7 +233,7 @@ func TestStaticTrustedSetup(t *testing.T) {
 	model := New()
 	require.EqualValues(t, 258, model.D)
 
-	store := trie_go.NewInMemoryKVStore()
+	store := trie.NewInMemoryKVStore()
 	tr := trie.New(model, store)
 
 	tr.Update(nil, []byte("kuku"))

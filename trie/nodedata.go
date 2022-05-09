@@ -3,7 +3,6 @@ package trie
 import (
 	"bytes"
 	"fmt"
-	trie_go "github.com/iotaledger/trie.go"
 	"golang.org/x/xerrors"
 	"io"
 )
@@ -11,14 +10,14 @@ import (
 // NodeData contains all data trie node needs to compute commitment
 type NodeData struct {
 	PathFragment     []byte
-	ChildCommitments map[byte]trie_go.VCommitment
-	Terminal         trie_go.TCommitment
+	ChildCommitments map[byte]VCommitment
+	Terminal         TCommitment
 }
 
 func NewNodeData() *NodeData {
 	return &NodeData{
 		PathFragment:     nil,
-		ChildCommitments: make(map[byte]trie_go.VCommitment),
+		ChildCommitments: make(map[byte]VCommitment),
 		Terminal:         nil,
 	}
 }
@@ -35,7 +34,7 @@ func NodeDataFromBytes(model CommitmentModel, data, unpackedKey []byte, arity Pa
 func (n *NodeData) Clone() *NodeData {
 	ret := &NodeData{
 		PathFragment:     make([]byte, len(n.PathFragment)),
-		ChildCommitments: make(map[byte]trie_go.VCommitment),
+		ChildCommitments: make(map[byte]VCommitment),
 	}
 	if n.Terminal != nil {
 		ret.Terminal = n.Terminal.Clone()
@@ -141,11 +140,11 @@ func (n *NodeData) Write(w io.Writer, arity PathArity, isKeyCommitment bool) err
 			return err
 		}
 	}
-	if err = trie_go.WriteByte(w, smallFlags); err != nil {
+	if err = WriteByte(w, smallFlags); err != nil {
 		return err
 	}
 	if smallFlags&serializePathFragmentFlag != 0 {
-		if err = trie_go.WriteBytes16(w, pathFragmentEncoded); err != nil {
+		if err = WriteBytes16(w, pathFragmentEncoded); err != nil {
 			return err
 		}
 	}
@@ -182,11 +181,11 @@ func (n *NodeData) Write(w io.Writer, arity PathArity, isKeyCommitment bool) err
 func (n *NodeData) Read(r io.Reader, model CommitmentModel, unpackedKey []byte, arity PathArity) error {
 	var err error
 	var smallFlags byte
-	if smallFlags, err = trie_go.ReadByte(r); err != nil {
+	if smallFlags, err = ReadByte(r); err != nil {
 		return err
 	}
 	if smallFlags&serializePathFragmentFlag != 0 {
-		encoded, err := trie_go.ReadBytes16(r)
+		encoded, err := ReadBytes16(r)
 		if err != nil {
 			return err
 		}
@@ -210,7 +209,7 @@ func (n *NodeData) Read(r io.Reader, model CommitmentModel, unpackedKey []byte, 
 			if len(unpackedKey) == 0 {
 				return xerrors.New("non-empty unpackedKey expected")
 			}
-			n.Terminal = model.CommitToData(trie_go.Concat(unpackedKey, n.PathFragment))
+			n.Terminal = model.CommitToData(Concat(unpackedKey, n.PathFragment))
 		}
 	}
 	if smallFlags&serializeChildrenFlag != 0 {

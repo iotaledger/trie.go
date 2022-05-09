@@ -2,7 +2,6 @@ package trie
 
 import (
 	"errors"
-	"github.com/iotaledger/trie.go"
 )
 
 var (
@@ -117,7 +116,7 @@ func decode2(data []byte) ([]byte, error) {
 	}
 	ret := make([]byte, 0, len(data)*8)
 	ret = unpack2(ret, data[1:])
-	trie_go.Assert(len(ret) >= int(data[0]), "len(ret) >= int(data[0])")
+	Assert(len(ret) >= int(data[0]), "len(ret) >= int(data[0])")
 	// enforce the last data[0] elements are 0
 	for j := len(ret) - int(data[0]); j < len(ret); j++ {
 		if ret[j] != 0 {
@@ -157,7 +156,7 @@ func EncodeUnpackedBytes(unpacked []byte, arity PathArity) ([]byte, error) {
 
 func mustEncodeUnpackedBytes(unpacked []byte, arity PathArity) []byte {
 	ret, err := EncodeUnpackedBytes(unpacked, arity)
-	trie_go.Assert(err == nil, "%v", err)
+	Assert(err == nil, "%v", err)
 	return ret
 }
 

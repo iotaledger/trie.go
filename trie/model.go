@@ -2,7 +2,6 @@ package trie
 
 import (
 	"fmt"
-	trie_go "github.com/iotaledger/trie.go"
 )
 
 // CommitmentModel abstracts 256+ Trie logic from the commitment logic/cryptography
@@ -10,13 +9,13 @@ type CommitmentModel interface {
 	// PathArity is used by implementations to optimize operations
 	PathArity() PathArity
 	// NewVectorCommitment creates empty trie_go.VCommitment
-	NewVectorCommitment() trie_go.VCommitment
+	NewVectorCommitment() VCommitment
 	// NewTerminalCommitment creates empty trie_go.TCommitment
-	NewTerminalCommitment() trie_go.TCommitment
+	NewTerminalCommitment() TCommitment
 	// CommitToData calculates terminal commitment to an arbitrary data
-	CommitToData([]byte) trie_go.TCommitment
+	CommitToData([]byte) TCommitment
 	// CalcNodeCommitment calculates commitment of the node data
-	CalcNodeCommitment(*NodeData) trie_go.VCommitment
+	CalcNodeCommitment(*NodeData) VCommitment
 	// UpdateNodeCommitment updates mutable NodeData with the update information.
 	// It also (optionally, if 'update' != nil) updates previous commitment to the node
 	// If update != nil and *update != nil, parameter calcDelta specifies if commitment is calculated
@@ -24,7 +23,7 @@ type CommitmentModel interface {
 	// I can be used by implementation to optimize the computation of update. For examples KZG implementation
 	// can be made dramatically faster this way than strictly computing each time whole expensive vector commitment
 	// This interface takes into account different ways how updates are propagated in the trie
-	UpdateNodeCommitment(mutate *NodeData, childUpdates map[byte]trie_go.VCommitment, calcDelta bool, terminal trie_go.TCommitment, update *trie_go.VCommitment)
+	UpdateNodeCommitment(mutate *NodeData, childUpdates map[byte]VCommitment, calcDelta bool, terminal TCommitment, update *VCommitment)
 	// Description return description of the implementation
 	Description() string
 	// ShortName short name
