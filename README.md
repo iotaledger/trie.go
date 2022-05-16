@@ -7,7 +7,7 @@ The trie update and proof retrieval operations are highly optimized via caching 
 trie updates up until the tries ic _committed_ (recalculated). 
 It saves a lot of DB interactions and a lot of cryptographic operations, such as hashing and curve arithmetics.  
 
-The library supports variable and fixed sized keys and several optimization options:
+The library supports both variable and fixed-sized keys as well as several optimization options:
 * 256-ary trie is best for fixed-sized commitment models like `KZG (Kate`  and `verkle` tries
 * 16-ary (hexary) trie is similar to Patricia trees. It is close to optimal when it comes to hash-based commitment models
 * 2-ary (binary) trie gives the smallest proof size with hash-based commitment. However, much longer proof path and 
@@ -137,7 +137,7 @@ Statistics on the 2.8 GhZ 32 GB RAM SDD laptop.
 | Average size of serialized proof                                       | 1.3 kB                    |
 
 We can see that optimal choice with `blake2b 160-bit` model is between hexary and binary trie. 
-Note that binary trie is using several times more runtime memory for key packing/unpacking.
+Note that binary trie is using more runtime memory for key packing/unpacking.
 
 The `KZG (Kate)` model would give the shortest proofs (~200 bytes) with 1-2 orders of magnitude slower trie update.
 
