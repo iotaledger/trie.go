@@ -1,14 +1,20 @@
 ## trie.go
 Go library for implementations of tries (radix trees), state commitments and _proof of inclusion_ for large data sets.
 
-It implements a generic `256+ trie` for several particular commitment schemes.
+It implements a generic `256+ trie` for several particular commitment schemes. 
 
-The library supports variable sized keys and several optimization options:
+The trie update and proof retrieval operations are highly optimized via caching access to the database and buffering 
+trie updates up until the tries ic _committed_ (recalculated). 
+It saves a lot of DB interactions and a lot of cryptographic operations, such as hashing and curve arithmetics.  
+
+The library supports variable and fixed sized keys and several optimization options:
 * 256-ary trie is best for fixed-sized commitment models like `KZG (Kate`  and `verkle` tries
-* 16-ary (hexary) trie is similar to Patricia trees. It is close to optimal when it comes to hash-base commitment models
+* 16-ary (hexary) trie is similar to Patricia trees. It is close to optimal when it comes to hash-based commitment models
 * 2-ary (binary) trie gives the smallest proof size with hash-based commitment. However, much longer proof path and 
 bytes-to-bits packing/unpacking overhead is significant
-* library also supports `key commitments` when key and value are equal. This makes it optimal for ledger-state commitments. 
+* library also supports `key commitments`, a trie optimization when key and value are equal. This makes it optimal for ledger-state commitments, 
+because in ledger state commitments the committed values are commitments itself (UTXO IDs or transaction ID) 
+and the trie stores committed terminal value only once.
 
 The trie implementation has minimal dependencies on other projects. 
 
@@ -138,3 +144,68 @@ The `KZG (Kate)` model would give the shortest proofs (~200 bytes) with 1-2 orde
 ## Package `examples/trie_example`  
 Contains a simple example with the in memory key/value store. Run `go install` and the run the program `trie_example`.
 
+```go
+package main
+
+import (
+	"fmt"
+	"github.com/iotaledger/trie.go/models/trie_blake2b_20"
+	"github.com/iotaledger/trie.go/trie"
+)
+
+var data = []string{"a", "abc", "abcd", "b", "abd", "klmn", "oprst", "ab", "bcd"}
+
+func main() {
+	// create store where trie nodes will be stored
+	store := trie.NewInMemoryKVStore()
+
+	// create blake2b 20 bytes (160 bit) commitment model
+	model := trie_blake2b_20.New(trie.PathArity2)
+
+	// create the trie with binary keys
+	tr := trie.New(model, store)
+	fmt.Printf("\nExample of trie.\n%s\n", tr.Info())
+
+	// add data key/value pairs to the trie
+	for _, s := range data {
+		fmt.Printf("add key '%s' into the trie\n", s)
+		tr.UpdateStr(s, s+"$")
+	}
+	// recalculate commitments in the trie
+	tr.Commit()
+	rootCommitment := trie.RootCommitment(tr)
+	fmt.Printf("root commitment: %s\n", rootCommitment)
+	// remove some keys from the trie
+	for i := range []int{1, 5, 6} {
+		fmt.Printf("remove key '%s' from the trie\n", data[i])
+		tr.DeleteStr(data[i])
+	}
+	// recalc trie again
+	tr.Commit()
+	rootCommitment = trie.RootCommitment(tr)
+	fmt.Printf("root commitment: %s\n", rootCommitment)
+
+	// check PoI for all data
+	for _, s := range data {
+		// retrieve proof
+		proof := model.Proof([]byte(s), tr)
+		fmt.Printf("PoI of the key '%s': length %d, serialized size %d bytes\n",
+			s, len(proof.Path), trie.MustSize(proof))
+		// validate proof
+		err := proof.Validate(rootCommitment)
+		errstr := "OK"
+		if err != nil {
+			errstr = err.Error()
+		}
+		if err != nil {
+			fmt.Printf("validating PoI for '%s': %s\n", s, errstr)
+			continue
+		}
+		if proof.IsProofOfAbsence() {
+			fmt.Printf("key '%s' is NOT IN THE STATE\n", s)
+		} else {
+			fmt.Printf("key '%s' is IN THE STATE\n", s)
+		}
+	}
+}
+```
