@@ -1,5 +1,5 @@
 ## trie.go
-Go library for implementations of tries (radix trees), state commitments and _proof of inclusion_ for large data sets.
+Go library for implementations of sparse tries (sparse radix trees), state commitments and _proof of inclusion_ for large data sets.
 
 It implements a generic `256+ trie` for several particular commitment schemes. 
 
@@ -45,12 +45,14 @@ and from details of key/value store implementation via `KVStore` interface.
 The generic implementation of `256+ trie` can be used to implement different commitment models by implementing 
 `CommitmentModel` interface.  
 
-### Packages `models/trie_blake2b_32` and `models/trie_blake2b_20`
-Contains implementation of the `CommitmentModel` as a Merkle tree on the `256+ trie` with data commitment via `blake2b` hash function.
+### Packages `models/trie_blake2b`
+Contains implementation of the `CommitmentModel` as a sparse Merkle tree on the `256+ trie` with data commitment via `blake2b` hash function.
 
-The two implementations are almost identical. The difference is the use of 32 byte/256 bit and 20 byte/160 bit hashing functions respectively.  
+The binary (2-ary) trie is essentially the same as well known _Sparse Merkle Tree_. 
 
-The implementation is fast and optimized. It can be used in various project. It is used in the `Wasp` node.
+The implementation takes parameter weather it will be using 32 byte/256 bit or 20 byte/160 bit hashing functions.  
+
+The implementation is fast and optimized. It can be used in various project.
 
 The usage of hashing function as a commitment function results in proofs of inclusion 5-6 times bigger than with
 polynomial KZG (aka Kate) commitments (size of PoI usually is up to 1-2K bytes).
@@ -109,12 +111,15 @@ Statistics on the 2.8 GhZ 32 GB RAM SDD laptop.
 * 1 mil key/value pairs in file: 69 MB
 * 1 mil key/value pairs in Badger DB (no trie): 162 MB
 
+_Note: retrieval speed very much depends on caching parameters. Benchmark results (caching turned off) would be much faster
+with caching turned on._
+
 ### Benchmark for 256-ary trie
 | Parameter                                                              | blake2b 160 bit<br/>model | 
 |------------------------------------------------------------------------|---------------------------|
 | Load 1 mil records into the DB <br> with trie generation (cached trie) | 30000 kv pairs/sec        |
 | Badger DB size                                                         | 408 MB                    |
-| Retrieve proof + validation (not-cached trie)                          | 3340 proofs/sec           |
+| Retrieve proof + validation (not-cached trie )                         | 3340 proofs/sec           |
 | Average length of the proof path                                       | 4.04                      |
 | Average size of serialized proof                                       | 10.6 kB                   |
 
@@ -148,64 +153,65 @@ Contains a simple example with the in memory key/value store. Run `go install` a
 package main
 
 import (
-	"fmt"
-	"github.com/iotaledger/trie.go/models/trie_blake2b_20"
-	"github.com/iotaledger/trie.go/trie"
+  "fmt"
+  "github.com/iotaledger/trie.go/models/trie_blake2b"
+  "github.com/iotaledger/trie.go/trie"
 )
 
 var data = []string{"a", "abc", "abcd", "b", "abd", "klmn", "oprst", "ab", "bcd"}
 
 func main() {
-	// create store where trie nodes will be stored
-	store := trie.NewInMemoryKVStore()
+  // create store where trie nodes will be stored
+  store := trie.NewInMemoryKVStore()
 
-	// create blake2b 20 bytes (160 bit) commitment model
-	model := trie_blake2b_20.New(trie.PathArity2)
+  // create blake2b 20 bytes (160 bit) commitment model
+  model := trie_blake2b.New(trie.PathArity2, trie_blake2b.HashSize160)
 
-	// create the trie with binary keys
-	tr := trie.New(model, store)
-	fmt.Printf("\nExample of trie.\n%s\n", tr.Info())
+  // create the trie with binary keys
+  tr := trie.New(model, store)
+  fmt.Printf("\nExample of trie.\n%s\n", tr.Info())
 
-	// add data key/value pairs to the trie
-	for _, s := range data {
-		fmt.Printf("add key '%s' into the trie\n", s)
-		tr.UpdateStr(s, s+"$")
-	}
-	// recalculate commitments in the trie
-	tr.Commit()
-	rootCommitment := trie.RootCommitment(tr)
-	fmt.Printf("root commitment: %s\n", rootCommitment)
-	// remove some keys from the trie
-	for i := range []int{1, 5, 6} {
-		fmt.Printf("remove key '%s' from the trie\n", data[i])
-		tr.DeleteStr(data[i])
-	}
-	// recalc trie again
-	tr.Commit()
-	rootCommitment = trie.RootCommitment(tr)
-	fmt.Printf("root commitment: %s\n", rootCommitment)
+  // add data key/value pairs to the trie
+  for _, s := range data {
+    fmt.Printf("add key '%s' into the trie\n", s)
+    tr.UpdateStr(s, s+"$")
+  }
+  // recalculate commitments in the trie
+  tr.Commit()
+  rootCommitment := trie.RootCommitment(tr)
+  fmt.Printf("root commitment: %s\n", rootCommitment)
+  // remove some keys from the trie
+  for i := range []int{1, 5, 6} {
+    fmt.Printf("remove key '%s' from the trie\n", data[i])
+    tr.DeleteStr(data[i])
+  }
+  // recalc trie again
+  tr.Commit()
+  rootCommitment = trie.RootCommitment(tr)
+  fmt.Printf("root commitment: %s\n", rootCommitment)
 
-	// check PoI for all data
-	for _, s := range data {
-		// retrieve proof
-		proof := model.Proof([]byte(s), tr)
-		fmt.Printf("PoI of the key '%s': length %d, serialized size %d bytes\n",
-			s, len(proof.Path), trie.MustSize(proof))
-		// validate proof
-		err := proof.Validate(rootCommitment)
-		errstr := "OK"
-		if err != nil {
-			errstr = err.Error()
-		}
-		if err != nil {
-			fmt.Printf("validating PoI for '%s': %s\n", s, errstr)
-			continue
-		}
-		if proof.IsProofOfAbsence() {
-			fmt.Printf("key '%s' is NOT IN THE STATE\n", s)
-		} else {
-			fmt.Printf("key '%s' is IN THE STATE\n", s)
-		}
-	}
+  // check PoI for all data
+  for _, s := range data {
+    // retrieve proof
+    proof := model.Proof([]byte(s), tr)
+    fmt.Printf("PoI of the key '%s': length %d, serialized size %d bytes\n",
+      s, len(proof.Path), trie.MustSize(proof))
+    // validate proof
+    err := proof.Validate(rootCommitment)
+    errstr := "OK"
+    if err != nil {
+      errstr = err.Error()
+    }
+    if err != nil {
+      fmt.Printf("validating PoI for '%s': %s\n", s, errstr)
+      continue
+    }
+    if proof.IsProofOfAbsence() {
+      fmt.Printf("key '%s' is NOT IN THE STATE\n", s)
+    } else {
+      fmt.Printf("key '%s' is IN THE STATE\n", s)
+    }
+  }
 }
+
 ```
