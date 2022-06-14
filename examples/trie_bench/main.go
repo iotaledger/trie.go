@@ -7,8 +7,7 @@ import (
 	"github.com/iotaledger/hive.go/kvstore/badger"
 	"github.com/iotaledger/hive.go/kvstore/mapdb"
 	"github.com/iotaledger/trie.go/hive_adaptor"
-	"github.com/iotaledger/trie.go/models/trie_blake2b_20"
-	"github.com/iotaledger/trie.go/models/trie_blake2b_32"
+	"github.com/iotaledger/trie.go/models/trie_blake2b"
 	"github.com/iotaledger/trie.go/trie"
 	"golang.org/x/crypto/blake2b"
 	"os"
@@ -62,9 +61,9 @@ func main() {
 
 	switch *hashsize {
 	case 20:
-		model = trie_blake2b_20.New(arity)
+		model = trie_blake2b.New(arity, trie_blake2b.HashSize160)
 	case 32:
-		model = trie_blake2b_32.New(arity)
+		model = trie_blake2b.New(arity, trie_blake2b.HashSize256)
 	default:
 		fmt.Printf(usage)
 		os.Exit(1)
@@ -123,7 +122,7 @@ func genrnd() {
 	})
 	fileWriter, err := trie.CreateKVStreamFile(fname)
 	must(err)
-	defer fileWriter.Close()
+	defer func() { _ = fileWriter.Close() }()
 
 	count := 0
 	wrote := 0
@@ -167,7 +166,7 @@ func mkdbbadger() {
 
 	db, err := badger.CreateDB(dbdir)
 	must(err)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	kvs := badger.New(db)
 	must(err)
@@ -184,7 +183,7 @@ func mkdbbadgerNoTrie() {
 
 	db, err := badger.CreateDB(dbdir)
 	must(err)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	kvs := badger.New(db)
 	must(err)
@@ -201,7 +200,7 @@ func scandbbadger() {
 
 	db, err := badger.CreateDB(dbdir)
 	must(err)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	kvs := badger.New(db)
 	trieKVS := hive_adaptor.NewHiveKVStoreAdaptor(kvs, triePrefix)
@@ -238,20 +237,10 @@ func scandbbadger() {
 	proofLen := 0
 	tm := newTimer()
 	valueKVS.Iterate(func(k []byte, v []byte) bool {
-		switch m := model.(type) {
-		case *trie_blake2b_20.CommitmentModel:
-			proof := m.Proof(k, tr)
-			proofBytes += len(proof.Bytes())
-			proofLen += len(proof.Path)
-			err = proof.Validate(root, v)
-
-		case *trie_blake2b_32.CommitmentModel:
-			proof := m.Proof(k, tr)
-			proofBytes += len(proof.Bytes())
-			proofLen += len(proof.Path)
-			err = proof.Validate(root, v)
-
-		}
+		proof := model.(*trie_blake2b.CommitmentModel).Proof(k, tr)
+		proofBytes += len(proof.Bytes())
+		proofLen += len(proof.Path)
+		err = proof.Validate(root, v)
 		must(err)
 		if recCounter%flushEach == 0 {
 			fmt.Printf("validated %d records in %v, %f proof/sec, avg proof bytes %d, avg proof len %f\n",
@@ -273,7 +262,7 @@ var (
 func file2kvs(kvs kvstore.KVStore) {
 	streamIn, err := trie.OpenKVStreamFile(fname)
 	must(err)
-	defer streamIn.Close()
+	defer func() { _ = streamIn.Close() }()
 
 	tm := newTimer()
 	counterRec := 1
@@ -308,7 +297,7 @@ func file2kvs(kvs kvstore.KVStore) {
 func file2kvsNoTrie(kvs kvstore.KVStore) {
 	streamIn, err := trie.OpenKVStreamFile(fname)
 	must(err)
-	defer streamIn.Close()
+	defer func() { _ = streamIn.Close() }()
 
 	tm := newTimer()
 	counterRec := 1

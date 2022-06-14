@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"github.com/iotaledger/trie.go/models/trie_blake2b_20"
+	"github.com/iotaledger/trie.go/models/trie_blake2b"
 	"github.com/iotaledger/trie.go/trie"
 )
 
@@ -13,7 +13,7 @@ func main() {
 	store := trie.NewInMemoryKVStore()
 
 	// create blake2b 20 bytes (160 bit) commitment model
-	model := trie_blake2b_20.New(trie.PathArity2)
+	model := trie_blake2b.New(trie.PathArity2, trie_blake2b.HashSize160)
 
 	// create the trie with binary keys
 	tr := trie.New(model, store)

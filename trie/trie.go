@@ -81,8 +81,8 @@ func (tr *Trie) GetNode(unpackedKey []byte) (Node, bool) {
 }
 
 func (tr *Trie) Info() string {
-	return fmt.Sprintf("Trie( model dscr: '%s', path arity: %s, optimize key commitments: %v)",
-		tr.nodeStore.reader.m.Description(), tr.nodeStore.reader.arity, tr.nodeStore.optimizeKeyCommitments,
+	return fmt.Sprintf("Trie( model dscr: '%s', optimize key commitments: %v)",
+		tr.nodeStore.reader.m.Description(), tr.nodeStore.optimizeKeyCommitments,
 	)
 }
 
