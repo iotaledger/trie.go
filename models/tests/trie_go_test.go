@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/iotaledger/trie.go/models/trie_blake2b"
-	"github.com/iotaledger/trie.go/models/trie_blake2b_20"
-	"github.com/iotaledger/trie.go/models/trie_blake2b_32"
 	"github.com/iotaledger/trie.go/models/trie_kzg_bn256"
 	"github.com/iotaledger/trie.go/trie"
 	"github.com/stretchr/testify/require"
@@ -111,12 +109,6 @@ func TestNode(t *testing.T) {
 	runTest(t, trie_blake2b.New(trie.PathArity2, trie_blake2b.HashSize256))
 	runTest(t, trie_blake2b.New(trie.PathArity2, trie_blake2b.HashSize160))
 
-	runTest(t, trie_blake2b_32.New(trie.PathArity256))
-	runTest(t, trie_blake2b_20.New(trie.PathArity256))
-	runTest(t, trie_blake2b_32.New(trie.PathArity16))
-	runTest(t, trie_blake2b_20.New(trie.PathArity16))
-	runTest(t, trie_blake2b_32.New(trie.PathArity2))
-	runTest(t, trie_blake2b_20.New(trie.PathArity2))
 	runTest(t, trie_kzg_bn256.New())
 }
 
@@ -454,13 +446,6 @@ func TestTrieBase(t *testing.T) {
 		})
 	}
 
-	runTest(t, trie_blake2b_32.New(trie.PathArity256))
-	runTest(t, trie_blake2b_32.New(trie.PathArity16))
-	runTest(t, trie_blake2b_32.New(trie.PathArity2))
-	runTest(t, trie_blake2b_20.New(trie.PathArity256))
-	runTest(t, trie_blake2b_20.New(trie.PathArity16))
-	runTest(t, trie_blake2b_20.New(trie.PathArity2))
-
 	runTest(t, trie_blake2b.New(trie.PathArity256, trie_blake2b.HashSize256))
 	runTest(t, trie_blake2b.New(trie.PathArity16, trie_blake2b.HashSize256))
 	runTest(t, trie_blake2b.New(trie.PathArity2, trie_blake2b.HashSize256))
@@ -688,13 +673,6 @@ func TestTrieRnd(t *testing.T) {
 		})
 	}
 
-	runTest(t, trie_blake2b_32.New(trie.PathArity256), false)
-	runTest(t, trie_blake2b_32.New(trie.PathArity16), false)
-	runTest(t, trie_blake2b_32.New(trie.PathArity2), false)
-	runTest(t, trie_blake2b_20.New(trie.PathArity256), false)
-	runTest(t, trie_blake2b_20.New(trie.PathArity16), false)
-	runTest(t, trie_blake2b_20.New(trie.PathArity2), false)
-
 	runTest(t, trie_blake2b.New(trie.PathArity256, trie_blake2b.HashSize256), false)
 	runTest(t, trie_blake2b.New(trie.PathArity16, trie_blake2b.HashSize256), false)
 	runTest(t, trie_blake2b.New(trie.PathArity2, trie_blake2b.HashSize256), false)
@@ -861,13 +839,6 @@ func TestTrieRndKeyCommitment(t *testing.T) {
 		})
 	}
 
-	runTest(t, trie_blake2b_32.New(trie.PathArity256), false)
-	runTest(t, trie_blake2b_32.New(trie.PathArity16), false)
-	runTest(t, trie_blake2b_32.New(trie.PathArity2), false)
-	runTest(t, trie_blake2b_20.New(trie.PathArity256), false)
-	runTest(t, trie_blake2b_20.New(trie.PathArity16), false)
-	runTest(t, trie_blake2b_20.New(trie.PathArity2), false)
-
 	runTest(t, trie_blake2b.New(trie.PathArity256, trie_blake2b.HashSize256), false)
 	runTest(t, trie_blake2b.New(trie.PathArity16, trie_blake2b.HashSize256), false)
 	runTest(t, trie_blake2b.New(trie.PathArity2, trie_blake2b.HashSize256), false)
@@ -917,13 +888,6 @@ func TestKeyCommitmentOptimization(t *testing.T) {
 		})
 	}
 
-	runTest(trie_blake2b_32.New(trie.PathArity256))
-	runTest(trie_blake2b_32.New(trie.PathArity16))
-	runTest(trie_blake2b_32.New(trie.PathArity2))
-	runTest(trie_blake2b_20.New(trie.PathArity256))
-	runTest(trie_blake2b_20.New(trie.PathArity16))
-	runTest(trie_blake2b_20.New(trie.PathArity2))
-
 	runTest(trie_blake2b.New(trie.PathArity256, trie_blake2b.HashSize256))
 	runTest(trie_blake2b.New(trie.PathArity16, trie_blake2b.HashSize256))
 	runTest(trie_blake2b.New(trie.PathArity2, trie_blake2b.HashSize256))
@@ -951,22 +915,22 @@ func TestKeyCommitmentOptimizationOptions(t *testing.T) {
 		return trie.ByteSize(store1)
 	}
 	arity := trie.PathArity256
-	size1 := runTest(trie_blake2b_32.New(arity), true)
-	size2 := runTest(trie_blake2b_32.New(arity), false)
+	size1 := runTest(trie_blake2b.New(arity, trie_blake2b.HashSize256), true)
+	size2 := runTest(trie_blake2b.New(arity, trie_blake2b.HashSize256), false)
 	t.Logf("   with key commitment optimization. Arity: %s, Byte size: %d", arity, size1)
 	t.Logf("without key commitment optimization. Arity: %s, Byte size: %d", arity, size2)
 	require.True(t, size1 < size2)
 
 	arity = trie.PathArity16
-	size1 = runTest(trie_blake2b_32.New(arity), true)
-	size2 = runTest(trie_blake2b_32.New(arity), false)
+	size1 = runTest(trie_blake2b.New(arity, trie_blake2b.HashSize256), true)
+	size2 = runTest(trie_blake2b.New(arity, trie_blake2b.HashSize256), false)
 	t.Logf("   with key commitment optimization. Arity: %s, Byte size: %d", arity, size1)
 	t.Logf("without key commitment optimization. Arity: %s, Byte size: %d", arity, size2)
 	require.True(t, size1 < size2)
 
 	arity = trie.PathArity2
-	size1 = runTest(trie_blake2b_32.New(arity), true)
-	size2 = runTest(trie_blake2b_32.New(arity), false)
+	size1 = runTest(trie_blake2b.New(arity, trie_blake2b.HashSize256), true)
+	size2 = runTest(trie_blake2b.New(arity, trie_blake2b.HashSize256), false)
 	t.Logf("   with key commitment optimization. Arity: %s, Byte size: %d", arity, size1)
 	t.Logf("without key commitment optimization. Arity: %s, Byte size: %d", arity, size2)
 	require.True(t, size1 < size2)
@@ -1008,44 +972,6 @@ func TestKeyCommitmentOptimizationOptions20(t *testing.T) {
 	t.Logf("   with key commitment optimization. Arity: %s, Byte size: %d", arity, size1)
 	t.Logf("without key commitment optimization. Arity: %s, Byte size: %d", arity, size2)
 	require.True(t, size1 < size2)
-}
-
-func Test20Vs32Static(t *testing.T) {
-	data := genRnd4()[:10_000]
-	runTest := func(model trie.CommitmentModel) int {
-		store := trie.NewInMemoryKVStore()
-		tr1 := trie.New(model, store)
-
-		for _, d := range data {
-			if len(d) > 0 {
-				tr1.InsertKeyCommitment([]byte(d))
-			}
-		}
-		tr1.Commit()
-		tr1.PersistMutations(store)
-
-		return trie.ByteSize(store)
-	}
-	arity := trie.PathArity256
-	size1 := runTest(trie_blake2b_32.New(arity))
-	size2 := runTest(trie_blake2b_20.New(arity))
-	t.Logf("with blake2b 32 byte. Byte size: %d, Arity: %s", size1, arity)
-	t.Logf("with blake2b 20. Byte size: %d, Arity: %s", size2, arity)
-	require.True(t, size2 < size1)
-
-	arity = trie.PathArity16
-	size1 = runTest(trie_blake2b_32.New(arity))
-	size2 = runTest(trie_blake2b_20.New(arity))
-	t.Logf("with blake2b 32 byte. Byte size: %d, Arity: %s", size1, arity)
-	t.Logf("with blake2b 20. Byte size: %d, Arity: %s", size2, arity)
-	require.True(t, size2 < size1)
-
-	arity = trie.PathArity2
-	size1 = runTest(trie_blake2b_32.New(arity))
-	size2 = runTest(trie_blake2b_20.New(arity))
-	t.Logf("with blake2b 32 byte. Byte size: %d, Arity: %s", size1, arity)
-	t.Logf("with blake2b 20. Byte size: %d, Arity: %s", size2, arity)
-	require.True(t, size2 < size1)
 }
 
 func Test20Vs32(t *testing.T) {
@@ -1219,13 +1145,6 @@ func TestTrieWithDeletion(t *testing.T) {
 		})
 	}
 
-	runTest(t, trie_blake2b_32.New(trie.PathArity256))
-	runTest(t, trie_blake2b_32.New(trie.PathArity16))
-	runTest(t, trie_blake2b_32.New(trie.PathArity2))
-	runTest(t, trie_blake2b_20.New(trie.PathArity256))
-	runTest(t, trie_blake2b_20.New(trie.PathArity16))
-	runTest(t, trie_blake2b_20.New(trie.PathArity2))
-
 	runTest(t, trie_blake2b.New(trie.PathArity256, trie_blake2b.HashSize256))
 	runTest(t, trie_blake2b.New(trie.PathArity16, trie_blake2b.HashSize256))
 	runTest(t, trie_blake2b.New(trie.PathArity2, trie_blake2b.HashSize256))
@@ -1322,13 +1241,6 @@ func TestTrieWithDeletionDeterm(t *testing.T) {
 		})
 	}
 
-	runTest(t, trie_blake2b_32.New(trie.PathArity256), false)
-	runTest(t, trie_blake2b_32.New(trie.PathArity16), false)
-	runTest(t, trie_blake2b_32.New(trie.PathArity2), false)
-	runTest(t, trie_blake2b_20.New(trie.PathArity256), false)
-	runTest(t, trie_blake2b_20.New(trie.PathArity16), false)
-	runTest(t, trie_blake2b_20.New(trie.PathArity2), false)
-
 	runTest(t, trie_blake2b.New(trie.PathArity256, trie_blake2b.HashSize256), false)
 	runTest(t, trie_blake2b.New(trie.PathArity16, trie_blake2b.HashSize256), false)
 	runTest(t, trie_blake2b.New(trie.PathArity2, trie_blake2b.HashSize256), false)
@@ -1381,13 +1293,6 @@ func TestDeleteCommit(t *testing.T) {
 		require.True(t, trie.EqualCommitments(c[0], c[1]))
 	}
 
-	runTest(t, trie_blake2b_32.New(trie.PathArity256))
-	runTest(t, trie_blake2b_32.New(trie.PathArity16))
-	runTest(t, trie_blake2b_32.New(trie.PathArity2))
-	runTest(t, trie_blake2b_20.New(trie.PathArity256))
-	runTest(t, trie_blake2b_20.New(trie.PathArity16))
-	runTest(t, trie_blake2b_20.New(trie.PathArity2))
-
 	runTest(t, trie_blake2b.New(trie.PathArity256, trie_blake2b.HashSize256))
 	runTest(t, trie_blake2b.New(trie.PathArity16, trie_blake2b.HashSize256))
 	runTest(t, trie_blake2b.New(trie.PathArity2, trie_blake2b.HashSize256))
@@ -1435,13 +1340,6 @@ func TestGenTrie(t *testing.T) {
 			t.Logf("dumped trie size = %d", n)
 		})
 	}
-
-	runTest(t, trie_blake2b_32.New(trie.PathArity256))
-	runTest(t, trie_blake2b_32.New(trie.PathArity16))
-	runTest(t, trie_blake2b_32.New(trie.PathArity2))
-	runTest(t, trie_blake2b_20.New(trie.PathArity256))
-	runTest(t, trie_blake2b_20.New(trie.PathArity16))
-	runTest(t, trie_blake2b_20.New(trie.PathArity2))
 
 	runTest(t, trie_blake2b.New(trie.PathArity256, trie_blake2b.HashSize256))
 	runTest(t, trie_blake2b.New(trie.PathArity16, trie_blake2b.HashSize256))
