@@ -46,16 +46,16 @@ func RootCommitment(tr NodeStore) VCommitment {
 	})
 }
 
-// Trie implements NodeStore interface. It buffers all TrieReader for optimization purposes: multiple updates of trie do not require DB TrieReader
+// Trie implements NodeStore interface. It buffers (caches) all TrieReader for optimization purposes
 var _ NodeStore = &Trie{}
 
-func New(model CommitmentModel, store KVReader, optimizeKeyCommitments ...bool) *Trie {
+func New(model CommitmentModel, trieStore, valueStore KVReader, optimizeKeyCommitments ...bool) *Trie {
 	o := false
 	if len(optimizeKeyCommitments) > 0 {
 		o = optimizeKeyCommitments[0]
 	}
 	ret := &Trie{
-		nodeStore: newNodeStoreBuffered(model, store, model.PathArity(), o),
+		nodeStore: newNodeStoreBuffered(model, trieStore, valueStore, model.PathArity(), o),
 	}
 	return ret
 }
@@ -465,9 +465,9 @@ func (tr *Trie) DangerouslyDumpCacheToString() string {
 // TrieReader implements NodeStore
 var _ NodeStore = &TrieReader{}
 
-func NewTrieReader(model CommitmentModel, store KVReader) *TrieReader {
+func NewTrieReader(model CommitmentModel, trieStore, valueStore KVReader) *TrieReader {
 	return &TrieReader{
-		reader: newNodeStore(store, model, model.PathArity()),
+		reader: newNodeStore(trieStore, valueStore, model, model.PathArity()),
 	}
 }
 

@@ -16,7 +16,7 @@ func main() {
 	model := trie_blake2b.New(trie.PathArity2, trie_blake2b.HashSize160)
 
 	// create the trie with binary keys
-	tr := trie.New(model, store)
+	tr := trie.New(model, store, nil)
 	fmt.Printf("\nExample of trie.\n%s\n", tr.Info())
 
 	// add data key/value pairs to the trie

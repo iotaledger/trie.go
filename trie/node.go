@@ -47,8 +47,8 @@ func (n *nodeReadOnly) IsCommitted() bool {
 	return true
 }
 
-func nodeReadOnlyFromBytes(model CommitmentModel, data, unpackedKey []byte, arity PathArity) (*nodeReadOnly, error) {
-	ret, err := NodeDataFromBytes(model, data, unpackedKey, arity)
+func nodeReadOnlyFromBytes(model CommitmentModel, data, unpackedKey []byte, arity PathArity, valueStore KVReader) (*nodeReadOnly, error) {
+	ret, err := NodeDataFromBytes(model, data, unpackedKey, arity, valueStore)
 	if err != nil {
 		return nil, err
 	}
@@ -142,14 +142,15 @@ func (n *bufferedNode) isModified() bool {
 }
 
 func (n *bufferedNode) Bytes(model CommitmentModel, arity PathArity, optimizeKeyCommitments bool) []byte {
-	// Optimization: if terminal commits to unpackedKey, no need to serialize it
+	// Optimization: if terminal commits to unpackedKey, no need to serialize it,
+	// because all information is in the key
 	isKeyCommitment := false
 	if optimizeKeyCommitments && len(n.unpackedKey) > 0 {
 		keyCommitment := model.CommitToData(Concat(n.unpackedKey, n.n.PathFragment))
 		isKeyCommitment = EqualCommitments(n.n.Terminal, keyCommitment)
 	}
 	var buf bytes.Buffer
-	err := n.n.Write(&buf, arity, isKeyCommitment)
+	err := n.n.Write(&buf, arity, isKeyCommitment, !model.StoreTerminalWithNode(n.n.Terminal))
 	Assert(err == nil, "%v", err)
 	return buf.Bytes()
 }

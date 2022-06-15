@@ -2,6 +2,7 @@ package trie
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"golang.org/x/xerrors"
 	"io"
@@ -22,9 +23,9 @@ func NewNodeData() *NodeData {
 	}
 }
 
-func NodeDataFromBytes(model CommitmentModel, data, unpackedKey []byte, arity PathArity) (*NodeData, error) {
+func NodeDataFromBytes(model CommitmentModel, data, unpackedKey []byte, arity PathArity, valueStore KVReader) (*NodeData, error) {
 	ret := NewNodeData()
-	if err := ret.Read(bytes.NewReader(data), model, unpackedKey, arity); err != nil {
+	if err := ret.Read(bytes.NewReader(data), model, unpackedKey, arity, valueStore); err != nil {
 		return nil, err
 	}
 	return ret, nil
@@ -64,9 +65,9 @@ func (n *NodeData) String() string {
 // The serialization of the node takes advantage of the fact that most of the
 // nodes has just few children.
 // the 'smallFlags' (1 byte) contains information:
-// - 'serializeTerminalValueFlag' does node contain Terminal commitment
+// - 'takeTerminalFromKeyFlag' does node contain Terminal commitment
 // - 'serializeChildrenFlag' does node contain at least one child
-// - 'isKeyCommitmentFlag' is optimization case when commitment to the terminal == commitment to the unpackedKey
+// - 'terminalExistsFlag' is optimization case when commitment to the terminal == commitment to the unpackedKey
 //    In this case terminal is not serialized
 // - 'serializePathFragmentFlag' flag means node has non-empty path fragment
 // By the semantics of the trie, 'smallFlags' cannot be 0
@@ -76,10 +77,11 @@ func (n *NodeData) String() string {
 // at the index i/8. The bit position in the byte is i % 8
 
 const (
-	isKeyCommitmentFlag        = 0x01
-	serializeTerminalValueFlag = 0x02
-	serializeChildrenFlag      = 0x04
-	serializePathFragmentFlag  = 0x08
+	terminalExistsFlag        = 0x01
+	takeTerminalFromValueFlag = 0x02
+	takeTerminalFromKeyFlag   = 0x04
+	serializeChildrenFlag     = 0x08
+	serializePathFragmentFlag = 0x10
 )
 
 // cflags 256 flags, one for each child
@@ -116,18 +118,20 @@ func (fl cflags) hasFlag(i byte) bool {
 	return fl[i/8]&(0x1<<(i%8)) != 0
 }
 
-func (n *NodeData) Write(w io.Writer, arity PathArity, isKeyCommitment bool) error {
+// Write serialized node data
+func (n *NodeData) Write(w io.Writer, arity PathArity, isKeyCommitment bool, skipTerminal bool) error {
 	var smallFlags byte
-	if isKeyCommitment {
-		smallFlags |= isKeyCommitmentFlag
+	if n.Terminal != nil {
+		smallFlags |= terminalExistsFlag
 	}
-	if !isKeyCommitment && n.Terminal != nil {
-		smallFlags |= serializeTerminalValueFlag
+	if skipTerminal {
+		smallFlags |= takeTerminalFromValueFlag
+	}
+	if isKeyCommitment {
+		smallFlags |= takeTerminalFromKeyFlag
 	}
 	if len(n.ChildCommitments) > 0 {
 		smallFlags |= serializeChildrenFlag
-	}
-	if smallFlags&serializeChildrenFlag != 0 {
 	}
 	if smallFlags == 0 {
 		return xerrors.New("non-committing node can't be serialized")
@@ -148,8 +152,10 @@ func (n *NodeData) Write(w io.Writer, arity PathArity, isKeyCommitment bool) err
 			return err
 		}
 	}
-	// write Terminal commitment if needed. If unpackedKey is committed as terminal, terminal is not serialized
-	if smallFlags&serializeTerminalValueFlag != 0 {
+	// write Terminal commitment if not skipped for at least one of three reasons
+	if smallFlags&terminalExistsFlag != 0 &&
+		smallFlags&takeTerminalFromKeyFlag == 0 &&
+		smallFlags&takeTerminalFromValueFlag == 0 {
 		if err = n.Terminal.Write(w); err != nil {
 			return err
 		}
@@ -177,8 +183,8 @@ func (n *NodeData) Write(w io.Writer, arity PathArity, isKeyCommitment bool) err
 	return nil
 }
 
-// Read deserialized node data and returns isKeyCommitmentFlag value
-func (n *NodeData) Read(r io.Reader, model CommitmentModel, unpackedKey []byte, arity PathArity) error {
+// Read deserialize node data
+func (n *NodeData) Read(r io.Reader, model CommitmentModel, unpackedKey []byte, arity PathArity, valueStore KVReader) error {
 	var err error
 	var smallFlags byte
 	if smallFlags, err = ReadByte(r); err != nil {
@@ -196,20 +202,38 @@ func (n *NodeData) Read(r io.Reader, model CommitmentModel, unpackedKey []byte, 
 		n.PathFragment = nil
 	}
 	n.Terminal = nil
-	if smallFlags&serializeTerminalValueFlag != 0 {
-		if smallFlags&isKeyCommitmentFlag != 0 {
-			return xerrors.New("wrong flag")
-		}
-		n.Terminal = model.NewTerminalCommitment()
-		if err = n.Terminal.Read(r); err != nil {
-			return err
-		}
-	} else {
-		if smallFlags&isKeyCommitmentFlag != 0 {
+	if smallFlags&terminalExistsFlag != 0 {
+		// terminal exists. Should be taken from 1 or 3 locations
+		if smallFlags&takeTerminalFromKeyFlag != 0 {
+			// terminal is in key
 			if len(unpackedKey) == 0 {
 				return xerrors.New("non-empty unpackedKey expected")
 			}
 			n.Terminal = model.CommitToData(Concat(unpackedKey, n.PathFragment))
+		} else if smallFlags&takeTerminalFromValueFlag != 0 {
+			// terminal should be taken from the value store
+			if valueStore == nil {
+				return errors.New("can't read node: value store not provided")
+			}
+			key, err := EncodeUnpackedBytes(unpackedKey, arity)
+			if err != nil {
+				return err
+			}
+			value := valueStore.Get(key)
+			if value == nil {
+				return fmt.Errorf("can't find terminal value for key %X", key)
+			}
+			n.Terminal = model.CommitToData(value)
+		} else {
+			n.Terminal = model.NewTerminalCommitment()
+			if err = n.Terminal.Read(r); err != nil {
+				return err
+			}
+		}
+	} else {
+		// terminal does not exist. Enforce other flags to be 0
+		if smallFlags&(takeTerminalFromKeyFlag|takeTerminalFromValueFlag) != 0 {
+			return errors.New("wrong flag")
 		}
 	}
 	if smallFlags&serializeChildrenFlag != 0 {

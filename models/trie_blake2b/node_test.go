@@ -19,9 +19,9 @@ func TestNodeSerialization(t *testing.T) {
 
 			var buf bytes.Buffer
 			key := []byte("abc")
-			err := n.Write(&buf, arity, false)
+			err := n.Write(&buf, arity, false, false)
 			require.NoError(t, err)
-			nBack, err := trie.NodeDataFromBytes(model, buf.Bytes(), key, arity)
+			nBack, err := trie.NodeDataFromBytes(model, buf.Bytes(), key, arity, nil)
 			require.NoError(t, err)
 
 			require.True(t, trie.EqualCommitments(model.CalcNodeCommitment(n), model.CalcNodeCommitment(nBack)))
@@ -32,9 +32,9 @@ func TestNodeSerialization(t *testing.T) {
 
 			var buf bytes.Buffer
 			key := []byte("abc")
-			err := n.Write(&buf, arity, false)
+			err := n.Write(&buf, arity, false, false)
 			require.NoError(t, err)
-			nBack, err := trie.NodeDataFromBytes(model, buf.Bytes(), key, arity)
+			nBack, err := trie.NodeDataFromBytes(model, buf.Bytes(), key, arity, nil)
 			require.NoError(t, err)
 
 			require.True(t, trie.EqualCommitments(model.CalcNodeCommitment(n), model.CalcNodeCommitment(nBack)))

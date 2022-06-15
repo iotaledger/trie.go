@@ -106,6 +106,10 @@ func (m *CommitmentModel) NewVectorCommitment() trie.VCommitment {
 	return m.newVectorCommitment()
 }
 
+func (m *CommitmentModel) StoreTerminalWithNode(_ trie.TCommitment) bool {
+	return true
+}
+
 func (m *CommitmentModel) newVectorCommitment(p ...kyber.Point) *vectorCommitment {
 	if len(p) == 0 {
 		return &vectorCommitment{Point: m.Suite.G1().Point()}

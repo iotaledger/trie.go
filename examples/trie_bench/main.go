@@ -228,7 +228,7 @@ func scandbbadger() {
 	fmt.Printf("TRIE: number of nodes: %d, avg key len: %d, avg node size: %d\n",
 		recCounter, keyByteCounter/recCounter, valueByteCounter/recCounter)
 
-	tr := trie.NewTrieReader(model, trieKVS)
+	tr := trie.NewTrieReader(model, trieKVS, nil)
 	root := trie.RootCommitment(tr)
 	fmt.Printf("root commitment: %s\n", root)
 
@@ -266,7 +266,7 @@ func file2kvs(kvs kvstore.KVStore) {
 
 	tm := newTimer()
 	counterRec := 1
-	tr := trie.NewTrieReader(model, hive_adaptor.NewHiveKVStoreAdaptor(kvs, triePrefix))
+	tr := trie.NewTrieReader(model, hive_adaptor.NewHiveKVStoreAdaptor(kvs, triePrefix), nil)
 	updater, err := hive_adaptor.NewHiveBatchedUpdater(kvs, model, triePrefix, valueStorePrefix, *optkey)
 	must(err)
 	var mem runtime.MemStats

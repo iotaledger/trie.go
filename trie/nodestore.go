@@ -7,16 +7,18 @@ import (
 
 // nodeStore direct access to trie
 type nodeStore struct {
-	m     CommitmentModel
-	store KVReader
-	arity PathArity
+	m          CommitmentModel
+	trieStore  KVReader
+	valueStore KVReader
+	arity      PathArity
 }
 
-func newNodeStore(store KVReader, model CommitmentModel, arity PathArity) *nodeStore {
+func newNodeStore(trieStore, valueStore KVReader, model CommitmentModel, arity PathArity) *nodeStore {
 	return &nodeStore{
-		m:     model,
-		store: store,
-		arity: arity,
+		m:          model,
+		trieStore:  trieStore,
+		valueStore: valueStore,
+		arity:      arity,
 	}
 }
 
@@ -25,11 +27,11 @@ func (sr *nodeStore) getNode(unpackedKey []byte) (*nodeReadOnly, bool) {
 	encodedKey, err := EncodeUnpackedBytes(unpackedKey, sr.arity)
 	Assert(err == nil, "nodeStore::getNode: %v", err)
 
-	nodeBin := sr.store.Get(encodedKey)
+	nodeBin := sr.trieStore.Get(encodedKey)
 	if nodeBin == nil {
 		return nil, false
 	}
-	n, err := nodeReadOnlyFromBytes(sr.m, nodeBin, unpackedKey, sr.arity)
+	n, err := nodeReadOnlyFromBytes(sr.m, nodeBin, unpackedKey, sr.arity, sr.valueStore)
 	Assert(err == nil, "nodeStore::getNode: %v", err)
 	return n, true
 }
@@ -45,9 +47,9 @@ type nodeStoreBuffered struct {
 	optimizeKeyCommitments bool
 }
 
-func newNodeStoreBuffered(model CommitmentModel, store KVReader, arity PathArity, optimizeKeyCommitments bool) *nodeStoreBuffered {
+func newNodeStoreBuffered(model CommitmentModel, trieStore, valueStore KVReader, arity PathArity, optimizeKeyCommitments bool) *nodeStoreBuffered {
 	ret := &nodeStoreBuffered{
-		reader:                 *newNodeStore(store, model, arity),
+		reader:                 *newNodeStore(trieStore, valueStore, model, arity),
 		nodeCache:              make(map[string]*bufferedNode),
 		deleted:                make(map[string]struct{}),
 		arity:                  arity,

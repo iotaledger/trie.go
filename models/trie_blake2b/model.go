@@ -45,13 +45,24 @@ func (hs HashSize) String() string {
 // CommitmentModel provides commitment model implementation for the 256+ trie
 type CommitmentModel struct {
 	HashSize
-	arity trie.PathArity
+	arity             trie.PathArity
+	optimizeTerminals bool
 }
 
-// New creates new CommitmentModel. Optional arity, if is specified and is less that trie.PathArity256,
-// optimizes certain operations
-func New(arity trie.PathArity, hashSize HashSize) *CommitmentModel {
-	return &CommitmentModel{HashSize: hashSize, arity: arity}
+// New creates new CommitmentModel.
+// if optimizeTerminals == true, function StoreTerminalWithNode return true only for hashed values
+// The trie node serialization takes advantage of it and does not serialize terminals shorter than
+// hash. It prevents duplication of short values in DB
+func New(arity trie.PathArity, hashSize HashSize, optimizeTerminals ...bool) *CommitmentModel {
+	o := false
+	if len(optimizeTerminals) > 0 {
+		o = optimizeTerminals[0]
+	}
+	return &CommitmentModel{
+		HashSize:          hashSize,
+		arity:             arity,
+		optimizeTerminals: o,
+	}
 }
 
 func (m *CommitmentModel) PathArity() trie.PathArity {
@@ -137,6 +148,10 @@ func (m *CommitmentModel) NewTerminalCommitment() trie.TCommitment {
 // NewVectorCommitment create empty vector commitment
 func (m *CommitmentModel) NewVectorCommitment() trie.VCommitment {
 	return newVectorCommitment(m.HashSize)
+}
+
+func (m *CommitmentModel) StoreTerminalWithNode(c trie.TCommitment) bool {
+	return !m.optimizeTerminals || c.(*terminalCommitment).isHash
 }
 
 // *vectorCommitment implements trie_go.VCommitment

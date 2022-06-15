@@ -234,7 +234,7 @@ func TestStaticTrustedSetup(t *testing.T) {
 	require.EqualValues(t, 258, model.D)
 
 	store := trie.NewInMemoryKVStore()
-	tr := trie.New(model, store)
+	tr := trie.New(model, store, nil)
 
 	tr.Update(nil, []byte("kuku"))
 	tr.Commit()
