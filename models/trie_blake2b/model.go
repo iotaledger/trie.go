@@ -2,6 +2,7 @@
 package trie_blake2b
 
 import (
+	"bytes"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -16,10 +17,8 @@ import (
 // if isHash == true, len(bytes) must be 32
 // otherwise it is not hashed value, mus be len(bytes) <= 32
 type terminalCommitment struct {
-	bytes  []byte
-	isHash bool
-	// not persistent
-	hashSize HashSize
+	bytes              []byte
+	isCostlyCommitment bool
 }
 
 // vectorCommitment is a blake2b hash of the vector elements
@@ -31,6 +30,10 @@ const (
 	HashSize160 = HashSize(20)
 	HashSize256 = HashSize(32)
 )
+
+func (hs HashSize) MaxCommitmentSize() int {
+	return int(hs) + 1
+}
 
 func (hs HashSize) String() string {
 	switch hs {
@@ -45,23 +48,29 @@ func (hs HashSize) String() string {
 // CommitmentModel provides commitment model implementation for the 256+ trie
 type CommitmentModel struct {
 	HashSize
-	arity             trie.PathArity
-	optimizeTerminals bool
+	arity                          trie.PathArity
+	valueSizeOptimizationThreshold int
 }
 
 // New creates new CommitmentModel.
-// if optimizeTerminals == true, function StoreTerminalWithNode return true only for hashed values
-// The trie node serialization takes advantage of it and does not serialize terminals shorter than
-// hash. It prevents duplication of short values in DB
-func New(arity trie.PathArity, hashSize HashSize, optimizeTerminals ...bool) *CommitmentModel {
-	o := false
-	if len(optimizeTerminals) > 0 {
-		o = optimizeTerminals[0]
+// Parameter valueSizeOptimizationThreshold means that for terminal commitments to values
+// longer than threshold, the terminal commitments will always be stored with the trie node,
+// i.e. ForceStoreTerminalWithNode will return true. For terminal commitments
+// of this or smaller size, the choice depends on the trie setup
+// Default valueSizeOptimizationThreshold = 0, which means that by default all
+// values are stored in the node.
+// If valueSizeOptimizationThreshold > 0 valueStore must be specified in the trie parameters
+// Reasonable value of valueSizeOptimizationThreshold, allows significantly optimize trie storage without
+// requiring hashing big data each time
+func New(arity trie.PathArity, hashSize HashSize, valueSizeOptimizationThreshold ...int) *CommitmentModel {
+	t := 0
+	if len(valueSizeOptimizationThreshold) > 0 {
+		t = valueSizeOptimizationThreshold[0]
 	}
 	return &CommitmentModel{
-		HashSize:          hashSize,
-		arity:             arity,
-		optimizeTerminals: o,
+		HashSize:                       hashSize,
+		arity:                          arity,
+		valueSizeOptimizationThreshold: t,
 	}
 }
 
@@ -69,13 +78,31 @@ func (m *CommitmentModel) PathArity() trie.PathArity {
 	return m.arity
 }
 
-// TODO optimize vector size wrt path arity
+func (m *CommitmentModel) EqualCommitments(c1, c2 trie.Serializable) bool {
+	return equalCommitments(c1, c2)
+}
+
+func equalCommitments(c1, c2 trie.Serializable) bool {
+	if equals, conclusive := trie.CheckNils(c1, c2); conclusive {
+		return equals
+	}
+	// both not nils
+	if t1, ok1 := c1.(*terminalCommitment); ok1 {
+		if t2, ok2 := c2.(*terminalCommitment); ok2 {
+			return bytes.Equal(t1.bytes, t2.bytes)
+		}
+	}
+	if v1, ok1 := c1.(vectorCommitment); ok1 {
+		if v2, ok2 := c2.(vectorCommitment); ok2 {
+			return bytes.Equal(v1, v2)
+		}
+	}
+	return false
+}
 
 // UpdateNodeCommitment computes update to the node data and, optionally, updates existing commitment
 // In blake2b implementation delta it just means computing the hash of data
 func (m *CommitmentModel) UpdateNodeCommitment(mutate *trie.NodeData, childUpdates map[byte]trie.VCommitment, _ bool, newTerminalUpdate trie.TCommitment, update *trie.VCommitment) {
-	hashes := make([][]byte, m.arity.VectorLength())
-
 	deleted := make([]byte, 0, 256)
 	for i, upd := range childUpdates {
 		mutate.ChildCommitments[i] = upd
@@ -87,41 +114,22 @@ func (m *CommitmentModel) UpdateNodeCommitment(mutate *trie.NodeData, childUpdat
 	for _, i := range deleted {
 		delete(mutate.ChildCommitments, i)
 	}
-	for i, c := range mutate.ChildCommitments {
-		trie.Assert(int(i) < m.arity.VectorLength(), "int(i)<m.arity.VectorLength()")
-		hashes[i] = c.(vectorCommitment)
-	}
 	mutate.Terminal = newTerminalUpdate // for hash commitment just replace
-	if mutate.Terminal != nil {
-		// arity+1 is the position of the terminal commitment, if any
-		hashes[m.arity.TerminalCommitmentIndex()] = mutate.Terminal.(*terminalCommitment).bytes
-	}
 	if len(mutate.ChildCommitments) == 0 && mutate.Terminal == nil {
 		return
 	}
-	hashes[m.arity.PathFragmentCommitmentIndex()] = commitToData(mutate.PathFragment, m.HashSize)
 	if update != nil {
-		*update = (vectorCommitment)(hashVector(hashes, m.HashSize))
+		*update = (vectorCommitment)(hashTheVector(m.makeHashVector(mutate), m.arity, m.HashSize))
 	}
 }
 
 // CalcNodeCommitment computes commitment of the node. It is suboptimal in KZG trie.
 // Used in computing root commitment
 func (m *CommitmentModel) CalcNodeCommitment(par *trie.NodeData) trie.VCommitment {
-	hashes := make([][]byte, m.arity.VectorLength())
-
 	if len(par.ChildCommitments) == 0 && par.Terminal == nil {
 		return nil
 	}
-	for i, c := range par.ChildCommitments {
-		trie.Assert(int(i) < m.arity.VectorLength(), "int(i)<m.arity.VectorLength()")
-		hashes[i] = c.(vectorCommitment)
-	}
-	if par.Terminal != nil {
-		hashes[m.arity.TerminalCommitmentIndex()] = par.Terminal.(*terminalCommitment).bytes
-	}
-	hashes[m.arity.PathFragmentCommitmentIndex()] = commitToData(par.PathFragment, m.HashSize)
-	return vectorCommitment(hashVector(hashes, m.HashSize))
+	return vectorCommitment(hashTheVector(m.makeHashVector(par), m.arity, m.HashSize))
 }
 
 func (m *CommitmentModel) CommitToData(data []byte) trie.TCommitment {
@@ -129,7 +137,7 @@ func (m *CommitmentModel) CommitToData(data []byte) trie.TCommitment {
 		// empty slice -> no data (deleted)
 		return nil
 	}
-	return commitToTerminal(data, m.HashSize)
+	return m.commitToData(data)
 }
 
 func (m *CommitmentModel) Description() string {
@@ -150,8 +158,68 @@ func (m *CommitmentModel) NewVectorCommitment() trie.VCommitment {
 	return newVectorCommitment(m.HashSize)
 }
 
-func (m *CommitmentModel) StoreTerminalWithNode(c trie.TCommitment) bool {
-	return !m.optimizeTerminals || c.(*terminalCommitment).isHash
+func (m *CommitmentModel) ForceStoreTerminalWithNode(c trie.TCommitment) bool {
+	return c.(*terminalCommitment).isCostlyCommitment
+}
+
+// commitToDataRaw does not set 'costly' bit
+func commitToDataRaw(data []byte, sz HashSize) *terminalCommitment {
+	var b []byte
+	if len(data) <= int(sz) {
+		b = make([]byte, len(data))
+		copy(b, data)
+	} else {
+		b = blakeIt(data, sz)
+	}
+	ret := &terminalCommitment{
+		bytes: b,
+	}
+	return ret
+}
+
+func (m *CommitmentModel) commitToData(data []byte) *terminalCommitment {
+	ret := commitToDataRaw(data, m.HashSize)
+	ret.isCostlyCommitment = len(data) > m.valueSizeOptimizationThreshold
+	return ret
+}
+
+func blakeIt(data []byte, sz HashSize) []byte {
+	switch sz {
+	case HashSize160:
+		ret := trie.Blake2b160(data)
+		return ret[:]
+	case HashSize256:
+		ret := blake2b.Sum256(data)
+		return ret[:]
+	}
+	panic("must be 160 of 256")
+}
+
+// makeHashVector makes the node vector to be hashed. Missing children are nil
+func (m *CommitmentModel) makeHashVector(nodeData *trie.NodeData) [][]byte {
+	hashes := make([][]byte, m.arity.VectorLength())
+	for i, c := range nodeData.ChildCommitments {
+		trie.Assert(int(i) < m.arity.VectorLength(), "int(i)<m.arity.VectorLength()")
+		hashes[i] = c.Bytes()
+	}
+	if nodeData.Terminal != nil {
+		hashes[m.arity.TerminalCommitmentIndex()] = nodeData.Terminal.Bytes()
+	}
+	hashes[m.arity.PathFragmentCommitmentIndex()] = m.commitToData(nodeData.PathFragment).Bytes()
+	return hashes
+}
+
+func hashTheVector(hashes [][]byte, arity trie.PathArity, sz HashSize) []byte {
+	buf := make([]byte, arity.VectorLength()*sz.MaxCommitmentSize())
+	msz := sz.MaxCommitmentSize()
+	for i, h := range hashes {
+		if h == nil {
+			continue
+		}
+		pos := i * msz
+		copy(buf[pos:pos+msz], h)
+	}
+	return blakeIt(buf, sz)
 }
 
 // *vectorCommitment implements trie_go.VCommitment
@@ -202,17 +270,21 @@ var _ trie.TCommitment = &terminalCommitment{}
 func newTerminalCommitment(sz HashSize) *terminalCommitment {
 	// all 0 non hashed value
 	return &terminalCommitment{
-		bytes:    make([]byte, sz),
-		isHash:   false,
-		hashSize: sz,
+		bytes:              make([]byte, 0, sz),
+		isCostlyCommitment: false,
 	}
 }
 
+const (
+	sizeMask             = uint8(0x3F)
+	costlyCommitmentMask = ^sizeMask
+)
+
 func (t *terminalCommitment) Write(w io.Writer) error {
-	trie.Assert(len(t.bytes) <= int(t.hashSize), "len(t.bytes)<=hasSize")
+	trie.Assert(len(t.bytes) <= 32, "len(t.bytes) <= 32")
 	l := byte(len(t.bytes))
-	if t.isHash {
-		l = byte(t.hashSize) + 1
+	if t.isCostlyCommitment {
+		l |= costlyCommitmentMask
 	}
 	if err := trie.WriteByte(w, l); err != nil {
 		return err
@@ -227,22 +299,22 @@ func (t *terminalCommitment) Read(r io.Reader) error {
 	if l, err = trie.ReadByte(r); err != nil {
 		return err
 	}
-	if l > byte(t.hashSize)+1 {
-		return fmt.Errorf("terminal commitment size byte must be <= %d", byte(t.hashSize)+1)
+	t.isCostlyCommitment = (l & costlyCommitmentMask) != 0
+	l &= sizeMask
+
+	if l > 32 {
+		return fmt.Errorf("wrong data size")
 	}
-	t.isHash = l == byte(t.hashSize)+1
-	if t.isHash {
-		l = byte(t.hashSize)
-	}
-	if len(t.bytes) < int(l) {
+	if l > 0 {
 		t.bytes = make([]byte, l)
-	}
-	n, err := r.Read(t.bytes[:l])
-	if err != nil {
-		return err
-	}
-	if n != int(l) {
-		return errors.New("bad data length")
+
+		n, err := r.Read(t.bytes)
+		if err != nil {
+			return err
+		}
+		if n != int(l) {
+			return errors.New("bad data length")
+		}
 	}
 	return nil
 }
@@ -261,46 +333,4 @@ func (t *terminalCommitment) Clone() trie.TCommitment {
 	}
 	ret := *t
 	return &ret
-}
-
-func commitToData(data []byte, sz HashSize) []byte {
-	if len(data) <= int(sz) {
-		ret := make([]byte, sz)
-		copy(ret[:], data)
-		return ret
-	}
-	return blakeIt(data, sz)
-}
-
-func blakeIt(data []byte, sz HashSize) []byte {
-	switch sz {
-	case HashSize160:
-		ret := trie.Blake2b160(data)
-		return ret[:]
-	case HashSize256:
-		ret := blake2b.Sum256(data)
-		return ret[:]
-	}
-	panic("must be 160 of 256")
-}
-
-func commitToTerminal(data []byte, sz HashSize) *terminalCommitment {
-	ret := &terminalCommitment{
-		bytes:    commitToData(data, sz),
-		hashSize: sz,
-	}
-	ret.isHash = len(data) > int(sz)
-	return ret
-}
-
-func hashVector(hashes [][]byte, sz HashSize) []byte {
-	buf := make([]byte, len(hashes)*int(sz))
-	for i, h := range hashes {
-		if h == nil {
-			continue
-		}
-		pos := int(sz) * i
-		copy(buf[pos:pos+int(sz)], h)
-	}
-	return blakeIt(buf, sz)
 }

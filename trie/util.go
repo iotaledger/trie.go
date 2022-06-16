@@ -9,7 +9,23 @@ import (
 	"io"
 	"math"
 	"os"
+	"reflect"
 )
+
+// CheckNils returns (conclusive comparison result, true) if at least one is nil
+// return (false, false) if both are not nil and can both be safely dereferenced
+func CheckNils(i1, i2 interface{}) (bool, bool) {
+	// TODO better suggestion? The problem: type(nil) != nil
+	i1Nil := i1 == nil || (reflect.ValueOf(i1).Kind() == reflect.Ptr && reflect.ValueOf(i1).IsNil())
+	i2Nil := i2 == nil || (reflect.ValueOf(i2).Kind() == reflect.Ptr && reflect.ValueOf(i2).IsNil())
+	if i1Nil && i2Nil {
+		return true, true
+	}
+	if i1Nil || i2Nil {
+		return false, true
+	}
+	return false, false
+}
 
 // MustBytes most common way of serialization
 func MustBytes(o interface{ Write(w io.Writer) error }) []byte {

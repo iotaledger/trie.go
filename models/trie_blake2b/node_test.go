@@ -24,11 +24,11 @@ func TestNodeSerialization(t *testing.T) {
 			nBack, err := trie.NodeDataFromBytes(model, buf.Bytes(), key, arity, nil)
 			require.NoError(t, err)
 
-			require.True(t, trie.EqualCommitments(model.CalcNodeCommitment(n), model.CalcNodeCommitment(nBack)))
+			require.True(t, model.EqualCommitments(model.CalcNodeCommitment(n), model.CalcNodeCommitment(nBack)))
 		})
 		t.Run(fmt.Sprintf("2: %s: %s", arity, hashSize), func(t *testing.T) {
 			n := trie.NewNodeData()
-			n.Terminal = model.NewTerminalCommitment()
+			n.Terminal = model.CommitToData([]byte("a"))
 
 			var buf bytes.Buffer
 			key := []byte("abc")
@@ -37,7 +37,7 @@ func TestNodeSerialization(t *testing.T) {
 			nBack, err := trie.NodeDataFromBytes(model, buf.Bytes(), key, arity, nil)
 			require.NoError(t, err)
 
-			require.True(t, trie.EqualCommitments(model.CalcNodeCommitment(n), model.CalcNodeCommitment(nBack)))
+			require.True(t, model.EqualCommitments(model.CalcNodeCommitment(n), model.CalcNodeCommitment(nBack)))
 		})
 	}
 	runTest(trie.PathArity256, HashSize256)

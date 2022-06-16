@@ -129,7 +129,8 @@ func (tr *Trie) commitNode(key []byte, update *VCommitment) {
 		}
 		return
 	}
-	if !n.isModified() {
+	isModified := n.pathChanged || len(n.modifiedChildren) > 0 || !tr.Model().EqualCommitments(n.newTerminal, n.n.Terminal)
+	if !isModified {
 		return
 	}
 	mutate := NodeData{
@@ -437,7 +438,7 @@ func (tr *Trie) Reconcile(store KVIterator) [][]byte {
 			if !ok {
 				ret = append(ret, k)
 			} else {
-				if !EqualCommitments(tr.nodeStore.reader.m.CommitToData(v), n.Terminal()) {
+				if !tr.Model().EqualCommitments(tr.nodeStore.reader.m.CommitToData(v), n.Terminal()) {
 					ret = append(ret, k)
 				}
 			}

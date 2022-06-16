@@ -41,7 +41,7 @@ func TestTrieProofBlake2b(t *testing.T) {
 			c := model.CommitToData([]byte("1"))
 			c1 := model.CommitToData(term)
 			require.EqualValues(t, 0, len(key))
-			require.True(t, trie.EqualCommitments(c1, c))
+			require.True(t, model.EqualCommitments(c1, c))
 
 			unpackedKey := trie.UnpackBytes([]byte("a"), arity)
 			proof = model.Proof(unpackedKey, tr)
@@ -78,7 +78,7 @@ func TestTrieProofBlake2b(t *testing.T) {
 			require.False(t, isHash)
 			c := model.CommitToData([]byte("2"))
 			c1 := model.CommitToData(term)
-			require.True(t, trie.EqualCommitments(c, c1))
+			require.True(t, model.EqualCommitments(c, c1))
 		})
 	}
 	runTest32 := func(arity trie.PathArity) {
@@ -112,7 +112,7 @@ func TestTrieProofBlake2b(t *testing.T) {
 			c := model.CommitToData([]byte("1"))
 			c1 := model.CommitToData(term)
 			require.EqualValues(t, 0, len(key))
-			require.True(t, trie.EqualCommitments(c1, c))
+			require.True(t, model.EqualCommitments(c1, c))
 
 			proof = model.Proof([]byte("a"), tr)
 			require.EqualValues(t, 1, len(proof.Path))
@@ -148,15 +148,15 @@ func TestTrieProofBlake2b(t *testing.T) {
 			require.False(t, isHash)
 			c := model.CommitToData([]byte("2"))
 			c1 := model.CommitToData(term)
-			require.True(t, trie.EqualCommitments(c, c1))
+			require.True(t, model.EqualCommitments(c, c1))
 		})
 	}
 	runTest20(trie.PathArity256)
-	//runTest20(trie.PathArity16)
-	//runTest20(trie.PathArity2)
+	runTest20(trie.PathArity16)
+	runTest20(trie.PathArity2)
 	runTest32(trie.PathArity256)
-	//runTest32(trie.PathArity16)
-	//runTest32(trie.PathArity2)
+	runTest32(trie.PathArity16)
+	runTest32(trie.PathArity2)
 }
 
 func TestTrieProofWithDeletesBlake2b32(t *testing.T) {

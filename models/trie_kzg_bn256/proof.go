@@ -115,14 +115,14 @@ func (p *ProofOfInclusion) Bytes() []byte {
 func (p *ProofOfInclusion) Validate(root trie.VCommitment, value ...[]byte) error {
 	if len(value) > 0 {
 		ct := commitToData(value[0], Model.Suite)
-		if !trie.EqualCommitments(ct, &terminalCommitment{Scalar: p.Terminal}) {
+		if !equalCommitments(ct, &terminalCommitment{Scalar: p.Terminal}) {
 			return xerrors.New("terminal commitment not equal to the provided value")
 		}
 	}
 	if len(p.Path) == 0 {
 		return xerrors.New("proof path is empty")
 	}
-	if !trie.EqualCommitments(root, &vectorCommitment{Point: p.Path[0].C}) {
+	if !equalCommitments(root, &vectorCommitment{Point: p.Path[0].C}) {
 		return xerrors.New("provided commitment and commitment to the first element are not equal")
 	}
 	var val kyber.Scalar

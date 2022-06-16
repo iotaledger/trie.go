@@ -10,6 +10,7 @@ import (
 	"github.com/iotaledger/trie.go/models/trie_blake2b"
 	"github.com/iotaledger/trie.go/trie"
 	"golang.org/x/crypto/blake2b"
+	"golang.org/x/xerrors"
 	"os"
 	"runtime"
 	"time"
@@ -240,8 +241,16 @@ func scandbbadger() {
 		proof := model.(*trie_blake2b.CommitmentModel).Proof(k, tr)
 		proofBytes += len(proof.Bytes())
 		proofLen += len(proof.Path)
-		err = proof.Validate(root, v)
+		err = proof.Validate(root)
 		must(err)
+
+		tc := proof.Path[len(proof.Path)-1].Terminal
+		tc1 := model.CommitToData(v)
+		if !model.EqualCommitments(tc1, tc) {
+			err = xerrors.New("invalid proof: terminal commitment and terminal proof are not equal")
+		}
+		must(err)
+
 		if recCounter%flushEach == 0 {
 			fmt.Printf("validated %d records in %v, %f proof/sec, avg proof bytes %d, avg proof len %f\n",
 				recCounter, tm.Duration(), float64(recCounter)/tm.Duration().Seconds(),

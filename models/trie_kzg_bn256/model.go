@@ -1,6 +1,7 @@
 package trie_kzg_bn256
 
 import (
+	"bytes"
 	"github.com/iotaledger/trie.go/trie"
 	"go.dedis.ch/kyber/v3"
 	"go.dedis.ch/kyber/v3/pairing/bn256"
@@ -94,6 +95,18 @@ func (m *CommitmentModel) PathArity() trie.PathArity {
 	return trie.PathArity256 // only can be used with 256-ary
 }
 
+func (m *CommitmentModel) EqualCommitments(c1, c2 trie.Serializable) bool {
+	return equalCommitments(c1, c2)
+}
+
+func equalCommitments(c1, c2 trie.Serializable) bool {
+	if equals, conclusive := trie.CheckNils(c1, c2); conclusive {
+		return equals
+	}
+	// both not nils
+	return bytes.Equal(c1.Bytes(), c2.Bytes())
+}
+
 func (m *CommitmentModel) Description() string {
 	return "trie commitment model implementation based on KZG (Kate) polynomial commitments and bn256 curve frm Dedis.Kyber library. 256-ary keys"
 }
@@ -106,7 +119,7 @@ func (m *CommitmentModel) NewVectorCommitment() trie.VCommitment {
 	return m.newVectorCommitment()
 }
 
-func (m *CommitmentModel) StoreTerminalWithNode(_ trie.TCommitment) bool {
+func (m *CommitmentModel) ForceStoreTerminalWithNode(_ trie.TCommitment) bool {
 	return true
 }
 
@@ -173,7 +186,7 @@ func (m *CommitmentModel) UpdateNodeCommitment(mutate *trie.NodeData, childUpdat
 			mutate.ChildCommitments[i] = childUpd
 		}
 	}
-	if calcDelta && !trie.EqualCommitments(mutate.Terminal, terminal) {
+	if calcDelta && !equalCommitments(mutate.Terminal, terminal) {
 		delta := m.TrustedSetup.Suite.G1().Scalar().Zero()
 		if terminal == nil {
 			if mutate.Terminal != nil {

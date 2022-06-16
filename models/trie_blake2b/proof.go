@@ -114,7 +114,7 @@ func (p *Proof) MustKeyWithTerminal() ([]byte, []byte, bool) {
 		if lastElem.Terminal == nil {
 			return p.Key, nil, false
 		}
-		return p.Key, lastElem.Terminal.bytes, lastElem.Terminal.isHash
+		return p.Key, lastElem.Terminal.bytes, lastElem.Terminal.isCostlyCommitment
 	case lastElem.ChildIndex == p.PathArity.PathFragmentCommitmentIndex():
 		return p.Key, nil, false
 	}
@@ -129,8 +129,7 @@ func (p *Proof) IsProofOfAbsence() bool {
 }
 
 // Validate check the proof against the provided root commitments
-// if 'value' is specified, checks if commitment to that value is the terminal of the last element in path
-func (p *Proof) Validate(root trie.VCommitment, value ...[]byte) error {
+func (p *Proof) Validate(root trie.VCommitment) error {
 	if len(p.Path) == 0 {
 		if root != nil {
 			return xerrors.New("proof is empty")
@@ -141,16 +140,8 @@ func (p *Proof) Validate(root trie.VCommitment, value ...[]byte) error {
 	if err != nil {
 		return err
 	}
-	cv := (vectorCommitment)(c)
-	if !trie.EqualCommitments(&cv, root) {
+	if !equalCommitments(vectorCommitment(c), root) {
 		return xerrors.New("invalid proof: commitment not equal to the root")
-	}
-	if len(value) > 0 {
-		tc := p.Path[len(p.Path)-1].Terminal
-		tc1 := commitToTerminal(value[0], p.HashSize)
-		if !trie.EqualCommitments(tc1, tc) {
-			return xerrors.New("invalid proof: terminal commitment and terminal proof are not equal")
-		}
 	}
 	return nil
 }
@@ -218,13 +209,13 @@ func (e *ProofElement) hashIt(missingCommitment []byte, arity trie.PathArity, sz
 		hashes[idx] = ([]byte)(c)
 	}
 	if e.Terminal != nil {
-		hashes[arity.TerminalCommitmentIndex()] = e.Terminal.bytes
+		hashes[arity.TerminalCommitmentIndex()] = e.Terminal.Bytes()
 	}
-	hashes[arity.PathFragmentCommitmentIndex()] = commitToData(e.PathFragment, sz)
+	hashes[arity.PathFragmentCommitmentIndex()] = commitToDataRaw(e.PathFragment, sz).Bytes()
 	if arity.IsChildIndex(e.ChildIndex) {
 		hashes[e.ChildIndex] = missingCommitment
 	}
-	return hashVector(hashes, sz)
+	return hashTheVector(hashes, arity, sz)
 }
 
 func (p *Proof) Write(w io.Writer) error {

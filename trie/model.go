@@ -8,6 +8,8 @@ import (
 type CommitmentModel interface {
 	// PathArity is used by implementations to optimize operations
 	PathArity() PathArity
+	// EqualCommitments compares two commitments
+	EqualCommitments(c1, c2 Serializable) bool
 	// NewVectorCommitment creates empty trie_go.VCommitment
 	NewVectorCommitment() VCommitment
 	// NewTerminalCommitment creates empty trie_go.TCommitment
@@ -24,8 +26,9 @@ type CommitmentModel interface {
 	// can be made dramatically faster this way than strictly computing each time whole expensive vector commitment
 	// This interface takes into account different ways how updates are propagated in the trie
 	UpdateNodeCommitment(mutate *NodeData, childUpdates map[byte]VCommitment, calcDelta bool, terminal TCommitment, update *VCommitment)
-	// StoreTerminalWithNode if == true,
-	StoreTerminalWithNode(c TCommitment) bool
+	// ForceStoreTerminalWithNode if == true, terminal commitment will always be serialized with the node,
+	// otherwise it may be skipped to optimize storage, depending on the trie setting
+	ForceStoreTerminalWithNode(c TCommitment) bool
 	// Description return description of the implementation
 	Description() string
 	// ShortName short name
