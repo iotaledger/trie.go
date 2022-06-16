@@ -1,5 +1,7 @@
 package trie_blake2b
 
+// TODO make Merkle proofs independent from trie types
+
 import (
 	"bytes"
 	"errors"
@@ -97,11 +99,10 @@ func (p *Proof) Bytes() []byte {
 // MustKeyWithTerminal returns key and terminal commitment the proof is about. It returns:
 // - key
 // - commitment slice of up to hashSize bytes long. If it is nil, the proof is a proof of absence
-// - false if it is original data, true if it is a blake2b hash of the data
 // It does not verify the proof, so this function should be used only after Validate()
-func (p *Proof) MustKeyWithTerminal() ([]byte, []byte, bool) {
+func (p *Proof) MustKeyWithTerminal() ([]byte, []byte) {
 	if len(p.Path) == 0 {
-		return nil, nil, false
+		return nil, nil
 	}
 	lastElem := p.Path[len(p.Path)-1]
 	switch {
@@ -109,14 +110,14 @@ func (p *Proof) MustKeyWithTerminal() ([]byte, []byte, bool) {
 		if _, ok := lastElem.Children[byte(lastElem.ChildIndex)]; ok {
 			panic("nil child commitment expected for proof of absence")
 		}
-		return p.Key, nil, false
+		return p.Key, nil
 	case lastElem.ChildIndex == p.PathArity.TerminalCommitmentIndex():
 		if lastElem.Terminal == nil {
-			return p.Key, nil, false
+			return p.Key, nil
 		}
-		return p.Key, lastElem.Terminal.bytes, lastElem.Terminal.isCostlyCommitment
+		return p.Key, lastElem.Terminal.bytes
 	case lastElem.ChildIndex == p.PathArity.PathFragmentCommitmentIndex():
-		return p.Key, nil, false
+		return p.Key, nil
 	}
 	panic("wrong lastElem.ChildIndex")
 }
@@ -124,7 +125,7 @@ func (p *Proof) MustKeyWithTerminal() ([]byte, []byte, bool) {
 // IsProofOfAbsence checks if it is proof of absence. Proof that the trie commits to something else in the place
 // where it would commit to the key if it would be present
 func (p *Proof) IsProofOfAbsence() bool {
-	_, r, _ := p.MustKeyWithTerminal()
+	_, r := p.MustKeyWithTerminal()
 	return r == nil
 }
 
@@ -202,20 +203,24 @@ func (p *Proof) verify(pathIdx, keyIdx int) ([]byte, error) {
 	return elem.hashIt(nil, p.PathArity, p.HashSize), nil
 }
 
-func (e *ProofElement) hashIt(missingCommitment []byte, arity trie.PathArity, sz HashSize) []byte {
+func (e *ProofElement) makeVector(missingCommitment []byte, arity trie.PathArity, sz HashSize) [][]byte {
 	hashes := make([][]byte, arity.VectorLength())
 	for idx, c := range e.Children {
 		trie.Assert(arity.IsChildIndex(int(idx)), "arity.IsChildIndex(int(idx)")
-		hashes[idx] = ([]byte)(c)
+		hashes[idx] = c
 	}
 	if e.Terminal != nil {
-		hashes[arity.TerminalCommitmentIndex()] = e.Terminal.Bytes()
+		hashes[arity.TerminalCommitmentIndex()] = e.Terminal.bytesEssence()
 	}
-	hashes[arity.PathFragmentCommitmentIndex()] = commitToDataRaw(e.PathFragment, sz).Bytes()
+	hashes[arity.PathFragmentCommitmentIndex()] = commitToDataRaw(e.PathFragment, sz).bytesEssence()
 	if arity.IsChildIndex(e.ChildIndex) {
 		hashes[e.ChildIndex] = missingCommitment
 	}
-	return hashTheVector(hashes, arity, sz)
+	return hashes
+}
+
+func (e *ProofElement) hashIt(missingCommitment []byte, arity trie.PathArity, sz HashSize) []byte {
+	return hashTheVector(e.makeVector(missingCommitment, arity, sz), arity, sz)
 }
 
 func (p *Proof) Write(w io.Writer) error {

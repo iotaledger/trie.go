@@ -36,8 +36,7 @@ func TestTrieProofBlake2b(t *testing.T) {
 
 			// t.Logf("proof presence size = %d bytes", trie_go.MustSize(proof))
 
-			key, term, isHash := proof.MustKeyWithTerminal()
-			require.False(t, isHash)
+			key, term := proof.MustKeyWithTerminal()
 			c := model.CommitToData([]byte("1"))
 			c1 := model.CommitToData(term)
 			require.EqualValues(t, 0, len(key))
@@ -74,8 +73,7 @@ func TestTrieProofBlake2b(t *testing.T) {
 			require.NoError(t, err)
 			require.False(t, proof.IsProofOfAbsence())
 
-			_, term, isHash := proof.MustKeyWithTerminal()
-			require.False(t, isHash)
+			_, term := proof.MustKeyWithTerminal()
 			c := model.CommitToData([]byte("2"))
 			c1 := model.CommitToData(term)
 			require.True(t, model.EqualCommitments(c, c1))
@@ -107,8 +105,7 @@ func TestTrieProofBlake2b(t *testing.T) {
 
 			//t.Logf("proof presence size = %d bytes", trie_go.MustSize(proof))
 
-			key, term, isHash := proof.MustKeyWithTerminal()
-			require.False(t, isHash)
+			key, term := proof.MustKeyWithTerminal()
 			c := model.CommitToData([]byte("1"))
 			c1 := model.CommitToData(term)
 			require.EqualValues(t, 0, len(key))
@@ -144,8 +141,7 @@ func TestTrieProofBlake2b(t *testing.T) {
 			require.NoError(t, err)
 			require.False(t, proof.IsProofOfAbsence())
 
-			_, term, isHash := proof.MustKeyWithTerminal()
-			require.False(t, isHash)
+			_, term := proof.MustKeyWithTerminal()
 			c := model.CommitToData([]byte("2"))
 			c1 := model.CommitToData(term)
 			require.True(t, model.EqualCommitments(c, c1))
