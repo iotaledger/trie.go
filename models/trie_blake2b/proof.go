@@ -1,13 +1,10 @@
 package trie_blake2b
 
-// TODO make Merkle proofs independent from trie types
-
 import (
 	"bytes"
 	"errors"
 	"fmt"
 	"github.com/iotaledger/trie.go/trie"
-	"golang.org/x/xerrors"
 	"io"
 )
 
@@ -21,8 +18,8 @@ type Proof struct {
 
 type ProofElement struct {
 	PathFragment []byte
-	Children     map[byte]vectorCommitment
-	Terminal     *terminalCommitment
+	Children     map[byte][]byte
+	Terminal     []byte
 	ChildIndex   int
 }
 
@@ -73,12 +70,12 @@ func (m *CommitmentModel) Proof(key []byte, tr trie.NodeStore) *Proof {
 		}
 		em := &ProofElement{
 			PathFragment: node.PathFragment(),
-			Children:     make(map[byte]vectorCommitment),
+			Children:     make(map[byte][]byte),
 			Terminal:     nil,
 			ChildIndex:   childIndex,
 		}
 		if node.Terminal() != nil {
-			em.Terminal = node.Terminal().(*terminalCommitment)
+			em.Terminal = node.Terminal().(*terminalCommitment).bytes
 		}
 		for idx, v := range node.ChildCommitments() {
 			if int(idx) == childIndex {
@@ -94,133 +91,6 @@ func (m *CommitmentModel) Proof(key []byte, tr trie.NodeStore) *Proof {
 
 func (p *Proof) Bytes() []byte {
 	return trie.MustBytes(p)
-}
-
-// MustKeyWithTerminal returns key and terminal commitment the proof is about. It returns:
-// - key
-// - commitment slice of up to hashSize bytes long. If it is nil, the proof is a proof of absence
-// It does not verify the proof, so this function should be used only after Validate()
-func (p *Proof) MustKeyWithTerminal() ([]byte, []byte) {
-	if len(p.Path) == 0 {
-		return nil, nil
-	}
-	lastElem := p.Path[len(p.Path)-1]
-	switch {
-	case p.PathArity.IsChildIndex(lastElem.ChildIndex):
-		if _, ok := lastElem.Children[byte(lastElem.ChildIndex)]; ok {
-			panic("nil child commitment expected for proof of absence")
-		}
-		return p.Key, nil
-	case lastElem.ChildIndex == p.PathArity.TerminalCommitmentIndex():
-		if lastElem.Terminal == nil {
-			return p.Key, nil
-		}
-		return p.Key, lastElem.Terminal.bytes
-	case lastElem.ChildIndex == p.PathArity.PathFragmentCommitmentIndex():
-		return p.Key, nil
-	}
-	panic("wrong lastElem.ChildIndex")
-}
-
-// IsProofOfAbsence checks if it is proof of absence. Proof that the trie commits to something else in the place
-// where it would commit to the key if it would be present
-func (p *Proof) IsProofOfAbsence() bool {
-	_, r := p.MustKeyWithTerminal()
-	return r == nil
-}
-
-// Validate check the proof against the provided root commitments
-func (p *Proof) Validate(root trie.VCommitment) error {
-	if len(p.Path) == 0 {
-		if root != nil {
-			return xerrors.New("proof is empty")
-		}
-		return nil
-	}
-	c, err := p.verify(0, 0)
-	if err != nil {
-		return err
-	}
-	if !equalCommitments(vectorCommitment(c), root) {
-		return xerrors.New("invalid proof: commitment not equal to the root")
-	}
-	return nil
-}
-
-// CommitmentToTheTerminalNode returns hash of the last node in the proof
-// If it is a valid proof, it s always contains terminal commitment
-// It is useful to get commitment to the sub-state. It must contain some value
-// at its nil postfix
-func (p *Proof) CommitmentToTheTerminalNode() trie.VCommitment {
-	if len(p.Path) == 0 {
-		return nil
-	}
-	ret := p.Path[len(p.Path)-1].hashIt(nil, p.PathArity, p.HashSize)
-	return (*vectorCommitment)(&ret)
-}
-
-func (p *Proof) verify(pathIdx, keyIdx int) ([]byte, error) {
-	trie.Assert(pathIdx < len(p.Path), "assertion: pathIdx < lenPlus1(p.Path)")
-	trie.Assert(keyIdx <= len(p.Key), "assertion: keyIdx <= lenPlus1(p.Key)")
-
-	elem := p.Path[pathIdx]
-	tail := p.Key[keyIdx:]
-	isPrefix := bytes.HasPrefix(tail, elem.PathFragment)
-	last := pathIdx == len(p.Path)-1
-	if !last && !isPrefix {
-		return nil, fmt.Errorf("wrong proof: proof path does not follow the key. Path position: %d, key position %d", pathIdx, keyIdx)
-	}
-	if !last {
-		trie.Assert(isPrefix, "assertion: isPrefix")
-		if !p.PathArity.IsChildIndex(elem.ChildIndex) {
-			return nil, fmt.Errorf("wrong proof: wrong child index. Path position: %d, key position %d", pathIdx, keyIdx)
-		}
-		if _, ok := elem.Children[byte(elem.ChildIndex)]; ok {
-			return nil, fmt.Errorf("wrong proof: unexpected commitment at child index %d. Path position: %d, key position %d", elem.ChildIndex, pathIdx, keyIdx)
-		}
-		nextKeyIdx := keyIdx + len(elem.PathFragment) + 1
-		if nextKeyIdx > len(p.Key) {
-			return nil, fmt.Errorf("wrong proof: proof path out of key bounds. Path position: %d, key position %d", pathIdx, keyIdx)
-		}
-		c, err := p.verify(pathIdx+1, nextKeyIdx)
-		if err != nil {
-			return nil, err
-		}
-		return elem.hashIt(c, p.PathArity, p.HashSize), nil
-	}
-	// it is the last in the path
-	if p.PathArity.IsChildIndex(elem.ChildIndex) {
-		c := elem.Children[byte(elem.ChildIndex)]
-		if c != nil {
-			return nil, fmt.Errorf("wrong proof: child commitment of the last element expected to be nil. Path position: %d, key position %d", pathIdx, keyIdx)
-		}
-		return elem.hashIt(nil, p.PathArity, p.HashSize), nil
-	}
-	if elem.ChildIndex != p.PathArity.TerminalCommitmentIndex() && elem.ChildIndex != p.PathArity.PathFragmentCommitmentIndex() {
-		return nil, fmt.Errorf("wrong proof: child index expected to be %d or %d. Path position: %d, key position %d",
-			p.PathArity.TerminalCommitmentIndex(), p.PathArity.PathFragmentCommitmentIndex(), pathIdx, keyIdx)
-	}
-	return elem.hashIt(nil, p.PathArity, p.HashSize), nil
-}
-
-func (e *ProofElement) makeVector(missingCommitment []byte, arity trie.PathArity, sz HashSize) [][]byte {
-	hashes := make([][]byte, arity.VectorLength())
-	for idx, c := range e.Children {
-		trie.Assert(arity.IsChildIndex(int(idx)), "arity.IsChildIndex(int(idx)")
-		hashes[idx] = c
-	}
-	if e.Terminal != nil {
-		hashes[arity.TerminalCommitmentIndex()] = e.Terminal.bytesEssence()
-	}
-	hashes[arity.PathFragmentCommitmentIndex()] = commitToDataRaw(e.PathFragment, sz).bytesEssence()
-	if arity.IsChildIndex(e.ChildIndex) {
-		hashes[e.ChildIndex] = missingCommitment
-	}
-	return hashes
-}
-
-func (e *ProofElement) hashIt(missingCommitment []byte, arity trie.PathArity, sz HashSize) []byte {
-	return hashTheVector(e.makeVector(missingCommitment, arity, sz), arity, sz)
 }
 
 func (p *Proof) Write(w io.Writer) error {
@@ -242,7 +112,7 @@ func (p *Proof) Write(w io.Writer) error {
 		return err
 	}
 	for _, e := range p.Path {
-		if err = e.Write(w, p.PathArity); err != nil {
+		if err = e.Write(w, p.PathArity, p.HashSize); err != nil {
 			return err
 		}
 	}
@@ -291,15 +161,15 @@ const (
 	hasChildrenFlag      = 0x02
 )
 
-func (e *ProofElement) Write(w io.Writer, arity trie.PathArity) error {
+func (e *ProofElement) Write(w io.Writer, arity trie.PathArity, sz HashSize) error {
 	encodedPathFragment, err := trie.EncodeUnpackedBytes(e.PathFragment, arity)
 	if err != nil {
 		return err
 	}
-	if err := trie.WriteBytes16(w, encodedPathFragment); err != nil {
+	if err = trie.WriteBytes16(w, encodedPathFragment); err != nil {
 		return err
 	}
-	if err := trie.WriteUint16(w, uint16(e.ChildIndex)); err != nil {
+	if err = trie.WriteUint16(w, uint16(e.ChildIndex)); err != nil {
 		return err
 	}
 	var smallFlags byte
@@ -317,13 +187,13 @@ func (e *ProofElement) Write(w io.Writer, arity trie.PathArity) error {
 	}
 	// write terminal commitment if any
 	if smallFlags&hasTerminalValueFlag != 0 {
-		if err := e.Terminal.Write(w); err != nil {
+		if err = trie.WriteBytes8(w, e.Terminal); err != nil {
 			return err
 		}
 	}
 	// write child commitments if any
 	if smallFlags&hasChildrenFlag != 0 {
-		if _, err := w.Write(flags[:]); err != nil {
+		if _, err = w.Write(flags[:]); err != nil {
 			return err
 		}
 		for i := 0; i < arity.VectorLength(); i++ {
@@ -331,7 +201,10 @@ func (e *ProofElement) Write(w io.Writer, arity trie.PathArity) error {
 			if !ok {
 				continue
 			}
-			if err := child.Write(w); err != nil {
+			if len(child) != int(sz) {
+				return fmt.Errorf("wrong data size. Expected %s, got %d", sz.String(), len(child))
+			}
+			if _, err = w.Write(child); err != nil {
 				return err
 			}
 		}
@@ -358,24 +231,23 @@ func (e *ProofElement) Read(r io.Reader, arity trie.PathArity, sz HashSize) erro
 		return err
 	}
 	if smallFlags&hasTerminalValueFlag != 0 {
-		e.Terminal = newTerminalCommitment(sz)
-		if err := e.Terminal.Read(r); err != nil {
+		if e.Terminal, err = trie.ReadBytes8(r); err != nil {
 			return err
 		}
 	} else {
 		e.Terminal = nil
 	}
-	e.Children = make(map[byte]vectorCommitment)
+	e.Children = make(map[byte][]byte)
 	if smallFlags&hasChildrenFlag != 0 {
 		var flags [32]byte
-		if _, err := r.Read(flags[:]); err != nil {
+		if _, err = r.Read(flags[:]); err != nil {
 			return err
 		}
 		for i := 0; i < arity.NumChildren(); i++ {
 			ib := uint8(i)
 			if flags[i/8]&(0x1<<(i%8)) != 0 {
-				e.Children[ib] = newVectorCommitment(sz)
-				if err := e.Children[ib].Read(r); err != nil {
+				e.Children[ib] = make([]byte, sz)
+				if _, err = r.Read(e.Children[ib]); err != nil {
 					return err
 				}
 			}

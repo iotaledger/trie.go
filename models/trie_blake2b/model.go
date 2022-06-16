@@ -119,7 +119,7 @@ func (m *CommitmentModel) UpdateNodeCommitment(mutate *trie.NodeData, childUpdat
 		return
 	}
 	if update != nil {
-		*update = (vectorCommitment)(hashTheVector(m.makeHashVector(mutate), m.arity, m.HashSize))
+		*update = (vectorCommitment)(HashTheVector(m.makeHashVector(mutate), m.arity, m.HashSize))
 	}
 }
 
@@ -129,7 +129,7 @@ func (m *CommitmentModel) CalcNodeCommitment(par *trie.NodeData) trie.VCommitmen
 	if len(par.ChildCommitments) == 0 && par.Terminal == nil {
 		return nil
 	}
-	return vectorCommitment(hashTheVector(m.makeHashVector(par), m.arity, m.HashSize))
+	return vectorCommitment(HashTheVector(m.makeHashVector(par), m.arity, m.HashSize))
 }
 
 func (m *CommitmentModel) CommitToData(data []byte) trie.TCommitment {
@@ -162,25 +162,23 @@ func (m *CommitmentModel) ForceStoreTerminalWithNode(c trie.TCommitment) bool {
 	return c.(*terminalCommitment).isCostlyCommitment
 }
 
-// commitToDataRaw does not set 'costly' bit
-func commitToDataRaw(data []byte, sz HashSize) *terminalCommitment {
-	var b []byte
+// CommitToDataRaw commits to data
+func CommitToDataRaw(data []byte, sz HashSize) []byte {
+	var ret []byte
 	if len(data) <= int(sz) {
-		b = make([]byte, len(data))
-		copy(b, data)
+		ret = make([]byte, len(data))
+		copy(ret, data)
 	} else {
-		b = blakeIt(data, sz)
-	}
-	ret := &terminalCommitment{
-		bytes: b,
+		ret = blakeIt(data, sz)
 	}
 	return ret
 }
 
 func (m *CommitmentModel) commitToData(data []byte) *terminalCommitment {
-	ret := commitToDataRaw(data, m.HashSize)
-	ret.isCostlyCommitment = len(data) > m.valueSizeOptimizationThreshold
-	return ret
+	return &terminalCommitment{
+		bytes:              CommitToDataRaw(data, m.HashSize),
+		isCostlyCommitment: len(data) > m.valueSizeOptimizationThreshold,
+	}
 }
 
 func blakeIt(data []byte, sz HashSize) []byte {
@@ -203,13 +201,13 @@ func (m *CommitmentModel) makeHashVector(nodeData *trie.NodeData) [][]byte {
 		hashes[i] = c.Bytes()
 	}
 	if nodeData.Terminal != nil {
-		hashes[m.arity.TerminalCommitmentIndex()] = nodeData.Terminal.(*terminalCommitment).bytesEssence()
+		hashes[m.arity.TerminalCommitmentIndex()] = nodeData.Terminal.(*terminalCommitment).bytes
 	}
-	hashes[m.arity.PathFragmentCommitmentIndex()] = m.commitToData(nodeData.PathFragment).bytesEssence()
+	hashes[m.arity.PathFragmentCommitmentIndex()] = CommitToDataRaw(nodeData.PathFragment, m.HashSize)
 	return hashes
 }
 
-func hashTheVector(hashes [][]byte, arity trie.PathArity, sz HashSize) []byte {
+func HashTheVector(hashes [][]byte, arity trie.PathArity, sz HashSize) []byte {
 	msz := sz.MaxCommitmentSize()
 	buf := make([]byte, arity.VectorLength()*msz)
 	for i, h := range hashes {
@@ -321,16 +319,6 @@ func (t *terminalCommitment) Read(r io.Reader) error {
 
 func (t *terminalCommitment) Bytes() []byte {
 	return trie.MustBytes(t)
-}
-
-// bytesEssence returns bytes with isCostlyCommitment set to false
-// It is needed to make commitment independent on optimization flags
-func (t *terminalCommitment) bytesEssence() []byte {
-	save := t.isCostlyCommitment
-	t.isCostlyCommitment = false
-	ret := trie.MustBytes(t)
-	t.isCostlyCommitment = save
-	return ret
 }
 
 func (t *terminalCommitment) String() string {

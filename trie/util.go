@@ -181,6 +181,36 @@ func readKV(r io.Reader) ([]byte, []byte, bool) {
 // r/w utility functions
 // TODO rewrite with generics when switch to Go 1.18
 
+func ReadBytes8(r io.Reader) ([]byte, error) {
+	length, err := ReadByte(r)
+	if err != nil {
+		return nil, err
+	}
+	if length == 0 {
+		return []byte{}, nil
+	}
+	ret := make([]byte, length)
+	_, err = r.Read(ret)
+	if err != nil {
+		return nil, err
+	}
+	return ret, nil
+}
+
+func WriteBytes8(w io.Writer, data []byte) error {
+	if len(data) > 256 {
+		panic(fmt.Sprintf("WriteBytes8: too long data (%v)", len(data)))
+	}
+	err := WriteByte(w, byte(len(data)))
+	if err != nil {
+		return err
+	}
+	if len(data) != 0 {
+		_, err = w.Write(data)
+	}
+	return err
+}
+
 func ReadBytes16(r io.Reader) ([]byte, error) {
 	var length uint16
 	err := ReadUint16(r, &length)
