@@ -132,6 +132,16 @@ func DumpToFile(r KVIterator, fname string) (int, error) {
 	return bytesTotal, err
 }
 
+func DangerouslyDumpToConsole(title string, r KVIterator) {
+	counter := 0
+	fmt.Printf("%s\n", title)
+	r.Iterate(func(k, v []byte) bool {
+		fmt.Printf("%d: '%x' ::: '%x'\n", counter, k, v)
+		counter++
+		return true
+	})
+}
+
 // UnDumpFromFile restores dumped set of key/value pairs into the key/value writer
 func UnDumpFromFile(w KVWriter, fname string) (int, error) {
 	file, err := os.Open(fname)

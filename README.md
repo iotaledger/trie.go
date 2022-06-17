@@ -105,16 +105,20 @@ Flags:
 * `-hashkv` if present, keys and values will be hashed to 32 bytes while generating random file. Defaults to `false`
 * `-optkey` if present, `key commitment` optimization will be enabled. Default is `false`
 
+### Benchmark results I
 Statistics on the 2.8 GhZ 32 GB RAM SDD laptop. 
 `trie_bench` run over the key/value database of 1 mil key/value pairs and `trie_blake2b` commitment model:
 
+* maximum key size: 100 bytes
+* maximum value size: 32 bytes
+* all terminal values are stored in the trie nodes (no optimization)
 * 1 mil key/value pairs in file: 69 MB
 * 1 mil key/value pairs in Badger DB (no trie): 162 MB
 
 _Note: retrieval speed very much depends on caching parameters. Benchmark results (caching turned off) would be much faster
 with caching turned on._
 
-### Benchmark for 256-ary trie
+#### Benchmark for 256-ary trie
 | Parameter                                                              | blake2b 160 bit<br/>model | 
 |------------------------------------------------------------------------|---------------------------|
 | Load 1 mil records into the DB <br> with trie generation (cached trie) | 30000 kv pairs/sec        |
@@ -123,7 +127,7 @@ with caching turned on._
 | Average length of the proof path                                       | 4.04                      |
 | Average size of serialized proof                                       | 10.6 kB                   |
 
-### Benchmark for 16-ary trie hexary)
+#### Benchmark for 16-ary trie hexary)
 | Parameter                                                              | blake2b 160 bit<br/>model |
 |------------------------------------------------------------------------|---------------------------|
 | Load 1 mil records into the DB <br> with trie generation (cached trie) | 32000 kv pairs/sec        |
@@ -132,7 +136,7 @@ with caching turned on._
 | Average length of the proof path                                       | 6.6                       |
 | Average size of serialized proof                                       | 1.75 kB                   |
 
-### Benchmarks for 2-ary trie (binary)
+#### Benchmarks for 2-ary trie (binary)
 | Parameter                                                              | blake2b 160 bit<br/>model |
 |------------------------------------------------------------------------|---------------------------|
 | Load 1 mil records into the DB <br> with trie generation (cached trie) | 13800 kv pairs/sec        |
@@ -146,6 +150,41 @@ Note that binary trie is using more runtime memory for key packing/unpacking.
 
 The `KZG (Kate)` model would give the shortest proofs (~200 bytes) with 1-2 orders of magnitude slower trie update.
 
+### Benchmark results II: compare storage optimization
+Statistics on the 2.8 GhZ 32 GB RAM SDD laptop.
+`trie_bench` run over the key/value database of 1 mil key/value pairs and `trie_blake2b` commitment model:
+
+* maximum key size: 100 bytes
+* maximum value size: 40000 bytes
+* 1 mil key/value pairs in file: 18.6 GB
+
+#### Benchmark for 16-ary (hexary) trie, terminal commitments NOT STORED in the trie
+| Parameter                                                              | blake2b 160 bit<br/>model | 
+|------------------------------------------------------------------------|---------------------------|
+| Load 1 mil records into the DB <br> with trie generation (cached trie) | 5100 kv pairs/sec         |
+| Badger DB size                                                         | 18.8 GB                   |
+| Retrieve proof + validation (not-cached trie )                         | 4700 proofs/sec           |
+| Average length of the proof path                                       | 6.62                      |
+| Average size of serialized proof                                       | 1.77 kB                   |
+
+#### Benchmark for 16-ary (hexary) trie, approx 25% of terminal commitments are STORED in the trie
+(terminal commitments for values longer than 10000 bytes are stored in the trie)
+
+| Parameter                                                              | blake2b 160 bit<br/>model | 
+|------------------------------------------------------------------------|---------------------------|
+| Load 1 mil records into the DB <br> with trie generation (cached trie) | 7000 kv pairs/sec         |
+| Badger DB size                                                         | 18.8 GB                   |
+| Retrieve proof + validation (not-cached trie )                         | 8600 proofs/sec           |
+| Average length of the proof path                                       | 6.62                      |
+| Average size of serialized proof                                       | 1.77 kB                   |
+
+We can see that big average values does not inflate trie at some expense of proof performance speed. 
+This is expected because big value must be fetched from the DB and hashed every time when terminal
+commitment is needed. 
+
+However, with terminal value threshold parameter performance can be optimized without noticeable
+increase in the DB size.
+
 ## Package `examples/trie_example`  
 Contains a simple example with the in memory key/value store. Run `go install` and the run the program `trie_example`.
 
@@ -155,6 +194,7 @@ package main
 import (
   "fmt"
   "github.com/iotaledger/trie.go/models/trie_blake2b"
+  "github.com/iotaledger/trie.go/models/trie_blake2b/trie_blake2b_verify"
   "github.com/iotaledger/trie.go/trie"
 )
 
@@ -168,7 +208,7 @@ func main() {
   model := trie_blake2b.New(trie.PathArity2, trie_blake2b.HashSize160)
 
   // create the trie with binary keys
-  tr := trie.New(model, store)
+  tr := trie.New(model, store, nil)
   fmt.Printf("\nExample of trie.\n%s\n", tr.Info())
 
   // add data key/value pairs to the trie
@@ -197,7 +237,7 @@ func main() {
     fmt.Printf("PoI of the key '%s': length %d, serialized size %d bytes\n",
       s, len(proof.Path), trie.MustSize(proof))
     // validate proof
-    err := proof.Validate(rootCommitment)
+    err := trie_blake2b_verify.Validate(proof, rootCommitment.Bytes())
     errstr := "OK"
     if err != nil {
       errstr = err.Error()
@@ -206,7 +246,7 @@ func main() {
       fmt.Printf("validating PoI for '%s': %s\n", s, errstr)
       continue
     }
-    if proof.IsProofOfAbsence() {
+    if trie_blake2b_verify.IsProofOfAbsence(proof) {
       fmt.Printf("key '%s' is NOT IN THE STATE\n", s)
     } else {
       fmt.Printf("key '%s' is IN THE STATE\n", s)

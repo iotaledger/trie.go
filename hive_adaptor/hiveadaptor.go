@@ -76,12 +76,17 @@ type HiveBatchedUpdater struct {
 }
 
 // NewHiveBatchedUpdater creates new batch updater with the hive.go batch as a backend
-func NewHiveBatchedUpdater(kvs kvstore.KVStore, model trie.CommitmentModel, triePrefix, storePrefix []byte, optimizeKeyCommitments bool) (*HiveBatchedUpdater, error) {
+func NewHiveBatchedUpdater(kvs kvstore.KVStore, model trie.CommitmentModel, triePrefix, valueStorePrefix []byte, optimizeKeyCommitments bool) (*HiveBatchedUpdater, error) {
 	ret := &HiveBatchedUpdater{
-		kvs:              kvs,
-		trie:             trie.New(model, NewHiveKVStoreAdaptor(kvs, triePrefix), nil, optimizeKeyCommitments),
+		kvs: kvs,
+		trie: trie.New(
+			model,
+			NewHiveKVStoreAdaptor(kvs, triePrefix),
+			NewHiveKVStoreAdaptor(kvs, valueStorePrefix),
+			optimizeKeyCommitments,
+		),
 		triePrefix:       triePrefix,
-		valueStorePrefix: storePrefix,
+		valueStorePrefix: valueStorePrefix,
 	}
 	return ret, nil
 }
@@ -131,6 +136,9 @@ func (a *HiveBatchedUpdater) Commit() error {
 	a.trie.Commit()
 	a.trie.PersistMutations(a.wTrie)
 	if err := a.batch.Commit(); err != nil {
+		return err
+	}
+	if err := a.kvs.Flush(); err != nil {
 		return err
 	}
 	a.trie.ClearCache()

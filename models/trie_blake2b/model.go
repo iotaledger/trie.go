@@ -146,8 +146,8 @@ func (m *CommitmentModel) CommitToData(data []byte) trie.TCommitment {
 }
 
 func (m *CommitmentModel) Description() string {
-	return fmt.Sprintf("trie commitment model implementation based on blake2b %s, arity: %s",
-		m.hashSize, m.arity)
+	return fmt.Sprintf("trie commitment model implementation based on blake2b %s, arity: %s, terminal optimization threshold: %d",
+		m.hashSize, m.arity, m.valueSizeOptimizationThreshold)
 }
 
 func (m *CommitmentModel) ShortName() string {

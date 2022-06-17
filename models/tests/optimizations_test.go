@@ -147,8 +147,10 @@ func TestTerminalOptimizationOptions(t *testing.T) {
 			}
 			tr1.Commit()
 			tr1.PersistMutations(trieStore1)
+			tr1.ClearCache()
 			tr2.Commit()
 			tr2.PersistMutations(trieStore2)
+			tr2.ClearCache()
 
 			ret1 = trie.ByteSize(trieStore1)
 			ret2 = trie.ByteSize(trieStore2)
@@ -186,6 +188,7 @@ func TestTrieProofWithDeletesBlake2b20AndTerminalOpt(t *testing.T) {
 	var tr1 *trie.Trie
 	var rootC trie.VCommitment
 	var model *trie_blake2b.CommitmentModel
+	var storeTrie, storeValue trie.KVStore
 
 	initRun := func(dataAdd []string, arity trie.PathArity, thr int) {
 		if thr < 0 {
@@ -193,8 +196,8 @@ func TestTrieProofWithDeletesBlake2b20AndTerminalOpt(t *testing.T) {
 		} else {
 			model = trie_blake2b.New(arity, trie_blake2b.HashSize160, thr)
 		}
-		storeTrie := trie.NewInMemoryKVStore()
-		storeValue := trie.NewInMemoryKVStore()
+		storeTrie = trie.NewInMemoryKVStore()
+		storeValue = trie.NewInMemoryKVStore()
 		tr1 = trie.New(model, storeTrie, storeValue)
 		for _, s := range dataAdd {
 			k := []byte(s)
@@ -206,10 +209,13 @@ func TestTrieProofWithDeletesBlake2b20AndTerminalOpt(t *testing.T) {
 	deleteKeys := func(keysDelete []string) {
 		for _, s := range keysDelete {
 			tr1.Update([]byte(s), nil)
+			storeValue.Set([]byte(s), nil)
 		}
 	}
 	commitTrie := func() trie.VCommitment {
 		tr1.Commit()
+		tr1.PersistMutations(storeTrie)
+		tr1.ClearCache()
 		return trie.RootCommitment(tr1)
 	}
 	data := []string{"a", "ab", "ac", "abc", "abd", "ad", "ada", "adb", "adc", "c", "ad+dddgsssisd"}
@@ -341,7 +347,7 @@ func TestTrieProofWithDeletesBlake2b20AndTerminalOpt(t *testing.T) {
 			}
 		})
 	}
-	//runOptions(trie.PathArity256, -1)
+	//runOptions(trie.PathArity256, 10000)
 	for _, a := range trie.AllPathArity {
 		runOptions(a, -1)
 		runOptions(a, 10)

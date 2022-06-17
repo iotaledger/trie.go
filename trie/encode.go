@@ -154,6 +154,29 @@ func EncodeUnpackedBytes(unpacked []byte, arity PathArity) ([]byte, error) {
 	return nil, ErrWrongArity
 }
 
+func PackUnpackedBytes(unpacked []byte, arity PathArity) ([]byte, error) {
+	if len(unpacked) == 0 {
+		return nil, nil
+	}
+	switch arity {
+	case PathArity256:
+		return unpacked, nil
+	case PathArity16:
+		ret, err := encode16(unpacked)
+		if err != nil {
+			return nil, err
+		}
+		return ret[1:], nil
+	case PathArity2:
+		ret, err := encode2(unpacked)
+		if err != nil {
+			return nil, err
+		}
+		return ret[1:], nil
+	}
+	return nil, ErrWrongArity
+}
+
 func mustEncodeUnpackedBytes(unpacked []byte, arity PathArity) []byte {
 	ret, err := EncodeUnpackedBytes(unpacked, arity)
 	Assert(err == nil, "%v", err)

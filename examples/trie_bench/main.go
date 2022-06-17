@@ -18,15 +18,21 @@ import (
 	"time"
 )
 
-const usage = "USAGE: trie_bench [-n=<num kv pairs>] [-blake2b=20|32] [-arity=2|16|26] [-optkey] <gen|mkdbbadger|mkdbmem|scandbbadger|mkdbbadgernotrie> <name>\n"
+const usage = "USAGE: trie_bench [-n=<num kv pairs>] [-blake2b=20|32]" +
+	"[-arity=2|16|26] [-optkey] [-valuethr=<terminal optimization threshold>]" +
+	"[maxkey=<max key size>] [maxvalue=<max value size>]" +
+	"<gen|mkdbbadger|mkdbmem|scandbbadger|mkdbbadgernotrie> <name>\n"
 
 var (
 	model    *trie_blake2b.CommitmentModel
 	hashsize = flag.Int("blake2b", 20, "must be 20 or 32")
 	arityPar = flag.Int("arity", 16, "must be 2, 16 or 256")
 	num      = flag.Int("n", 1000, "number of k/v pairs")
-	hashkv   = flag.Bool("hashkv", false, "hash keys and value")
+	hashkv   = flag.Bool("hashkv", false, "hash keys and values")
 	optkey   = flag.Bool("optkey", false, "optimize hash commitments")
+	optterm  = flag.Int("valuethr", 0, "commitments to values longer that parameter won't be saved in the try")
+	maxKey   = flag.Int("maxkey", MaxKey, "maximum size of the generated key")
+	maxValue = flag.Int("maxvalue", MaxValue, "maximum size of the generated value")
 	cmd      string
 	name     string
 	fname    string
@@ -64,21 +70,24 @@ func main() {
 
 	switch *hashsize {
 	case 20:
-		model = trie_blake2b.New(arity, trie_blake2b.HashSize160)
+		model = trie_blake2b.New(arity, trie_blake2b.HashSize160, *optterm)
 	case 32:
-		model = trie_blake2b.New(arity, trie_blake2b.HashSize256)
+		model = trie_blake2b.New(arity, trie_blake2b.HashSize256, *optterm)
 	default:
 		fmt.Printf(usage)
 		os.Exit(1)
 	}
 	fmt.Printf("Commitment model: '%s'\n", model.Description())
 	fmt.Printf("Optimize key commitments: %v\n", *optkey)
+	fmt.Printf("Terminal optimization threshold: %d\n", *optterm)
 	fname = name + ".bin"
-	dbdir = fmt.Sprintf("%s.%d.%d.dbdir", name, *hashsize, *arityPar)
+	dbdir = fmt.Sprintf("%s.%d.%d.%d.dbdir", name, *hashsize, *arityPar, *optterm)
 
 	switch cmd {
 	case "gen":
 		fmt.Printf("number of key/value pairs to generate: %d\n", *num)
+		fmt.Printf("maximum key length: %d\n", *maxKey)
+		fmt.Printf("maximum value length: %d\n", *maxValue)
 		if *hashkv {
 			fmt.Printf("generated keys and values will be hashed into 32 bytes\n")
 		}
@@ -120,8 +129,8 @@ func genrnd() {
 	rndIterator := trie.NewRandStreamIterator(trie.RandStreamParams{
 		Seed:       time.Now().UnixNano(),
 		NumKVPairs: *num,
-		MaxKey:     MaxKey,
-		MaxValue:   MaxValue,
+		MaxKey:     *maxKey,
+		MaxValue:   *maxValue,
 	})
 	fileWriter, err := trie.CreateKVStreamFile(fname)
 	must(err)
@@ -209,6 +218,9 @@ func scandbbadger() {
 	trieKVS := hive_adaptor.NewHiveKVStoreAdaptor(kvs, triePrefix)
 	valueKVS := hive_adaptor.NewHiveKVStoreAdaptor(kvs, valueStorePrefix)
 
+	//trie.DangerouslyDumpToConsole("----- VALUES ------", valueKVS)
+	//trie.DangerouslyDumpToConsole("----- TRIE ------", trieKVS)
+
 	recCounter := 0
 	keyByteCounter := 0
 	valueKVS.Iterate(func(k []byte, v []byte) bool {
@@ -231,7 +243,7 @@ func scandbbadger() {
 	fmt.Printf("TRIE: number of nodes: %d, avg key len: %d, avg node size: %d\n",
 		recCounter, keyByteCounter/recCounter, valueByteCounter/recCounter)
 
-	tr := trie.NewTrieReader(model, trieKVS, nil)
+	tr := trie.NewTrieReader(model, trieKVS, valueKVS)
 	root := trie.RootCommitment(tr)
 	fmt.Printf("root commitment: %s\n", root)
 

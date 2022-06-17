@@ -153,11 +153,14 @@ func (n *NodeData) Write(w io.Writer, arity PathArity, isKeyCommitment bool, ski
 		}
 	}
 	// write Terminal commitment if not skipped for at least one of three reasons
-	if smallFlags&terminalExistsFlag != 0 &&
-		smallFlags&takeTerminalFromKeyFlag == 0 &&
-		smallFlags&takeTerminalFromValueFlag == 0 {
-		if err = n.Terminal.Write(w); err != nil {
-			return err
+	if smallFlags&terminalExistsFlag != 0 {
+		// terminal exists
+		if smallFlags&takeTerminalFromKeyFlag == 0 &&
+			smallFlags&takeTerminalFromValueFlag == 0 {
+			// terminal will be stored in the node
+			if err = n.Terminal.Write(w); err != nil {
+				return err
+			}
 		}
 	}
 	// write child commitments if any
@@ -215,13 +218,13 @@ func (n *NodeData) Read(r io.Reader, model CommitmentModel, unpackedKey []byte, 
 			if valueStore == nil {
 				return errors.New("can't read node: value store not provided")
 			}
-			key, err := EncodeUnpackedBytes(unpackedKey, arity)
+			key, err := PackUnpackedBytes(Concat(unpackedKey, n.PathFragment), arity)
 			if err != nil {
 				return err
 			}
 			value := valueStore.Get(key)
 			if value == nil {
-				return fmt.Errorf("can't find terminal value for key %X", key)
+				return fmt.Errorf("can't find terminal value for key '%x'", key)
 			}
 			n.Terminal = model.CommitToData(value)
 		} else {
