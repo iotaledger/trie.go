@@ -40,7 +40,7 @@ func (m *CommitmentModel) Proof(key []byte, tr trie.NodeStore) *Proof {
 	}
 	ret := &Proof{
 		PathArity: tr.PathArity(),
-		HashSize:  m.HashSize,
+		HashSize:  m.hashSize,
 		Key:       proofGeneric.Key,
 		Path:      make([]*ProofElement, len(proofGeneric.Path)),
 	}

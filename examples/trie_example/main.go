@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/iotaledger/trie.go/models/trie_blake2b"
+	"github.com/iotaledger/trie.go/models/trie_blake2b/trie_blake2b_verify"
 	"github.com/iotaledger/trie.go/trie"
 )
 
@@ -45,7 +46,7 @@ func main() {
 		fmt.Printf("PoI of the key '%s': length %d, serialized size %d bytes\n",
 			s, len(proof.Path), trie.MustSize(proof))
 		// validate proof
-		err := proof.Validate(rootCommitment)
+		err := trie_blake2b_verify.Validate(proof, rootCommitment.Bytes())
 		errstr := "OK"
 		if err != nil {
 			errstr = err.Error()
@@ -54,7 +55,7 @@ func main() {
 			fmt.Printf("validating PoI for '%s': %s\n", s, errstr)
 			continue
 		}
-		if proof.IsProofOfAbsence() {
+		if trie_blake2b_verify.IsProofOfAbsence(proof) {
 			fmt.Printf("key '%s' is NOT IN THE STATE\n", s)
 		} else {
 			fmt.Printf("key '%s' is IN THE STATE\n", s)

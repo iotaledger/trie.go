@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"flag"
 	"fmt"
 	"github.com/iotaledger/hive.go/kvstore"
@@ -8,6 +9,7 @@ import (
 	"github.com/iotaledger/hive.go/kvstore/mapdb"
 	"github.com/iotaledger/trie.go/hive_adaptor"
 	"github.com/iotaledger/trie.go/models/trie_blake2b"
+	"github.com/iotaledger/trie.go/models/trie_blake2b/trie_blake2b_verify"
 	"github.com/iotaledger/trie.go/trie"
 	"golang.org/x/crypto/blake2b"
 	"golang.org/x/xerrors"
@@ -19,7 +21,7 @@ import (
 const usage = "USAGE: trie_bench [-n=<num kv pairs>] [-blake2b=20|32] [-arity=2|16|26] [-optkey] <gen|mkdbbadger|mkdbmem|scandbbadger|mkdbbadgernotrie> <name>\n"
 
 var (
-	model    trie.CommitmentModel
+	model    *trie_blake2b.CommitmentModel
 	hashsize = flag.Int("blake2b", 20, "must be 20 or 32")
 	arityPar = flag.Int("arity", 16, "must be 2, 16 or 256")
 	num      = flag.Int("n", 1000, "number of k/v pairs")
@@ -238,15 +240,15 @@ func scandbbadger() {
 	proofLen := 0
 	tm := newTimer()
 	valueKVS.Iterate(func(k []byte, v []byte) bool {
-		proof := model.(*trie_blake2b.CommitmentModel).Proof(k, tr)
+		proof := model.Proof(k, tr)
 		proofBytes += len(proof.Bytes())
 		proofLen += len(proof.Path)
-		err = proof.Validate(root)
+		err = trie_blake2b_verify.Validate(proof, root.Bytes())
 		must(err)
 
 		tc := proof.Path[len(proof.Path)-1].Terminal
-		tc1 := model.CommitToData(v)
-		if !model.EqualCommitments(tc1, tc) {
+		tc1 := trie_blake2b.CommitToDataRaw(v, model.HashSize())
+		if !bytes.Equal(tc1, tc) {
 			err = xerrors.New("invalid proof: terminal commitment and terminal proof are not equal")
 		}
 		must(err)

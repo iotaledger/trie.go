@@ -47,7 +47,7 @@ func (hs HashSize) String() string {
 
 // CommitmentModel provides commitment model implementation for the 256+ trie
 type CommitmentModel struct {
-	HashSize
+	hashSize                       HashSize
 	arity                          trie.PathArity
 	valueSizeOptimizationThreshold int
 }
@@ -68,7 +68,7 @@ func New(arity trie.PathArity, hashSize HashSize, valueSizeOptimizationThreshold
 		t = valueSizeOptimizationThreshold[0]
 	}
 	return &CommitmentModel{
-		HashSize:                       hashSize,
+		hashSize:                       hashSize,
 		arity:                          arity,
 		valueSizeOptimizationThreshold: t,
 	}
@@ -78,6 +78,9 @@ func (m *CommitmentModel) PathArity() trie.PathArity {
 	return m.arity
 }
 
+func (m *CommitmentModel) HashSize() HashSize {
+	return m.hashSize
+}
 func (m *CommitmentModel) EqualCommitments(c1, c2 trie.Serializable) bool {
 	return equalCommitments(c1, c2)
 }
@@ -119,7 +122,7 @@ func (m *CommitmentModel) UpdateNodeCommitment(mutate *trie.NodeData, childUpdat
 		return
 	}
 	if update != nil {
-		*update = (vectorCommitment)(HashTheVector(m.makeHashVector(mutate), m.arity, m.HashSize))
+		*update = (vectorCommitment)(HashTheVector(m.makeHashVector(mutate), m.arity, m.hashSize))
 	}
 }
 
@@ -129,7 +132,7 @@ func (m *CommitmentModel) CalcNodeCommitment(par *trie.NodeData) trie.VCommitmen
 	if len(par.ChildCommitments) == 0 && par.Terminal == nil {
 		return nil
 	}
-	return vectorCommitment(HashTheVector(m.makeHashVector(par), m.arity, m.HashSize))
+	return vectorCommitment(HashTheVector(m.makeHashVector(par), m.arity, m.hashSize))
 }
 
 func (m *CommitmentModel) CommitToData(data []byte) trie.TCommitment {
@@ -141,21 +144,22 @@ func (m *CommitmentModel) CommitToData(data []byte) trie.TCommitment {
 }
 
 func (m *CommitmentModel) Description() string {
-	return fmt.Sprintf("trie commitment model implementation based on blake2b %s, arity: %s", m.HashSize, m.arity)
+	return fmt.Sprintf("trie commitment model implementation based on blake2b %s, arity: %s",
+		m.hashSize, m.arity)
 }
 
 func (m *CommitmentModel) ShortName() string {
-	return fmt.Sprintf("b2b_%s_%s", m.PathArity(), m.HashSize)
+	return fmt.Sprintf("b2b_%s_%s", m.PathArity(), m.hashSize)
 }
 
 // NewTerminalCommitment creates empty terminal commitment
 func (m *CommitmentModel) NewTerminalCommitment() trie.TCommitment {
-	return newTerminalCommitment(m.HashSize)
+	return newTerminalCommitment(m.hashSize)
 }
 
 // NewVectorCommitment create empty vector commitment
 func (m *CommitmentModel) NewVectorCommitment() trie.VCommitment {
-	return newVectorCommitment(m.HashSize)
+	return newVectorCommitment(m.hashSize)
 }
 
 func (m *CommitmentModel) ForceStoreTerminalWithNode(c trie.TCommitment) bool {
@@ -176,7 +180,7 @@ func CommitToDataRaw(data []byte, sz HashSize) []byte {
 
 func (m *CommitmentModel) commitToData(data []byte) *terminalCommitment {
 	return &terminalCommitment{
-		bytes:              CommitToDataRaw(data, m.HashSize),
+		bytes:              CommitToDataRaw(data, m.hashSize),
 		isCostlyCommitment: len(data) > m.valueSizeOptimizationThreshold,
 	}
 }
@@ -203,7 +207,7 @@ func (m *CommitmentModel) makeHashVector(nodeData *trie.NodeData) [][]byte {
 	if nodeData.Terminal != nil {
 		hashes[m.arity.TerminalCommitmentIndex()] = nodeData.Terminal.(*terminalCommitment).bytes
 	}
-	hashes[m.arity.PathFragmentCommitmentIndex()] = CommitToDataRaw(nodeData.PathFragment, m.HashSize)
+	hashes[m.arity.PathFragmentCommitmentIndex()] = CommitToDataRaw(nodeData.PathFragment, m.hashSize)
 	return hashes
 }
 
