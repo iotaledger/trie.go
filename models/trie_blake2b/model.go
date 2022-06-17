@@ -31,6 +31,8 @@ const (
 	HashSize256 = HashSize(32)
 )
 
+var AllHashSize = []HashSize{HashSize160, HashSize256}
+
 func (hs HashSize) MaxCommitmentSize() int {
 	return int(hs) + 1
 }

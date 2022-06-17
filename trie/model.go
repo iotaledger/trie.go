@@ -42,6 +42,8 @@ const (
 	PathArity2   = PathArity(1)
 )
 
+var AllPathArity = []PathArity{PathArity256, PathArity16, PathArity2}
+
 func (a PathArity) String() string {
 	switch a {
 	case PathArity256, PathArity16, PathArity2:
