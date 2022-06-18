@@ -61,9 +61,11 @@ func newNodeStoreBuffered(model CommitmentModel, trieStore, valueStore KVReader,
 // clone is a deep copy of the trie, including its buffered data
 func (sc *nodeStoreBuffered) clone() *nodeStoreBuffered {
 	ret := &nodeStoreBuffered{
-		reader:    sc.reader,
-		nodeCache: make(map[string]*bufferedNode),
-		deleted:   make(map[string]struct{}),
+		reader:                 sc.reader,
+		nodeCache:              make(map[string]*bufferedNode),
+		deleted:                make(map[string]struct{}),
+		arity:                  sc.arity,
+		optimizeKeyCommitments: sc.optimizeKeyCommitments,
 	}
 	for k, v := range sc.nodeCache {
 		ret.nodeCache[k] = v.Clone()

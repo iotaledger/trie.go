@@ -303,6 +303,39 @@ func TestTrieBase(t *testing.T) {
 			c2 := trie.RootCommitment(tr2)
 			require.True(t, m.EqualCommitments(c1, c2))
 		})
+		t.Run("clone"+tn(m), func(t *testing.T) {
+			store1 := trie.NewInMemoryKVStore()
+			tr1 := trie.New(m, store1, nil)
+
+			data := []string{"001", "002", "010"}
+			for i := range data {
+				tr1.Update([]byte(data[i]), []byte(data[i]))
+
+				tr1Clone := tr1.Clone()
+				require.True(t, m.EqualCommitments(trie.RootCommitment(tr1), trie.RootCommitment(tr1Clone)))
+
+				tr1.Commit()
+			}
+			c1 := trie.RootCommitment(tr1)
+			tr1Clone := tr1.Clone()
+			require.True(t, m.EqualCommitments(c1, trie.RootCommitment(tr1Clone)))
+
+			store2 := trie.NewInMemoryKVStore()
+			tr2 := trie.New(m, store2, nil)
+
+			for i := range data {
+				tr2.Update([]byte(data[i]), []byte(data[i]))
+
+				tr2Clone := tr2.Clone()
+				require.True(t, m.EqualCommitments(trie.RootCommitment(tr2), trie.RootCommitment(tr2Clone)))
+			}
+			tr2.Commit()
+			c2 := trie.RootCommitment(tr2)
+			require.True(t, m.EqualCommitments(c1, c2))
+
+			tr2Clone := tr2.Clone()
+			require.True(t, m.EqualCommitments(c2, trie.RootCommitment(tr2Clone)))
+		})
 
 		t.Run("reverse short"+tn(m), func(t *testing.T) {
 			store1 := trie.NewInMemoryKVStore()
