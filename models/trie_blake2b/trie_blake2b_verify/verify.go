@@ -75,17 +75,16 @@ func ValidateWithValue(p *trie_blake2b.Proof, rootBytes []byte, value []byte) er
 	return nil
 }
 
-// CommitmentToTheTerminalNode returns hash of the last node in the proof
-// If it is a valid proof, it s always contains terminal commitment
-// It is useful to get commitment to the sub-state. It must contain some value
-// at its nil postfix
-//func CommitmentToTheTerminalNode(p *trie_blake2b.Proof) trie.VCommitment {
-//	if len(p.Path) == 0 {
-//		return nil
-//	}
-//	ret := hashIt(p.Path[len(p.Path)-1], nil, p.PathArity, p.HashSize)
-//	return (*trie_blake2b.vectorCommitment)(&ret)
-//}
+//CommitmentToTheTerminalNode returns hash of the last node in the proof
+//If it is a valid proof, it s always contains terminal commitment
+//It is useful to get commitment to the sub-state. It must contain some value
+//at its nil postfix
+func CommitmentToTheTerminalNode(p *trie_blake2b.Proof) []byte {
+	if len(p.Path) == 0 {
+		return nil
+	}
+	return hashIt(p.Path[len(p.Path)-1], nil, p.PathArity, p.HashSize)
+}
 
 func verify(p *trie_blake2b.Proof, pathIdx, keyIdx int) ([]byte, error) {
 	trie.Assert(pathIdx < len(p.Path), "assertion: pathIdx < lenPlus1(p.Path)")
