@@ -2,6 +2,7 @@ package trie_blake2b_verify
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"github.com/iotaledger/trie.go/models/trie_blake2b"
 	"github.com/iotaledger/trie.go/trie"
@@ -55,6 +56,20 @@ func Validate(p *trie_blake2b.Proof, rootBytes []byte) error {
 	}
 	if !bytes.Equal(c, rootBytes) {
 		return xerrors.New("invalid proof: commitment not equal to the root")
+	}
+	return nil
+}
+
+func ValidateWithValue(p *trie_blake2b.Proof, rootBytes []byte, value []byte) error {
+	if err := Validate(p, rootBytes); err != nil {
+		return err
+	}
+	_, r := MustKeyWithTerminal(p)
+	if len(r) == 0 {
+		return errors.New("key is not present in the state")
+	}
+	if !bytes.Equal(trie_blake2b.CommitToDataRaw(value, p.HashSize), r) {
+		return errors.New("key does not correspond to the given value")
 	}
 	return nil
 }
