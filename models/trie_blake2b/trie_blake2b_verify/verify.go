@@ -60,6 +60,7 @@ func Validate(p *trie_blake2b.Proof, rootBytes []byte) error {
 	return nil
 }
 
+// ValidateWithValue checks the proof and checks if the proof commits to the specific value
 func ValidateWithValue(p *trie_blake2b.Proof, rootBytes []byte, value []byte) error {
 	if err := Validate(p, rootBytes); err != nil {
 		return err
