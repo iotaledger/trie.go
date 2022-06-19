@@ -4,6 +4,10 @@ import (
 	"bytes"
 	"flag"
 	"fmt"
+	"os"
+	"runtime"
+	"time"
+
 	"github.com/iotaledger/hive.go/kvstore"
 	"github.com/iotaledger/hive.go/kvstore/badger"
 	"github.com/iotaledger/hive.go/kvstore/mapdb"
@@ -13,9 +17,6 @@ import (
 	"github.com/iotaledger/trie.go/trie"
 	"golang.org/x/crypto/blake2b"
 	"golang.org/x/xerrors"
-	"os"
-	"runtime"
-	"time"
 )
 
 const usage = "USAGE: trie_bench [-n=<num kv pairs>] [-blake2b=20|32]" +

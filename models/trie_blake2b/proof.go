@@ -4,8 +4,9 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/iotaledger/trie.go/trie"
 	"io"
+
+	"github.com/iotaledger/trie.go/trie"
 )
 
 // Proof blake2b 20 byte model-specific proof of inclusion

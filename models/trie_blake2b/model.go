@@ -6,10 +6,10 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"golang.org/x/crypto/blake2b"
 	"io"
 
 	"github.com/iotaledger/trie.go/trie"
+	"golang.org/x/crypto/blake2b"
 )
 
 // terminalCommitment commits to the data of arbitrary size.

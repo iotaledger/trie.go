@@ -2,11 +2,12 @@ package trie_kzg_bn256
 
 import (
 	"bytes"
+	"io"
+
 	"github.com/iotaledger/trie.go/trie"
 	"go.dedis.ch/kyber/v3"
 	"go.dedis.ch/kyber/v3/pairing/bn256"
 	"golang.org/x/crypto/blake2b"
-	"io"
 )
 
 type terminalCommitment struct {

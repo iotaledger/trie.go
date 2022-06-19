@@ -3,15 +3,16 @@ package tests
 import (
 	"bytes"
 	"fmt"
+	"math/rand"
+	"strings"
+	"testing"
+	"time"
+
 	"github.com/iotaledger/trie.go/models/trie_blake2b"
 	"github.com/iotaledger/trie.go/models/trie_blake2b/trie_blake2b_verify"
 	"github.com/iotaledger/trie.go/models/trie_kzg_bn256"
 	"github.com/iotaledger/trie.go/trie"
 	"github.com/stretchr/testify/require"
-	"math/rand"
-	"strings"
-	"testing"
-	"time"
 )
 
 func TestKeyCommitmentOptimization(t *testing.T) {

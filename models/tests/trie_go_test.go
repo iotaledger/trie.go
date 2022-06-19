@@ -3,16 +3,17 @@ package tests
 import (
 	"bytes"
 	"fmt"
-	"github.com/iotaledger/trie.go/models/trie_blake2b"
-	"github.com/iotaledger/trie.go/models/trie_kzg_bn256"
-	"github.com/iotaledger/trie.go/trie"
-	"github.com/stretchr/testify/require"
 	"io"
 	"math"
 	"math/rand"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/iotaledger/trie.go/models/trie_blake2b"
+	"github.com/iotaledger/trie.go/models/trie_kzg_bn256"
+	"github.com/iotaledger/trie.go/trie"
+	"github.com/stretchr/testify/require"
 )
 
 func tn(m trie.CommitmentModel) string {

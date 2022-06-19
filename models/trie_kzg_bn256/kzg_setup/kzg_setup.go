@@ -6,13 +6,13 @@ package main
 import (
 	"encoding/hex"
 	"fmt"
-	trie_kzg_bn2562 "github.com/iotaledger/trie.go/models/trie_kzg_bn256"
 	"io/ioutil"
 	"math/rand"
 	"os"
 	"strings"
 	"syscall"
 
+	trie_kzg_bn2562 "github.com/iotaledger/trie.go/models/trie_kzg_bn256"
 	"go.dedis.ch/kyber/v3/pairing/bn256"
 	"golang.org/x/crypto/blake2b"
 	"golang.org/x/term"
@@ -88,7 +88,7 @@ func writeToFile(tr *trie_kzg_bn2562.TrustedSetup, fname string) {
 	} else {
 		f, err := os.Create(fname)
 		checkErr(err)
-		defer f.Close()
+		defer func() { _ = f.Close() }()
 
 		data := tr.Bytes()
 		dataStr := ""

@@ -4,8 +4,9 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"golang.org/x/xerrors"
 	"io"
+
+	"golang.org/x/xerrors"
 )
 
 // NodeData contains all data trie node needs to compute commitment

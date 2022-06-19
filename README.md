@@ -1,82 +1,100 @@
 ## trie.go
-Go library for implementations of sparse tries (sparse radix trees), state commitments and _proof of inclusion_ for large data sets.
+Go library for implementations of sparse tries (sparse radix trees), state commitments and _proof of inclusion_ 
+for large **mutable** data sets with **variable size keys**. 
 
-It implements a generic `256+ trie` for several particular commitment schemes. 
+The _mutable state model_ is assumed as a main use case, but not limited to it. 
+By _mutable state_ we assume a large key/value data set which is frequently updated by 
+adding, modifying and deleting key/value pairs. 
+The application is only interested in the latest (current) state of the mutable state and the commitment to it. 
 
-The trie update and proof retrieval operations are highly optimized via caching access to the database and buffering 
-trie updates up until the tries ic _committed_ (recalculated). 
-It saves a lot of DB interactions and a lot of cryptographic operations, such as hashing and curve arithmetics.  
+The `trie.go` package allows efficient and deterministic recalculation of the commitment tree of the 
+data set upon each batch of mutations with minimum overhead, in a logarithmic time.
 
-The library supports both variable and fixed-sized keys as well as several optimization options:
+The trie update and proof retrieval operations are highly optimized via caching access 
+to the database. It buffers trie updates up until the trie is _committed_ (recalculated).
+It saves a lot of DB interactions and a lot of cryptographic operations (hashing or curve arithmetics).
+
+This _mutable commitment tree model_ extends _append only commitment tree model_ often used 
+in blockchains, where commitment tree is augmented each time by linearly appending new block
+with its Merkle tree to the branch of block headers. 
+The former is much less redundant and more efficient in high throughput 
+systems when state is mutated with large blocks (batches of state mutations) each few seconds. 
+
+Note that _variable size keys_ implies terminal value can be stored in a key which is 
+a prefix of another key. 
+This trait makes the state hierarchical, i.e. with sub-states of key/value collection where all 
+keys share same prefix. 
+
+`trie.go` implements a generic `256+ trie` for several particular cryptographic commitment schemes with 
+rich set of optimization options. 
+
+The library supports both variable and fixed-sized keys as well as a number optimization options:
 * 256-ary trie is best for fixed-sized commitment models like `KZG (Kate`  and `verkle` tries
 * 16-ary (hexary) trie is similar to Patricia trees. It is close to optimal when it comes to hash-based commitment models
 * 2-ary (binary) trie gives the smallest proof size with hash-based commitment. However, much longer proof path and 
-bytes-to-bits packing/unpacking overhead is significant
+bytes-to-bits packing/unpacking overhead is noticeable
 * library also supports `key commitments`, a trie optimization when key and value are equal. This makes it optimal for ledger-state commitments, 
 because in ledger state commitments the committed values are commitments itself (UTXO IDs or transaction ID) 
-and the trie stores committed terminal value only once.
+and the trie stores committed terminal value only once. This option is ideal for commitment to the ledger state.
+* terminal values can be committed to any node of the tree, not only leafs of it, in optimal way.
 
 The trie implementation has minimal dependencies on other projects. 
 
 It is used as a dependency in the [IOTA Smart Contracts (the Wasp node)](https://github.com/iotaledger/wasp) 
 as the engine for the state commitment.
 
-The `blake2b`-based trie implementation is ready for the use in other project with any implementations of key/value store. 
+The `blake2b`-based trie implementation is ready for the use in other projects. 
 
 ### Package `trie` 
 Contains: 
-- implementation of the extended [radix trie](https://en.wikipedia.org/wiki/Radix_tree).
+- an implementation of the (extended) [radix trie](https://en.wikipedia.org/wiki/Radix_tree).
 - data types and interfaces shared between different implementations of trie:
   - interfaces `VCommitment` and `TCommitment` abstracts implementation from serialization details
-  - `KVReader`, `KVWriter`, `KVIterator` abstracts implementation from details of a particular key/value store
+  - `KVReader`, `KVWriter`, `KVIterator` interfaces abstracts implementation from details of a particular key/value store
+  - the `CommitmentModel` interface abstracts trie implementation from particularities of specific commitments schemes
   - various utility functions used in the code and in tests
 
 
 It essentially follows the formal definition provided in [_256+ trie. Definition_](https://hackmd.io/@Evaldas/H13YFOVGt). 
 
-The implementation is optimized performance and storage-wise. It provides `O(log_256(N))` complexity of the trie updates.
+The implementation is optimized performance and storage-wise. 
+It provides `O(log_256(N))` complexity of the trie updates.
 
 The trie itself is stored as a collection of key/value pairs. Updating of the trie is cached in memory. 
 It makes trie update a very fast operation.
 
-The `trie256p` is abstracted from both the particular commitment scheme through `CommitmentModel` interface 
-and from details of key/value store implementation via `KVStore` interface. 
-
-The generic implementation of `256+ trie` can be used to implement different commitment models by implementing 
-`CommitmentModel` interface.  
-
 ### Packages `models/trie_blake2b`
-Contains implementation of the `CommitmentModel` as a sparse Merkle tree on the `256+ trie` with data commitment via `blake2b` hash function.
+Contains implementation of the `CommitmentModel` as a sparse Merkle tree on the `trie` with data commitment via `blake2b` hash function.
 
 The binary (2-ary) trie is essentially the same as well known _Sparse Merkle Tree_. 
 
-The implementation takes parameter weather it will be using 32 byte/256 bit or 20 byte/160 bit hashing functions.  
+The implementation takes particular hash size used in the commitments as a parameter.
 
-The implementation is fast and optimized. It can be used in various project.
-
-The usage of hashing function as a commitment function results in proofs of inclusion 5-6 times bigger than with
-polynomial KZG (aka Kate) commitments (size of PoI usually is up to 1-2K bytes).
+The usage of hashing function as a commitment function results in proofs of inclusion up to 5-6 times bigger than with (1-2Kbytes)
+polynomial KZG (aka Kate) commitments.
 
 ### Package `models/trie_kzg_bn256` 
-Contains implementation of the `CommitmentModel` as the _verkle_ tree which uses _KZG (Kate) commitments_ 
+Contains implementation of the `CommitmentModel` as the **verkle tree** which uses _KZG (Kate) commitments_ 
 as a scheme for vectors commitments and `bn256` curve from _Dedis Kyber_ library. 
-For related math see the [writeup](https://hackmd.io/@Evaldas/SJ9KHoDJF).
+For related math and other references see the [writeup](https://hackmd.io/@Evaldas/SJ9KHoDJF).
 
-The underlying KZG cryptography is slow and suboptimal. The speed of update of the `256+ trie` is some 1-2 orders of magnitude 
-slower than implementation with `blake2b` hash function. The proofs of inclusion, however, are very short, up to 5-6
-times shorter.
+The underlying KZG cryptography in this specific implementation is rather slow and suboptimal. 
+The speed of update of the `256+ trie` is some 1-2 orders of magnitude 
+slower than implementation with `blake2b` hash function. 
+The proofs of inclusion, however, are very short, up to 5-6 times shorter, ~200 bytes only.
 
-This makes `models/trie_kzg_bn256` implementation more a _proof of concept_ and verification of the `256+ trie` concept. 
+The `models/trie_kzg_bn256` implementation is more a _proof of concept_ and verification of the `256+ trie` concept. 
 It should not be use in practical project, unless `bn256` is replaced with other, faster curves.
 
 ## Package `models/tests`
-Contains number of tests of the trie implementation. Most of the tests run with `trie_blak2b_32`, `trie_blak2b_20` and `trie_kzg_bn256` 
-implementations of the `CommitmentModel`. The tests check different edge conditions and determinism of the `trie`.
-It also makes sure `trie` implementation is agnostic about the specific commitment model. 
+Contains number of tests of the trie implementation. 
+Same tests run for `trie_blak2b` 256 and 160 bit hashing and `trie_kzg_bn256` 
+implementations of the `CommitmentModel` and different combinations of other parameters such as arity of the trie.
+It also makes sure `trie` implementation is agnostic about the specific commitment model and optimization parameters. 
 
 ## Package `hive_adaptor`
-Contains useful adaptors to key/value interface of `hive.go`. It makes `trie.go` compatible with any key/value database
-implemented in the `hive.go`.
+Contains useful adaptors to key/value interface of `hive.go`. 
+It makes `trie.go` compatible with any key/value storages implemented in the `github.com/iotaledger/hive.go`.
 
 ## Package `examples/trie_bench`
 Contains `trie_bench` program made for testing and benchmarking of different functions of `trie` with `tre_blake2b` 
@@ -109,6 +127,8 @@ Flags:
 Statistics on the 2.8 GhZ 32 GB RAM SDD laptop. 
 `trie_bench` run over the key/value database of 1 mil key/value pairs and `trie_blake2b` commitment model:
 
+* Commitment model `trie_blake2b` 160 bit
+* 1 million key/value pairs
 * maximum key size: 100 bytes
 * maximum value size: 32 bytes
 * all terminal values are stored in the trie nodes (no optimization)
@@ -152,10 +172,11 @@ The `KZG (Kate)` model would give the shortest proofs (~200 bytes) with 1-2 orde
 
 ### Benchmark results II: compare storage optimization
 Statistics on the 2.8 GhZ 32 GB RAM SDD laptop.
-`trie_bench` run over the key/value database of 1 mil key/value pairs and `trie_blake2b` commitment model:
 
+* * Commitment model `trie_blake2b` 160 bit
+* 1 million key/value pairs
 * maximum key size: 100 bytes
-* maximum value size: 40000 bytes
+* maximum value size: 40 Kbytes
 * 1 mil key/value pairs in file: 18.6 GB
 
 #### Benchmark for 16-ary (hexary) trie, terminal commitments NOT STORED in the trie

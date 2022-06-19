@@ -2,12 +2,13 @@ package tests
 
 import (
 	"bytes"
+	"testing"
+
 	"github.com/iotaledger/trie.go/models/trie_blake2b"
 	"github.com/iotaledger/trie.go/models/trie_blake2b/trie_blake2b_verify"
 	"github.com/iotaledger/trie.go/models/trie_kzg_bn256"
 	"github.com/iotaledger/trie.go/trie"
 	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 func TestTrieProofBlake2b(t *testing.T) {

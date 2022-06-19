@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+
 	"github.com/iotaledger/trie.go/models/trie_blake2b"
 	"github.com/iotaledger/trie.go/models/trie_blake2b/trie_blake2b_verify"
 	"github.com/iotaledger/trie.go/trie"

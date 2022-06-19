@@ -5,11 +5,12 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"golang.org/x/crypto/blake2b"
 	"io"
 	"math"
 	"os"
 	"reflect"
+
+	"golang.org/x/crypto/blake2b"
 )
 
 // CheckNils returns (conclusive comparison result, true) if at least one is nil
@@ -117,7 +118,7 @@ func DumpToFile(r KVIterator, fname string) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	var bytesTotal int
 	r.Iterate(func(k, v []byte) bool {
@@ -148,7 +149,7 @@ func UnDumpFromFile(w KVWriter, fname string) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	var k, v []byte
 	var exit bool

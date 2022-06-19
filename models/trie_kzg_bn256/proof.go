@@ -3,10 +3,11 @@ package trie_kzg_bn256
 import (
 	"bytes"
 	"fmt"
+	"io"
+
 	"github.com/iotaledger/trie.go/trie"
 	"go.dedis.ch/kyber/v3"
 	"golang.org/x/xerrors"
-	"io"
 )
 
 type ProofElement struct {
