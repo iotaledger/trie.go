@@ -3,8 +3,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/iotaledger/trie.go/models/trie_blake2b"
-	"github.com/iotaledger/trie.go/models/trie_blake2b/trie_blake2b_verify"
+	"github.com/iotaledger/trie.go/models/trie_kzg_bn256"
 	"github.com/iotaledger/trie.go/trie"
 )
 
@@ -14,8 +13,8 @@ func main() {
 	// create store where trie nodes will be stored
 	store := trie.NewInMemoryKVStore()
 
-	// create blake2b 20 bytes (160 bit) commitment model for binary trie
-	model := trie_blake2b.New(trie.PathArity2, trie_blake2b.HashSize160)
+	// create kzg commitment model for 256-ary trie
+	model := trie_kzg_bn256.New()
 
 	// create the trie with binary keys
 	tr := trie.New(model, store, nil)
@@ -43,11 +42,15 @@ func main() {
 	// check PoI for all data
 	for _, s := range data {
 		// retrieve proof
-		proof := model.Proof([]byte(s), tr)
+		proof, exists := model.ProofOfInclusion([]byte(s), tr)
+		if !exists {
+			fmt.Printf("key not found: '%s'\n", s)
+			continue
+		}
 		fmt.Printf("PoI of the key '%s': length %d, serialized size %d bytes\n",
 			s, len(proof.Path), trie.MustSize(proof))
 		// validate proof
-		err := trie_blake2b_verify.Validate(proof, rootCommitment.Bytes())
+		err := proof.Validate(rootCommitment)
 		errstr := "OK"
 		if err != nil {
 			errstr = err.Error()
@@ -55,11 +58,6 @@ func main() {
 		if err != nil {
 			fmt.Printf("validating PoI for '%s': %s\n", s, errstr)
 			continue
-		}
-		if trie_blake2b_verify.IsProofOfAbsence(proof) {
-			fmt.Printf("key '%s' is NOT IN THE STATE\n", s)
-		} else {
-			fmt.Printf("key '%s' is IN THE STATE\n", s)
 		}
 	}
 }
