@@ -12,6 +12,7 @@ import (
 
 	"github.com/iotaledger/trie.go/models/trie_blake2b"
 	"github.com/iotaledger/trie.go/models/trie_kzg_bn256"
+	"github.com/iotaledger/trie.go/models/trie_mimc"
 	"github.com/iotaledger/trie.go/trie"
 	"github.com/stretchr/testify/require"
 )
@@ -105,10 +106,13 @@ func TestNode(t *testing.T) {
 	}
 	runTest(t, trie_blake2b.New(trie.PathArity256, trie_blake2b.HashSize256))
 	runTest(t, trie_blake2b.New(trie.PathArity256, trie_blake2b.HashSize160))
+	runTest(t, trie_mimc.New(trie.PathArity256, trie_mimc.HashSize256))
 	runTest(t, trie_blake2b.New(trie.PathArity16, trie_blake2b.HashSize256))
 	runTest(t, trie_blake2b.New(trie.PathArity16, trie_blake2b.HashSize160))
+	runTest(t, trie_mimc.New(trie.PathArity16, trie_mimc.HashSize256))
 	runTest(t, trie_blake2b.New(trie.PathArity2, trie_blake2b.HashSize256))
 	runTest(t, trie_blake2b.New(trie.PathArity2, trie_blake2b.HashSize160))
+	runTest(t, trie_mimc.New(trie.PathArity2, trie_mimc.HashSize256))
 
 	runTest(t, trie_kzg_bn256.New())
 }
@@ -486,6 +490,9 @@ func TestTrieBase(t *testing.T) {
 	runTest(t, trie_blake2b.New(trie.PathArity256, trie_blake2b.HashSize160))
 	runTest(t, trie_blake2b.New(trie.PathArity16, trie_blake2b.HashSize160))
 	runTest(t, trie_blake2b.New(trie.PathArity2, trie_blake2b.HashSize160))
+	runTest(t, trie_mimc.New(trie.PathArity256, trie_mimc.HashSize256))
+	runTest(t, trie_mimc.New(trie.PathArity16, trie_mimc.HashSize256))
+	runTest(t, trie_mimc.New(trie.PathArity2, trie_mimc.HashSize256))
 
 	runTest(t, trie_kzg_bn256.New())
 }
@@ -716,6 +723,9 @@ func TestTrieRnd(t *testing.T) {
 	runTest(t, trie_blake2b.New(trie.PathArity256, trie_blake2b.HashSize160), false)
 	runTest(t, trie_blake2b.New(trie.PathArity16, trie_blake2b.HashSize160), false)
 	runTest(t, trie_blake2b.New(trie.PathArity2, trie_blake2b.HashSize160), false)
+	runTest(t, trie_mimc.New(trie.PathArity256, trie_mimc.HashSize256), true)
+	runTest(t, trie_mimc.New(trie.PathArity16, trie_mimc.HashSize256), true)
+	runTest(t, trie_mimc.New(trie.PathArity2, trie_mimc.HashSize256), true)
 
 	runTest(t, trie_kzg_bn256.New(), true)
 }
@@ -882,6 +892,9 @@ func TestTrieRndKeyCommitment(t *testing.T) {
 	runTest(t, trie_blake2b.New(trie.PathArity256, trie_blake2b.HashSize160), false)
 	runTest(t, trie_blake2b.New(trie.PathArity16, trie_blake2b.HashSize160), false)
 	runTest(t, trie_blake2b.New(trie.PathArity2, trie_blake2b.HashSize160), false)
+	runTest(t, trie_mimc.New(trie.PathArity256, trie_mimc.HashSize256), true)
+	runTest(t, trie_mimc.New(trie.PathArity16, trie_mimc.HashSize256), true)
+	runTest(t, trie_mimc.New(trie.PathArity2, trie_mimc.HashSize256), true)
 
 	runTest(t, trie_kzg_bn256.New(), true)
 }
@@ -1025,6 +1038,9 @@ func TestTrieWithDeletion(t *testing.T) {
 	runTest(t, trie_blake2b.New(trie.PathArity256, trie_blake2b.HashSize160))
 	runTest(t, trie_blake2b.New(trie.PathArity16, trie_blake2b.HashSize160))
 	runTest(t, trie_blake2b.New(trie.PathArity2, trie_blake2b.HashSize160))
+	runTest(t, trie_mimc.New(trie.PathArity256, trie_mimc.HashSize256))
+	runTest(t, trie_mimc.New(trie.PathArity16, trie_mimc.HashSize256))
+	runTest(t, trie_mimc.New(trie.PathArity2, trie_mimc.HashSize256))
 
 	runTest(t, trie_kzg_bn256.New())
 }
@@ -1121,6 +1137,9 @@ func TestTrieWithDeletionDeterm(t *testing.T) {
 	runTest(t, trie_blake2b.New(trie.PathArity256, trie_blake2b.HashSize160), false)
 	runTest(t, trie_blake2b.New(trie.PathArity16, trie_blake2b.HashSize160), false)
 	runTest(t, trie_blake2b.New(trie.PathArity2, trie_blake2b.HashSize160), false)
+	runTest(t, trie_mimc.New(trie.PathArity256, trie_mimc.HashSize256), true)
+	runTest(t, trie_mimc.New(trie.PathArity16, trie_mimc.HashSize256), true)
+	runTest(t, trie_mimc.New(trie.PathArity2, trie_mimc.HashSize256), true)
 
 	runTest(t, trie_kzg_bn256.New(), true)
 }
@@ -1173,6 +1192,9 @@ func TestDeleteCommit(t *testing.T) {
 	runTest(t, trie_blake2b.New(trie.PathArity256, trie_blake2b.HashSize160))
 	runTest(t, trie_blake2b.New(trie.PathArity16, trie_blake2b.HashSize160))
 	runTest(t, trie_blake2b.New(trie.PathArity2, trie_blake2b.HashSize160))
+	runTest(t, trie_mimc.New(trie.PathArity256, trie_mimc.HashSize256))
+	runTest(t, trie_mimc.New(trie.PathArity16, trie_mimc.HashSize256))
+	runTest(t, trie_mimc.New(trie.PathArity2, trie_mimc.HashSize256))
 
 	runTest(t, trie_kzg_bn256.New())
 }
@@ -1180,10 +1202,7 @@ func TestDeleteCommit(t *testing.T) {
 func TestGenTrie(t *testing.T) {
 	const filename = "$$for testing$$"
 	runTest := func(t *testing.T, m trie.CommitmentModel) {
-		kind := "blake2b"
-		if _, ok := m.(*trie_kzg_bn256.CommitmentModel); ok {
-			kind = "kzg"
-		}
+		kind := m.ShortName()
 		fname := filename + "_" + kind
 
 		t.Run("gen file "+kind, func(t *testing.T) {
@@ -1215,12 +1234,15 @@ func TestGenTrie(t *testing.T) {
 		})
 	}
 
-	runTest(t, trie_blake2b.New(trie.PathArity256, trie_blake2b.HashSize256))
-	runTest(t, trie_blake2b.New(trie.PathArity16, trie_blake2b.HashSize256))
-	runTest(t, trie_blake2b.New(trie.PathArity2, trie_blake2b.HashSize256))
-	runTest(t, trie_blake2b.New(trie.PathArity256, trie_blake2b.HashSize160))
-	runTest(t, trie_blake2b.New(trie.PathArity16, trie_blake2b.HashSize160))
-	runTest(t, trie_blake2b.New(trie.PathArity2, trie_blake2b.HashSize160))
+	//runTest(t, trie_blake2b.New(trie.PathArity256, trie_blake2b.HashSize256))
+	//runTest(t, trie_blake2b.New(trie.PathArity16, trie_blake2b.HashSize256))
+	//runTest(t, trie_blake2b.New(trie.PathArity2, trie_blake2b.HashSize256))
+	//runTest(t, trie_blake2b.New(trie.PathArity256, trie_blake2b.HashSize160))
+	//runTest(t, trie_blake2b.New(trie.PathArity16, trie_blake2b.HashSize160))
+	//runTest(t, trie_blake2b.New(trie.PathArity2, trie_blake2b.HashSize160))
+	runTest(t, trie_mimc.New(trie.PathArity256, trie_mimc.HashSize256))
+	runTest(t, trie_mimc.New(trie.PathArity16, trie_mimc.HashSize256))
+	runTest(t, trie_mimc.New(trie.PathArity2, trie_mimc.HashSize256))
 
 	runTest(t, trie_kzg_bn256.New())
 }
