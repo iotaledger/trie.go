@@ -9,7 +9,7 @@ import (
 	"github.com/iotaledger/trie.go/trie"
 )
 
-// Proof blake2b 20 byte model-specific proof of inclusion
+// Proof mimc 32 byte model-specific proof of inclusion
 type Proof struct {
 	PathArity trie.PathArity
 	HashSize  HashSize

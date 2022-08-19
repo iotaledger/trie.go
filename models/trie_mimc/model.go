@@ -1,4 +1,4 @@
-// Package trie_mimc implements trie.CommitmentModel based on blake2b 32-byte hashing
+// Package trie_mimc implements trie.CommitmentModel based on mimc 32-byte hashing
 package trie_mimc
 
 import (
@@ -103,7 +103,7 @@ func equalCommitments(c1, c2 trie.Serializable) bool {
 }
 
 // UpdateNodeCommitment computes update to the node data and, optionally, updates existing commitment
-// In blake2b implementation delta it just means computing the hash of data
+// In mimc implementation delta it just means computing the hash of data
 func (m *CommitmentModel) UpdateNodeCommitment(mutate *trie.NodeData, childUpdates map[byte]trie.VCommitment, _ bool, newTerminalUpdate trie.TCommitment, update *trie.VCommitment) {
 	deleted := make([]byte, 0, 256)
 	for i, upd := range childUpdates {
@@ -259,7 +259,7 @@ func (v vectorCommitment) Clone() trie.VCommitment {
 func (v vectorCommitment) Update(delta trie.VCommitment) {
 	m, ok := delta.(vectorCommitment)
 	if !ok {
-		panic("blake2b hash commitment expected")
+		panic("mimc hash commitment expected")
 	}
 	copy(v, m)
 }
