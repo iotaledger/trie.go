@@ -40,8 +40,12 @@ type ProofOfPath struct {
 
 func ProofOfInclusionFromBytes(data []byte) (*ProofOfInclusion, error) {
 	ret := &ProofOfInclusion{}
-	if err := ret.Read(bytes.NewReader(data)); err != nil {
+	rdr := bytes.NewReader(data)
+	if err := ret.Read(rdr); err != nil {
 		return nil, err
+	}
+	if rdr.Len() != 0 {
+		return nil, trie.ErrNotAllBytesConsumed
 	}
 	return ret, nil
 }

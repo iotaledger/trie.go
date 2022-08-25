@@ -6,6 +6,7 @@ import (
 	"io"
 	"io/ioutil"
 
+	"github.com/iotaledger/trie.go/trie"
 	"go.dedis.ch/kyber/v3"
 	"go.dedis.ch/kyber/v3/pairing/bn256"
 	"golang.org/x/crypto/blake2b"
@@ -110,8 +111,12 @@ func TrustedSetupFromSeed(suite *bn256.Suite, d uint16, seed []byte) (*TrustedSe
 // TrustedSetupFromBytes unmarshals trusted setup from binary representation
 func TrustedSetupFromBytes(suite *bn256.Suite, data []byte) (*TrustedSetup, error) {
 	ret := newTrustedSetup(suite)
-	if err := ret.read(bytes.NewReader(data)); err != nil {
+	rdr := bytes.NewReader(data)
+	if err := ret.read(rdr); err != nil {
 		return nil, err
+	}
+	if rdr.Len() != 0 {
+		return nil, trie.ErrNotAllBytesConsumed
 	}
 	if !ret.Omega.Equal(ret.ZeroG1) {
 		for i := range ret.Domain {

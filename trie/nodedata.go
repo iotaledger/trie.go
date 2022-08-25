@@ -26,8 +26,13 @@ func NewNodeData() *NodeData {
 
 func NodeDataFromBytes(model CommitmentModel, data, unpackedKey []byte, arity PathArity, valueStore KVReader) (*NodeData, error) {
 	ret := NewNodeData()
-	if err := ret.Read(bytes.NewReader(data), model, unpackedKey, arity, valueStore); err != nil {
+	rdr := bytes.NewReader(data)
+	if err := ret.Read(rdr, model, unpackedKey, arity, valueStore); err != nil {
 		return nil, err
+	}
+	if rdr.Len() != 0 {
+		// not all data was consumed
+		return nil, ErrNotAllBytesConsumed
 	}
 	return ret, nil
 }

@@ -419,8 +419,12 @@ func (tr *Trie) DeleteStr(key interface{}) {
 
 func (tr *Trie) VectorCommitmentFromBytes(data []byte) (VCommitment, error) {
 	ret := tr.nodeStore.reader.m.NewVectorCommitment()
-	if err := ret.Read(bytes.NewReader(data)); err != nil {
+	rdr := bytes.NewReader(data)
+	if err := ret.Read(rdr); err != nil {
 		return nil, err
+	}
+	if rdr.Len() != 0 {
+		return nil, ErrNotAllBytesConsumed
 	}
 	return ret, nil
 }
