@@ -168,6 +168,7 @@ func TestTrieBase(t *testing.T) {
 				ChildCommitments: rootNode.ChildCommitments(),
 				Terminal:         rootNode.Terminal(),
 			}))
+			t.Logf("rootNode ToString: %s", trie.ToString(rootNode))
 		})
 		t.Run("base2"+tn(m), func(t *testing.T) {
 			data := data1

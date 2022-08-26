@@ -41,8 +41,8 @@ func (n *nodeReadOnly) Key() []byte {
 }
 
 func (n *nodeReadOnly) ChildCommitments() map[byte]VCommitment {
-	Assert(n.IsCommitted(), "trie::nodeReadOnly::ChildCommitments: node is not committed: %s",
-		ToString(n))
+	Assert(n.IsCommitted(), "trie::nodeReadOnly::ChildCommitments: node is not committed: key: '%s'",
+		hex.EncodeToString(n.key))
 	return n.n.ChildCommitments
 }
 
