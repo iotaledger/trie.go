@@ -1,6 +1,7 @@
 package trie
 
 import (
+	"encoding/hex"
 	"fmt"
 	"sort"
 )
@@ -25,14 +26,16 @@ func newNodeStore(trieStore, valueStore KVReader, model CommitmentModel, arity P
 func (sr *nodeStore) getNode(unpackedKey []byte) (*nodeReadOnly, bool) {
 	// original (unpacked) unpackedKey is encoded to access the node in the kvstore
 	encodedKey, err := EncodeUnpackedBytes(unpackedKey, sr.arity)
-	Assert(err == nil, "nodeStore::getNode: %v", err)
+	Assert(err == nil, fmt.Sprintf("nodeStore::getNode assert 1: %v unpackedKey: '%s', arity: %s",
+		err, hex.EncodeToString(unpackedKey), sr.arity.String()))
 
 	nodeBin := sr.trieStore.Get(encodedKey)
 	if nodeBin == nil {
 		return nil, false
 	}
 	n, err := nodeReadOnlyFromBytes(sr.m, nodeBin, unpackedKey, sr.arity, sr.valueStore)
-	Assert(err == nil, "nodeStore::getNode: %v", err)
+	Assert(err == nil, fmt.Sprintf("nodeStore::getNode assert 2: %v nodeBin: '%s', unpackedKey: '%s', arity: %s",
+		err, hex.EncodeToString(nodeBin), hex.EncodeToString(unpackedKey), sr.arity.String()))
 	return n, true
 }
 
@@ -98,7 +101,7 @@ func (sc *nodeStoreBuffered) getNode(unpackedKey []byte) (*bufferedNode, bool) {
 
 func (sc *nodeStoreBuffered) mustGetNode(key []byte) *bufferedNode {
 	ret, ok := sc.getNode(key)
-	Assert(ok, "can't find node")
+	Assert(ok, fmt.Sprintf("mustGetNode::assert missing key '%s'", hex.EncodeToString(key)))
 	return ret
 }
 
@@ -122,7 +125,7 @@ func (sc *nodeStoreBuffered) insertNewNode(n *bufferedNode) {
 
 func (sc *nodeStoreBuffered) replaceNode(n *bufferedNode) {
 	_, already := sc.nodeCache[string(n.unpackedKey)]
-	Assert(already, "already")
+	Assert(already, fmt.Sprintf("replaceNode:: missing key: '%s'", hex.EncodeToString(n.unpackedKey)))
 	sc.nodeCache[string(n.unpackedKey)] = n
 }
 
