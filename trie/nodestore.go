@@ -26,16 +26,16 @@ func newNodeStore(trieStore, valueStore KVReader, model CommitmentModel, arity P
 func (sr *nodeStore) getNode(unpackedKey []byte) (*nodeReadOnly, bool) {
 	// original (unpacked) unpackedKey is encoded to access the node in the kvstore
 	encodedKey, err := EncodeUnpackedBytes(unpackedKey, sr.arity)
-	Assert(err == nil, fmt.Sprintf("nodeStore::getNode assert 1: %v unpackedKey: '%s', arity: %s",
-		err, hex.EncodeToString(unpackedKey), sr.arity.String()))
+	Assert(err == nil, "trie::nodeStore::getNode assert 1: err: '%v' unpackedKey: '%s', arity: %s",
+		err, hex.EncodeToString(unpackedKey), sr.arity.String())
 
 	nodeBin := sr.trieStore.Get(encodedKey)
 	if nodeBin == nil {
 		return nil, false
 	}
 	n, err := nodeReadOnlyFromBytes(sr.m, nodeBin, unpackedKey, sr.arity, sr.valueStore)
-	Assert(err == nil, fmt.Sprintf("nodeStore::getNode assert 2: %v nodeBin: '%s', unpackedKey: '%s', arity: %s",
-		err, hex.EncodeToString(nodeBin), hex.EncodeToString(unpackedKey), sr.arity.String()))
+	Assert(err == nil, "trie::nodeStore::getNode assert 2: err: '%v' nodeBin: '%s', unpackedKey: '%s', arity: %s",
+		err, hex.EncodeToString(nodeBin), hex.EncodeToString(unpackedKey), sr.arity.String())
 	return n, true
 }
 
@@ -101,7 +101,7 @@ func (sc *nodeStoreBuffered) getNode(unpackedKey []byte) (*bufferedNode, bool) {
 
 func (sc *nodeStoreBuffered) mustGetNode(key []byte) *bufferedNode {
 	ret, ok := sc.getNode(key)
-	Assert(ok, fmt.Sprintf("mustGetNode::assert missing key '%s'", hex.EncodeToString(key)))
+	Assert(ok, "trie::mustGetNode assert missing node: key: '%s'", hex.EncodeToString(key))
 	return ret
 }
 
@@ -119,13 +119,14 @@ func (sc *nodeStoreBuffered) unDelete(key []byte) {
 func (sc *nodeStoreBuffered) insertNewNode(n *bufferedNode) {
 	sc.unDelete(n.unpackedKey) // in case was marked deleted previously
 	_, already := sc.nodeCache[string(n.unpackedKey)]
-	Assert(!already, "!already")
+	Assert(!already, "trie::insertNewNode:: node already exists, key: '%s'",
+		hex.EncodeToString(n.unpackedKey))
 	sc.nodeCache[string(n.unpackedKey)] = n
 }
 
 func (sc *nodeStoreBuffered) replaceNode(n *bufferedNode) {
 	_, already := sc.nodeCache[string(n.unpackedKey)]
-	Assert(already, fmt.Sprintf("replaceNode:: missing key: '%s'", hex.EncodeToString(n.unpackedKey)))
+	Assert(already, "trie::replaceNode:: missing key: '%s'", hex.EncodeToString(n.unpackedKey))
 	sc.nodeCache[string(n.unpackedKey)] = n
 }
 
@@ -139,7 +140,8 @@ func (sc *nodeStoreBuffered) persistMutations(store KVWriter) int {
 	}
 	for k := range sc.deleted {
 		_, inCache := sc.nodeCache[k]
-		Assert(!inCache, "!inCache")
+		Assert(!inCache, "trie::persistMutations:: inconsistency. Non-existent key is marked for deletion: '%s'",
+			hex.EncodeToString([]byte(k)))
 		store.Set(mustEncodeUnpackedBytes([]byte(k), sc.arity), nil)
 		counter++
 	}

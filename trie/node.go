@@ -2,6 +2,8 @@ package trie
 
 import (
 	"bytes"
+	"encoding/hex"
+	"fmt"
 )
 
 // Node is a read-only interface to the 256+ trie node
@@ -39,7 +41,8 @@ func (n *nodeReadOnly) Key() []byte {
 }
 
 func (n *nodeReadOnly) ChildCommitments() map[byte]VCommitment {
-	Assert(n.IsCommitted(), "ChildCommitments: node is not committed")
+	Assert(n.IsCommitted(), "trie::nodeReadOnly::ChildCommitments: node is not committed: %s",
+		ToString(n))
 	return n.n.ChildCommitments
 }
 
@@ -148,10 +151,19 @@ func (n *bufferedNode) Bytes(model CommitmentModel, arity PathArity, optimizeKey
 	var buf bytes.Buffer
 	skipStoreTerminal := n.n.Terminal != nil && !model.ForceStoreTerminalWithNode(n.n.Terminal)
 	err := n.n.Write(&buf, arity, isKeyCommitment, skipStoreTerminal)
-	Assert(err == nil, "%v", err)
+	Assert(err == nil, "trie::bufferedNode::Bytes: %v", err)
 	return buf.Bytes()
 }
 
 func childKey(n Node, childIndex byte) []byte {
 	return Concat(n.Key(), n.PathFragment(), childIndex)
+}
+
+func ToString(n Node) string {
+	return fmt.Sprintf("nodeData(key: '%s', pathFragment: '%s', term: '%s', numChildren: %d",
+		hex.EncodeToString(n.Key()),
+		hex.EncodeToString(n.PathFragment()),
+		n.Terminal().String(),
+		len(n.ChildCommitments()),
+	)
 }

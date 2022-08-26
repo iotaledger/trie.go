@@ -2,6 +2,7 @@ package trie
 
 import (
 	"bytes"
+	"encoding/hex"
 	"fmt"
 )
 
@@ -75,7 +76,8 @@ func proofPath(trieAccess NodeStore, unpackedKey []byte) ([][]byte, []byte, Proo
 
 	for {
 		proof = append(proof, key)
-		Assert(len(key) <= len(unpackedKey), "len(unpackedKey) <= len(unpackedKey)")
+		Assert(len(key) <= len(unpackedKey), "trie::proofPath assert: len(unpackedKey) <= len(unpackedKey), key: '%s', unpackedKey: '%s'",
+			hex.EncodeToString(key), hex.EncodeToString(unpackedKey))
 		if bytes.Equal(unpackedKey[len(key):], n.PathFragment()) {
 			return proof, nil, EndingTerminal
 		}
@@ -84,7 +86,8 @@ func proofPath(trieAccess NodeStore, unpackedKey []byte) ([][]byte, []byte, Proo
 		if len(prefix) < len(n.PathFragment()) {
 			return proof, prefix, EndingSplit
 		}
-		Assert(len(prefix) == len(n.PathFragment()), "len(prefix)==len(n.PathFragment)")
+		Assert(len(prefix) == len(n.PathFragment()), "trie::proofPath assert: len(prefix)==len(n.PathFragment), prefix: '%s', pathFragment: '%s'",
+			hex.EncodeToString(prefix), hex.EncodeToString(n.PathFragment()))
 		childIndexPosition := len(key) + len(prefix)
 		Assert(childIndexPosition < len(unpackedKey), "childIndexPosition<len(unpackedKey)")
 

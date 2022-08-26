@@ -1,6 +1,7 @@
 package trie
 
 import (
+	"encoding/hex"
 	"errors"
 )
 
@@ -116,7 +117,8 @@ func decode2(data []byte) ([]byte, error) {
 	}
 	ret := make([]byte, 0, len(data)*8)
 	ret = unpack2(ret, data[1:])
-	Assert(len(ret) >= int(data[0]), "len(ret) >= int(data[0])")
+	Assert(len(ret) >= int(data[0]), "trie::decode2:: assert failed: len(ret) >= int(data[0]), data: %s",
+		hex.EncodeToString(data))
 	// enforce the last data[0] elements are 0
 	for j := len(ret) - int(data[0]); j < len(ret); j++ {
 		if ret[j] != 0 {
@@ -179,7 +181,8 @@ func PackUnpackedBytes(unpacked []byte, arity PathArity) ([]byte, error) {
 
 func mustEncodeUnpackedBytes(unpacked []byte, arity PathArity) []byte {
 	ret, err := EncodeUnpackedBytes(unpacked, arity)
-	Assert(err == nil, "%v", err)
+	Assert(err == nil, "trie::mustEncodeUnpackedBytes: err: %v, unpacked: %s, arity: %s",
+		err, hex.EncodeToString(unpacked), arity.String())
 	return ret
 }
 
