@@ -24,6 +24,7 @@ import (
 	"github.com/consensys/gnark/std/accumulator/merkle"
 	"github.com/consensys/gnark/std/hash/mimc"
 	"github.com/consensys/gnark/test"
+	"github.com/iotaledger/trie.go/models/trie_mimc"
 )
 
 type circuitSignature Circuit
@@ -97,6 +98,32 @@ func (t *circuitInclusionProof) Define(api frontend.API) error {
 
 	merkle.VerifyProof(api, hashFunc, t.RootHashesAfter[0], t.MerkleProofsReceiverAfter[0][:], t.MerkleProofHelperReceiverAfter[0][:])
 	merkle.VerifyProof(api, hashFunc, t.RootHashesAfter[0], t.MerkleProofsReceiverAfter[0][:], t.MerkleProofHelperReceiverAfter[0][:])
+
+	trie_mimc.Validate(api, hashFunc, t.TrieRootHashesBefore[0],
+		t.TrieProofsSenderBefore[0][0][:],
+		t.TrieProofsSenderBefore[0][1][:],
+		t.TrieProofsSenderBefore[0][2][:],
+		t.TrieProofsSenderBefore[0][3][:],
+		t.TriePathSenderBefore[0][:])
+	trie_mimc.Validate(api, hashFunc, t.TrieRootHashesBefore[0],
+		t.TrieProofsReceiverBefore[0][0][:],
+		t.TrieProofsReceiverBefore[0][1][:],
+		t.TrieProofsReceiverBefore[0][2][:],
+		t.TrieProofsReceiverBefore[0][3][:],
+		t.TriePathReceiverBefore[0][:])
+
+	trie_mimc.Validate(api, hashFunc, t.TrieRootHashesAfter[0],
+		t.TrieProofsSenderAfter[0][0][:],
+		t.TrieProofsSenderAfter[0][1][:],
+		t.TrieProofsSenderAfter[0][2][:],
+		t.TrieProofsSenderAfter[0][3][:],
+		t.TriePathSenderAfter[0][:])
+	trie_mimc.Validate(api, hashFunc, t.TrieRootHashesAfter[0],
+		t.TrieProofsReceiverAfter[0][0][:],
+		t.TrieProofsReceiverAfter[0][1][:],
+		t.TrieProofsReceiverAfter[0][2][:],
+		t.TrieProofsReceiverAfter[0][3][:],
+		t.TriePathReceiverAfter[0][:])
 
 	return nil
 }

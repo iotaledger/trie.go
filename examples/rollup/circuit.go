@@ -23,6 +23,7 @@ import (
 	"github.com/consensys/gnark/std/algebra/twistededwards"
 	"github.com/consensys/gnark/std/hash/mimc"
 	"github.com/consensys/gnark/std/signature/eddsa"
+	"github.com/iotaledger/trie.go/models/trie_mimc"
 )
 
 const (
@@ -62,12 +63,28 @@ type Circuit struct {
 	MerkleProofHelperReceiverBefore [batchSize][depth - 1]frontend.Variable
 	MerkleProofHelperReceiverAfter  [batchSize][depth - 1]frontend.Variable
 
+	// trie proofs corresponding to sender account
+	TrieProofsSenderBefore [batchSize][4][depth]frontend.Variable
+	TrieProofsSenderAfter  [batchSize][4][depth]frontend.Variable
+	TriePathSenderBefore   [batchSize][depth - 1]frontend.Variable
+	TriePathSenderAfter    [batchSize][depth - 1]frontend.Variable
+
+	// trie proofs corresponding to receiver account
+	TrieProofsReceiverBefore [batchSize][4][depth]frontend.Variable
+	TrieProofsReceiverAfter  [batchSize][4][depth]frontend.Variable
+	TriePathReceiverBefore   [batchSize][depth - 1]frontend.Variable
+	TriePathReceiverAfter    [batchSize][depth - 1]frontend.Variable
+
 	// ---------------------------------------------------------------------------------------------
 	// PUBLIC INPUTS
 
 	// list of root hashes
 	RootHashesBefore [batchSize]frontend.Variable `gnark:",public"`
 	RootHashesAfter  [batchSize]frontend.Variable `gnark:",public"`
+
+	// list of root hashes of the trie
+	TrieRootHashesBefore [batchSize]frontend.Variable `gnark:",public"`
+	TrieRootHashesAfter  [batchSize]frontend.Variable `gnark:",public"`
 }
 
 // AccountConstraints accounts encoded as constraints
@@ -133,6 +150,33 @@ func (circuit *Circuit) Define(api frontend.API) error {
 		// verify the sender and receiver accounts exist after the update
 		merkle.VerifyProof(api, hFunc, circuit.RootHashesAfter[i], circuit.MerkleProofsSenderAfter[i][:], circuit.MerkleProofHelperSenderAfter[i][:])
 		merkle.VerifyProof(api, hFunc, circuit.RootHashesAfter[i], circuit.MerkleProofsReceiverAfter[i][:], circuit.MerkleProofHelperReceiverAfter[i][:])
+
+		// verify the proof created by trie.go
+		trie_mimc.Validate(api, hFunc, circuit.TrieRootHashesBefore[i],
+			circuit.TrieProofsSenderBefore[i][0][:],
+			circuit.TrieProofsSenderBefore[i][1][:],
+			circuit.TrieProofsSenderBefore[i][2][:],
+			circuit.TrieProofsSenderBefore[i][3][:],
+			circuit.TriePathSenderBefore[i][:])
+		trie_mimc.Validate(api, hFunc, circuit.TrieRootHashesBefore[i],
+			circuit.TrieProofsReceiverBefore[i][0][:],
+			circuit.TrieProofsReceiverBefore[i][1][:],
+			circuit.TrieProofsReceiverBefore[i][2][:],
+			circuit.TrieProofsReceiverBefore[i][3][:],
+			circuit.TriePathReceiverBefore[i][:])
+
+		trie_mimc.Validate(api, hFunc, circuit.TrieRootHashesAfter[i],
+			circuit.TrieProofsSenderAfter[i][0][:],
+			circuit.TrieProofsSenderAfter[i][1][:],
+			circuit.TrieProofsSenderAfter[i][2][:],
+			circuit.TrieProofsSenderAfter[i][3][:],
+			circuit.TriePathSenderAfter[i][:])
+		trie_mimc.Validate(api, hFunc, circuit.TrieRootHashesAfter[i],
+			circuit.TrieProofsReceiverAfter[i][0][:],
+			circuit.TrieProofsReceiverAfter[i][1][:],
+			circuit.TrieProofsReceiverAfter[i][2][:],
+			circuit.TrieProofsReceiverAfter[i][3][:],
+			circuit.TriePathReceiverAfter[i][:])
 
 		// verify the transaction transfer
 		err := verifyTransferSignature(api, circuit.Transfers[i], hFunc)
