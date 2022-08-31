@@ -2,8 +2,9 @@ package trie
 
 import (
 	"encoding/hex"
-	"github.com/stretchr/testify/require"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func Test16KeysEmpty(t *testing.T) {
@@ -132,4 +133,25 @@ func Test2Keys1(t *testing.T) {
 	require.NoError(t, err)
 	t.Logf("dec3 = %s", hex.EncodeToString(dec3))
 	require.EqualValues(t, cut3, dec3)
+}
+
+/*
+2022-08-31T11:17:28Z	WARN	Chains.c-fa0043.c	consensus/action.go:168	GENERAL VM EXCEPTION: the task (ACS id 840878536644970430) has been abandoned due to:
+trie::nodeStore::getNode assert 2: err: 'EOF' nodeBin: '', unpackedKey: '0002050e040b030c0402000100000a', arity: PathArity16
+2022-08-31T11:17:28Z	ERROR	Chains.c-fa0043.c	consensus/action.go:170	runVM result: VM task failed:
+trie::nodeStore::getNode assert 2: err: 'EOF' nodeBin: '', unpackedKey: '0002050e040b030c0402000100000a', arity: PathArity16
+*/
+
+func TestCheckingKey(t *testing.T) {
+	const unpackedKey = "0002050e040b030c0402000100000a"
+	unpackedBin, err := hex.DecodeString(unpackedKey)
+	require.NoError(t, err)
+	t.Logf("unpackedBin = %+v", unpackedBin)
+
+	encBin := mustEncodeUnpackedBytes(unpackedBin, PathArity16)
+	t.Logf("encodedBin = %+v, hex = %x, str: %s", encBin, encBin, string(encBin))
+
+	unpackedBinBack, err := decode16(encBin)
+	require.NoError(t, err)
+	require.EqualValues(t, unpackedBinBack, unpackedBin)
 }
