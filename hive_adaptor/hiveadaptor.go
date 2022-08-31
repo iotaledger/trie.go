@@ -38,13 +38,19 @@ func (kvs *HiveKVStoreAdaptor) Get(key []byte) []byte {
 		return nil
 	}
 	mustNoErr(err)
+	if len(v) == 0 {
+		return nil
+	}
 	return v
 }
 
 func (kvs *HiveKVStoreAdaptor) Has(key []byte) bool {
-	v, err := kvs.kvs.Has(makeKey(kvs.prefix, key))
+	v, err := kvs.kvs.Get(makeKey(kvs.prefix, key))
+	if errors.Is(err, kvstore.ErrKeyNotFound) || len(v) == 0 {
+		return false
+	}
 	mustNoErr(err)
-	return v
+	return true
 }
 
 func (kvs *HiveKVStoreAdaptor) Set(key, value []byte) {
