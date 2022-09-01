@@ -22,9 +22,7 @@ import (
 	"hash"
 	"math/big"
 
-	"github.com/consensys/gnark-crypto/accumulator/merkletree"
 	"github.com/consensys/gnark-crypto/ecc/bn254/fr/mimc"
-	"github.com/consensys/gnark/std/accumulator/merkle"
 	"github.com/iotaledger/trie.go/models/trie_mimc"
 	"github.com/iotaledger/trie.go/models/trie_mimc/trie_mimc_verify"
 	"github.com/iotaledger/trie.go/trie"
@@ -149,13 +147,11 @@ func (o *Operator) updateState(t Transfer, numTransfer int) error {
 		return err
 	}
 
-	var buf_copy bytes.Buffer
-	buf_copy.Write(buf.Bytes())
 	index_to_segment := make(map[uint64][]byte)
 	store := trie.NewInMemoryKVStore()
 	model := trie_mimc.New(trie.PathArity2, trie_mimc.HashSize256)
 	tr := trie.New(model, store, nil)
-	tr.ReadAll(&buf_copy, segmentSize, index_to_segment)
+	tr.ReadAll(&buf, segmentSize, index_to_segment)
 	tr.Commit()
 	rootCommitment := trie.RootCommitment(tr)
 	// fmt.Printf("root commitment: %v\n", rootCommitment)
@@ -165,10 +161,8 @@ func (o *Operator) updateState(t Transfer, numTransfer int) error {
 	// validate proof
 	err = trie_mimc_verify.Validate(proof, rootCommitment.Bytes())
 
-	// trie_mimc_verify.ValidateTest()
-	// fmt.Println(binary.LittleEndian.Uint64(rootCommitment.Bytes()), binary.BigEndian.Uint64(rootCommitment.Bytes()))
-	fmt.Print("Root = ")
-	fmt.Println(rootCommitment.Bytes())
+	// fmt.Print("Root = ")
+	// fmt.Println(rootCommitment.Bytes())
 	if err != nil {
 		fmt.Printf("validating PoI for '%d': %s\n", posSender, err.Error())
 	} else {
@@ -177,73 +171,26 @@ func (o *Operator) updateState(t Transfer, numTransfer int) error {
 
 	trieSenderProofs, trieSenderPath := generateHashes(proof.Path)
 
-	merkleRootBefore, proofInclusionSenderBefore, numLeaves, err := merkletree.BuildReaderProof(&buf, o.h, segmentSize, posSender)
-	if err != nil {
-		return err
-	}
-	merkletree.VerifyProof(o.h, merkleRootBefore, proofInclusionSenderBefore, posSender, numLeaves)
-	merkleProofHelperSenderBefore := merkle.GenerateProofHelper(proofInclusionSenderBefore, posSender, numLeaves)
-
 	buf.Reset() // the buffer needs to be reset
 	_, err = buf.Write(o.HashState)
 	if err != nil {
 		return err
 	}
 
-	buf_copy.Reset()
-	buf_copy.Write(buf.Bytes())
+	tr.ReadAll(&buf, segmentSize, index_to_segment)
 	proof = model.Proof(index_to_segment[posReceiver], tr)
-	// validate proof
-	// err = trie_mimc_verify.Validate(proof, rootCommitment.Bytes())
-	// if err != nil {
-	// 	fmt.Printf("validating PoI for '%d': %s\n", posReceiver, err.Error())
-	// } else {
-	// 	fmt.Printf("validating PoI for receiver with index '%d' PASS\n", posReceiver)
-	// }
-
 	trieReceiverProofs, trieReceiverPath := generateHashes(proof.Path)
-	fmt.Printf("trieSenderProofs %d \n", len(trieSenderProofs))
+	// fmt.Printf("trieSenderProofs %d \n", len(trieSenderProofs))
 	o.witnesses.TrieRootHashesBefore[numTransfer] = rootCommitment.Bytes()
-	for i := 0; i < len(trieSenderProofs); i++ {
-		for j := 0; j < 4; j++ {
-			fmt.Printf("j = %d, i = %d, hash = ", i, j)
-			fmt.Println(trieSenderProofs[i][j])
+	for i := 0; i < trieDepth; i++ {
+		for j := 0; j < proofSetSize; j++ {
+			// fmt.Println(trieSenderProofs[i][j])
 			o.witnesses.TrieProofsSenderBefore[numTransfer][j][i] = trieSenderProofs[i][j]
 			o.witnesses.TrieProofsReceiverBefore[numTransfer][j][i] = trieReceiverProofs[i][j]
 		}
-		if i < len(trieReceiverProofs)-1 {
-			fmt.Printf("Path = %d\n", trieSenderPath[i])
+		if i < trieDepth-1 {
 			o.witnesses.TriePathSenderBefore[numTransfer][i] = trieSenderPath[i]
 			o.witnesses.TriePathReceiverBefore[numTransfer][i] = trieReceiverPath[i]
-		}
-	}
-
-	// For debugging
-	// o.witnesses.TrieProofsSenderBefore[numTransfer][0][0] = []byte{42, 194, 10, 96, 133, 113, 88, 31, 86, 136, 60, 65, 11, 106, 226, 218, 169, 220, 186, 36, 114, 230, 53, 147, 171, 202, 12, 106, 45, 89, 231, 132}
-	// o.witnesses.TrieProofsSenderBefore[numTransfer][1][0] = []byte{41, 110, 104, 212, 140, 165, 49, 87, 44, 32, 181, 221, 58, 86, 232, 118, 168, 2, 169, 90, 13, 92, 128, 54, 250, 117, 253, 216, 155, 33, 211, 90}
-	// o.witnesses.TrieProofsSenderBefore[numTransfer][2][0] = []byte{}
-	// o.witnesses.TrieProofsSenderBefore[numTransfer][3][0] = []byte{0, 0}
-	// o.witnesses.TrieRootHashesBefore[numTransfer] = []byte{8, 205, 235, 168, 70, 155, 72, 62, 195, 30, 12, 199, 164, 235, 36, 86, 198, 201, 78, 155, 86, 119, 14, 124, 221, 225, 228, 148, 151, 171, 196, 35}
-
-	// o.witnesses.TrieProofsSenderBefore[numTransfer][0][1] = []byte{}
-	// o.witnesses.TrieProofsSenderBefore[numTransfer][1][1] = []byte{}
-	// o.witnesses.TrieProofsSenderBefore[numTransfer][2][1] = []byte{6, 222, 124, 107, 192, 101, 14, 43, 114, 66, 119, 76, 36, 55, 118, 199, 192, 241, 59, 134, 230, 104, 54, 137, 7, 213, 40, 208, 211, 189, 212, 195}
-	// o.witnesses.TrieProofsSenderBefore[numTransfer][3][1] = []byte{27, 164, 73, 184, 177, 30, 52, 227, 154, 238, 190, 154, 101, 138, 135, 160, 148, 88, 38, 97, 151, 62, 0, 27, 68, 29, 119, 148, 188, 124, 29, 0}
-	// o.witnesses.TrieRootHashesBefore[numTransfer] = []byte{32, 73, 245, 155, 249, 16, 57, 37, 77, 240, 153, 89, 66, 165, 206, 72, 82, 250, 83, 107, 189, 171, 53, 198, 197, 124, 38, 119, 156, 51, 161, 141}
-
-	_, proofInclusionReceiverBefore, _, err := merkletree.BuildReaderProof(&buf, o.h, segmentSize, posReceiver)
-	if err != nil {
-		return err
-	}
-	merkleProofHelperReceiverBefore := merkle.GenerateProofHelper(proofInclusionReceiverBefore, posReceiver, numLeaves)
-	o.witnesses.RootHashesBefore[numTransfer] = merkleRootBefore
-	for i := 0; i < len(proofInclusionSenderBefore); i++ {
-		o.witnesses.MerkleProofsSenderBefore[numTransfer][i] = proofInclusionSenderBefore[i]
-		o.witnesses.MerkleProofsReceiverBefore[numTransfer][i] = proofInclusionReceiverBefore[i]
-
-		if i < len(proofInclusionReceiverBefore)-1 {
-			o.witnesses.MerkleProofHelperSenderBefore[numTransfer][i] = merkleProofHelperSenderBefore[i]
-			o.witnesses.MerkleProofHelperReceiverBefore[numTransfer][i] = merkleProofHelperReceiverBefore[i]
 		}
 	}
 
@@ -314,9 +261,10 @@ func (o *Operator) updateState(t Transfer, numTransfer int) error {
 		return err
 	}
 
-	buf_copy.Reset()
-	buf_copy.Write(buf.Bytes())
-	proof = model.Proof(index_to_segment[posReceiver], tr)
+	tr.ReadAll(&buf, segmentSize, index_to_segment)
+	tr.Commit()
+	rootCommitment = trie.RootCommitment(tr)
+	proof = model.Proof(index_to_segment[posSender], tr)
 	// validate proof
 	// err = trie_mimc_verify.Validate(proof, rootCommitment.Bytes())
 	// if err != nil {
@@ -326,20 +274,13 @@ func (o *Operator) updateState(t Transfer, numTransfer int) error {
 	// }
 	trieSenderProofs, trieSenderPath = generateHashes(proof.Path)
 
-	merkleRootAfer, proofInclusionSenderAfter, _, err := merkletree.BuildReaderProof(&buf, o.h, segmentSize, posSender)
-	if err != nil {
-		return err
-	}
-	merkleProofHelperSenderAfter := merkle.GenerateProofHelper(proofInclusionSenderAfter, posSender, numLeaves)
-
 	buf.Reset() // the buffer needs to be reset
 	_, err = buf.Write(o.HashState)
 	if err != nil {
 		return err
 	}
 
-	buf_copy.Reset()
-	buf_copy.Write(buf.Bytes())
+	tr.ReadAll(&buf, segmentSize, index_to_segment)
 	proof = model.Proof(index_to_segment[posReceiver], tr)
 	// validate proof
 	// err = trie_mimc_verify.Validate(proof, rootCommitment.Bytes())
@@ -351,48 +292,29 @@ func (o *Operator) updateState(t Transfer, numTransfer int) error {
 	trieReceiverProofs, trieReceiverPath = generateHashes(proof.Path)
 
 	o.witnesses.TrieRootHashesAfter[numTransfer] = rootCommitment.Bytes()
-	for i := 0; i < len(trieSenderProofs); i++ {
-		for j := 0; j < 4; j++ {
+	for i := 0; i < trieDepth; i++ {
+		for j := 0; j < proofSetSize; j++ {
 			o.witnesses.TrieProofsSenderAfter[numTransfer][j][i] = trieSenderProofs[i][j]
 			o.witnesses.TrieProofsReceiverAfter[numTransfer][j][i] = trieReceiverProofs[i][j]
 		}
-		if i < len(trieReceiverProofs)-1 {
+		if i < trieDepth-1 {
 			o.witnesses.TriePathSenderAfter[numTransfer][i] = trieSenderPath[i]
 			o.witnesses.TriePathReceiverAfter[numTransfer][i] = trieReceiverPath[i]
 		}
 
 	}
-
-	_, proofInclusionReceiverAfter, _, err := merkletree.BuildReaderProof(&buf, o.h, segmentSize, posReceiver)
-	if err != nil {
-		return err
-	}
-	merkleProofHelperReceiverAfter := merkle.GenerateProofHelper(proofInclusionReceiverAfter, posReceiver, numLeaves)
-
-	o.witnesses.RootHashesAfter[numTransfer] = merkleRootAfer
-	for i := 0; i < len(proofInclusionSenderAfter); i++ {
-		o.witnesses.MerkleProofsSenderAfter[numTransfer][i] = proofInclusionSenderAfter[i]
-		o.witnesses.MerkleProofsReceiverAfter[numTransfer][i] = proofInclusionReceiverAfter[i]
-
-		if i < len(proofInclusionReceiverAfter)-1 {
-			o.witnesses.MerkleProofHelperSenderAfter[numTransfer][i] = merkleProofHelperSenderAfter[i]
-			o.witnesses.MerkleProofHelperReceiverAfter[numTransfer][i] = merkleProofHelperReceiverAfter[i]
-		}
-	}
-
 	return nil
 }
 
-func generateHashes(proofs []*trie_mimc.ProofElement) ([][4][]byte, []int) {
+func generateHashes(proofs []*trie_mimc.ProofElement) ([][proofSetSize][]byte, []int) {
 	proofsLength := len(proofs)
-	// print(proofsLength)
-	hashesAll := make([][4][]byte, depth)
-	path := make([]int, depth-1)
+	hashesAll := make([][proofSetSize][]byte, trieDepth)
+	path := make([]int, trieDepth-1)
 	for i, p := range proofs {
 
 		// Put in reverse order
-		hashes := [4][]byte{}
-		for j := 0; j < 4; j++ {
+		hashes := [proofSetSize][]byte{}
+		for j := 0; j < proofSetSize; j++ {
 			hashes[j] = make([]byte, 32)
 		}
 		if i == proofsLength-1 {

@@ -21,7 +21,6 @@ import (
 
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/gnark/std/accumulator/merkle"
 	"github.com/consensys/gnark/std/hash/mimc"
 	"github.com/consensys/gnark/test"
 	"github.com/iotaledger/trie.go/models/trie_mimc"
@@ -93,36 +92,86 @@ func (t *circuitInclusionProof) Define(api frontend.API) error {
 	if err != nil {
 		return err
 	}
-	merkle.VerifyProof(api, hashFunc, t.RootHashesBefore[0], t.MerkleProofsSenderBefore[0][:], t.MerkleProofHelperSenderBefore[0][:])
-	merkle.VerifyProof(api, hashFunc, t.RootHashesBefore[0], t.MerkleProofsReceiverBefore[0][:], t.MerkleProofHelperReceiverBefore[0][:])
-
-	merkle.VerifyProof(api, hashFunc, t.RootHashesAfter[0], t.MerkleProofsReceiverAfter[0][:], t.MerkleProofHelperReceiverAfter[0][:])
-	merkle.VerifyProof(api, hashFunc, t.RootHashesAfter[0], t.MerkleProofsReceiverAfter[0][:], t.MerkleProofHelperReceiverAfter[0][:])
-
-	trie_mimc.Validate(api, hashFunc, t.TrieRootHashesBefore[0],
+	trie_mimc.Validate16(api, hashFunc, t.TrieRootHashesBefore[0],
 		t.TrieProofsSenderBefore[0][0][:],
 		t.TrieProofsSenderBefore[0][1][:],
 		t.TrieProofsSenderBefore[0][2][:],
 		t.TrieProofsSenderBefore[0][3][:],
+		t.TrieProofsSenderBefore[0][4][:],
+		t.TrieProofsSenderBefore[0][5][:],
+		t.TrieProofsSenderBefore[0][6][:],
+		t.TrieProofsSenderBefore[0][7][:],
+		t.TrieProofsSenderBefore[0][8][:],
+		t.TrieProofsSenderBefore[0][9][:],
+		t.TrieProofsSenderBefore[0][10][:],
+		t.TrieProofsSenderBefore[0][11][:],
+		t.TrieProofsSenderBefore[0][12][:],
+		t.TrieProofsSenderBefore[0][13][:],
+		t.TrieProofsSenderBefore[0][14][:],
+		t.TrieProofsSenderBefore[0][15][:],
+		t.TrieProofsSenderBefore[0][16][:],
+		t.TrieProofsSenderBefore[0][17][:],
 		t.TriePathSenderBefore[0][:])
-	trie_mimc.Validate(api, hashFunc, t.TrieRootHashesBefore[0],
+	trie_mimc.Validate16(api, hashFunc, t.TrieRootHashesBefore[0],
 		t.TrieProofsReceiverBefore[0][0][:],
 		t.TrieProofsReceiverBefore[0][1][:],
 		t.TrieProofsReceiverBefore[0][2][:],
 		t.TrieProofsReceiverBefore[0][3][:],
+		t.TrieProofsReceiverBefore[0][4][:],
+		t.TrieProofsReceiverBefore[0][5][:],
+		t.TrieProofsReceiverBefore[0][6][:],
+		t.TrieProofsReceiverBefore[0][7][:],
+		t.TrieProofsReceiverBefore[0][8][:],
+		t.TrieProofsReceiverBefore[0][9][:],
+		t.TrieProofsReceiverBefore[0][10][:],
+		t.TrieProofsReceiverBefore[0][11][:],
+		t.TrieProofsReceiverBefore[0][12][:],
+		t.TrieProofsReceiverBefore[0][13][:],
+		t.TrieProofsReceiverBefore[0][14][:],
+		t.TrieProofsReceiverBefore[0][15][:],
+		t.TrieProofsReceiverBefore[0][16][:],
+		t.TrieProofsReceiverBefore[0][17][:],
 		t.TriePathReceiverBefore[0][:])
 
-	trie_mimc.Validate(api, hashFunc, t.TrieRootHashesAfter[0],
+	trie_mimc.Validate16(api, hashFunc, t.TrieRootHashesAfter[0],
 		t.TrieProofsSenderAfter[0][0][:],
 		t.TrieProofsSenderAfter[0][1][:],
 		t.TrieProofsSenderAfter[0][2][:],
 		t.TrieProofsSenderAfter[0][3][:],
+		t.TrieProofsSenderAfter[0][4][:],
+		t.TrieProofsSenderAfter[0][5][:],
+		t.TrieProofsSenderAfter[0][6][:],
+		t.TrieProofsSenderAfter[0][7][:],
+		t.TrieProofsSenderAfter[0][8][:],
+		t.TrieProofsSenderAfter[0][9][:],
+		t.TrieProofsSenderAfter[0][10][:],
+		t.TrieProofsSenderAfter[0][11][:],
+		t.TrieProofsSenderAfter[0][12][:],
+		t.TrieProofsSenderAfter[0][13][:],
+		t.TrieProofsSenderAfter[0][14][:],
+		t.TrieProofsSenderAfter[0][15][:],
+		t.TrieProofsSenderAfter[0][16][:],
+		t.TrieProofsSenderAfter[0][17][:],
 		t.TriePathSenderAfter[0][:])
-	trie_mimc.Validate(api, hashFunc, t.TrieRootHashesAfter[0],
+	trie_mimc.Validate16(api, hashFunc, t.TrieRootHashesAfter[0],
 		t.TrieProofsReceiverAfter[0][0][:],
 		t.TrieProofsReceiverAfter[0][1][:],
 		t.TrieProofsReceiverAfter[0][2][:],
 		t.TrieProofsReceiverAfter[0][3][:],
+		t.TrieProofsReceiverAfter[0][4][:],
+		t.TrieProofsReceiverAfter[0][5][:],
+		t.TrieProofsReceiverAfter[0][6][:],
+		t.TrieProofsReceiverAfter[0][7][:],
+		t.TrieProofsReceiverAfter[0][8][:],
+		t.TrieProofsReceiverAfter[0][9][:],
+		t.TrieProofsReceiverAfter[0][10][:],
+		t.TrieProofsReceiverAfter[0][11][:],
+		t.TrieProofsReceiverAfter[0][12][:],
+		t.TrieProofsReceiverAfter[0][13][:],
+		t.TrieProofsReceiverAfter[0][14][:],
+		t.TrieProofsReceiverAfter[0][15][:],
+		t.TrieProofsReceiverAfter[0][16][:],
+		t.TrieProofsReceiverAfter[0][17][:],
 		t.TriePathReceiverAfter[0][:])
 
 	return nil

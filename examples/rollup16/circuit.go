@@ -19,7 +19,6 @@ package rollup
 import (
 	tedwards "github.com/consensys/gnark-crypto/ecc/twistededwards"
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/gnark/std/accumulator/merkle"
 	"github.com/consensys/gnark/std/algebra/twistededwards"
 	"github.com/consensys/gnark/std/hash/mimc"
 	"github.com/consensys/gnark/std/signature/eddsa"
@@ -27,9 +26,10 @@ import (
 )
 
 const (
-	nbAccounts = 16 // 16 accounts so we know that the proof length is 5
-	depth      = 5  // size fo the inclusion proofs
-	batchSize  = 1  // nbTranfers to batch in a proof
+	proofSetSize = 18 // 16 children + terminal + fragment
+	nbAccounts   = 16 // 16 accounts so we know that the proof length is 5
+	depth        = 5  // size fo the inclusion proofs
+	batchSize    = 1  // nbTranfers to batch in a proof
 )
 
 // Circuit "toy" rollup circuit where an operator can generate a proof that he processed
@@ -51,36 +51,20 @@ type Circuit struct {
 	// list of transactions
 	Transfers [batchSize]TransferConstraints
 
-	// list of proofs corresponding to sender account
-	MerkleProofsSenderBefore      [batchSize][depth]frontend.Variable
-	MerkleProofsSenderAfter       [batchSize][depth]frontend.Variable
-	MerkleProofHelperSenderBefore [batchSize][depth - 1]frontend.Variable
-	MerkleProofHelperSenderAfter  [batchSize][depth - 1]frontend.Variable
-
-	// list of proofs corresponding to receiver account
-	MerkleProofsReceiverBefore      [batchSize][depth]frontend.Variable
-	MerkleProofsReceiverAfter       [batchSize][depth]frontend.Variable
-	MerkleProofHelperReceiverBefore [batchSize][depth - 1]frontend.Variable
-	MerkleProofHelperReceiverAfter  [batchSize][depth - 1]frontend.Variable
-
 	// trie proofs corresponding to sender account
-	TrieProofsSenderBefore [batchSize][4][depth]frontend.Variable
-	TrieProofsSenderAfter  [batchSize][4][depth]frontend.Variable
+	TrieProofsSenderBefore [batchSize][proofSetSize][depth]frontend.Variable
+	TrieProofsSenderAfter  [batchSize][proofSetSize][depth]frontend.Variable
 	TriePathSenderBefore   [batchSize][depth - 1]frontend.Variable
 	TriePathSenderAfter    [batchSize][depth - 1]frontend.Variable
 
 	// trie proofs corresponding to receiver account
-	TrieProofsReceiverBefore [batchSize][4][depth]frontend.Variable
-	TrieProofsReceiverAfter  [batchSize][4][depth]frontend.Variable
+	TrieProofsReceiverBefore [batchSize][proofSetSize][depth]frontend.Variable
+	TrieProofsReceiverAfter  [batchSize][proofSetSize][depth]frontend.Variable
 	TriePathReceiverBefore   [batchSize][depth - 1]frontend.Variable
 	TriePathReceiverAfter    [batchSize][depth - 1]frontend.Variable
 
 	// ---------------------------------------------------------------------------------------------
 	// PUBLIC INPUTS
-
-	// list of root hashes
-	RootHashesBefore [batchSize]frontend.Variable `gnark:",public"`
-	RootHashesAfter  [batchSize]frontend.Variable `gnark:",public"`
 
 	// list of root hashes of the trie
 	TrieRootHashesBefore [batchSize]frontend.Variable `gnark:",public"`
@@ -143,39 +127,87 @@ func (circuit *Circuit) Define(api frontend.API) error {
 	// creation of the circuit
 	for i := 0; i < batchSize; i++ {
 
-		// verify the sender and receiver accounts exist before the update
-		merkle.VerifyProof(api, hFunc, circuit.RootHashesBefore[i], circuit.MerkleProofsSenderBefore[i][:], circuit.MerkleProofHelperSenderBefore[i][:])
-		merkle.VerifyProof(api, hFunc, circuit.RootHashesBefore[i], circuit.MerkleProofsReceiverBefore[i][:], circuit.MerkleProofHelperReceiverBefore[i][:])
-
-		// verify the sender and receiver accounts exist after the update
-		merkle.VerifyProof(api, hFunc, circuit.RootHashesAfter[i], circuit.MerkleProofsSenderAfter[i][:], circuit.MerkleProofHelperSenderAfter[i][:])
-		merkle.VerifyProof(api, hFunc, circuit.RootHashesAfter[i], circuit.MerkleProofsReceiverAfter[i][:], circuit.MerkleProofHelperReceiverAfter[i][:])
-
 		// verify the proof created by trie.go
-		trie_mimc.Validate(api, hFunc, circuit.TrieRootHashesBefore[i],
+		trie_mimc.Validate16(api, hFunc, circuit.TrieRootHashesBefore[i],
 			circuit.TrieProofsSenderBefore[i][0][:],
 			circuit.TrieProofsSenderBefore[i][1][:],
 			circuit.TrieProofsSenderBefore[i][2][:],
 			circuit.TrieProofsSenderBefore[i][3][:],
+			circuit.TrieProofsSenderBefore[i][4][:],
+			circuit.TrieProofsSenderBefore[i][5][:],
+			circuit.TrieProofsSenderBefore[i][6][:],
+			circuit.TrieProofsSenderBefore[i][7][:],
+			circuit.TrieProofsSenderBefore[i][8][:],
+			circuit.TrieProofsSenderBefore[i][9][:],
+			circuit.TrieProofsSenderBefore[i][10][:],
+			circuit.TrieProofsSenderBefore[i][11][:],
+			circuit.TrieProofsSenderBefore[i][12][:],
+			circuit.TrieProofsSenderBefore[i][13][:],
+			circuit.TrieProofsSenderBefore[i][14][:],
+			circuit.TrieProofsSenderBefore[i][15][:],
+			circuit.TrieProofsSenderBefore[i][16][:],
+			circuit.TrieProofsSenderBefore[i][17][:],
 			circuit.TriePathSenderBefore[i][:])
-		trie_mimc.Validate(api, hFunc, circuit.TrieRootHashesBefore[i],
+		trie_mimc.Validate16(api, hFunc, circuit.TrieRootHashesBefore[i],
 			circuit.TrieProofsReceiverBefore[i][0][:],
 			circuit.TrieProofsReceiverBefore[i][1][:],
 			circuit.TrieProofsReceiverBefore[i][2][:],
 			circuit.TrieProofsReceiverBefore[i][3][:],
+			circuit.TrieProofsReceiverBefore[i][4][:],
+			circuit.TrieProofsReceiverBefore[i][5][:],
+			circuit.TrieProofsReceiverBefore[i][6][:],
+			circuit.TrieProofsReceiverBefore[i][7][:],
+			circuit.TrieProofsReceiverBefore[i][8][:],
+			circuit.TrieProofsReceiverBefore[i][9][:],
+			circuit.TrieProofsReceiverBefore[i][10][:],
+			circuit.TrieProofsReceiverBefore[i][11][:],
+			circuit.TrieProofsReceiverBefore[i][12][:],
+			circuit.TrieProofsReceiverBefore[i][13][:],
+			circuit.TrieProofsReceiverBefore[i][14][:],
+			circuit.TrieProofsReceiverBefore[i][15][:],
+			circuit.TrieProofsReceiverBefore[i][16][:],
+			circuit.TrieProofsReceiverBefore[i][17][:],
 			circuit.TriePathReceiverBefore[i][:])
 
-		trie_mimc.Validate(api, hFunc, circuit.TrieRootHashesAfter[i],
+		trie_mimc.Validate16(api, hFunc, circuit.TrieRootHashesAfter[i],
 			circuit.TrieProofsSenderAfter[i][0][:],
 			circuit.TrieProofsSenderAfter[i][1][:],
 			circuit.TrieProofsSenderAfter[i][2][:],
 			circuit.TrieProofsSenderAfter[i][3][:],
+			circuit.TrieProofsSenderAfter[i][4][:],
+			circuit.TrieProofsSenderAfter[i][5][:],
+			circuit.TrieProofsSenderAfter[i][6][:],
+			circuit.TrieProofsSenderAfter[i][7][:],
+			circuit.TrieProofsSenderAfter[i][8][:],
+			circuit.TrieProofsSenderAfter[i][9][:],
+			circuit.TrieProofsSenderAfter[i][10][:],
+			circuit.TrieProofsSenderAfter[i][11][:],
+			circuit.TrieProofsSenderAfter[i][12][:],
+			circuit.TrieProofsSenderAfter[i][13][:],
+			circuit.TrieProofsSenderAfter[i][14][:],
+			circuit.TrieProofsSenderAfter[i][15][:],
+			circuit.TrieProofsSenderAfter[i][16][:],
+			circuit.TrieProofsSenderAfter[i][17][:],
 			circuit.TriePathSenderAfter[i][:])
-		trie_mimc.Validate(api, hFunc, circuit.TrieRootHashesAfter[i],
+		trie_mimc.Validate16(api, hFunc, circuit.TrieRootHashesAfter[i],
 			circuit.TrieProofsReceiverAfter[i][0][:],
 			circuit.TrieProofsReceiverAfter[i][1][:],
 			circuit.TrieProofsReceiverAfter[i][2][:],
 			circuit.TrieProofsReceiverAfter[i][3][:],
+			circuit.TrieProofsReceiverAfter[i][4][:],
+			circuit.TrieProofsReceiverAfter[i][5][:],
+			circuit.TrieProofsReceiverAfter[i][6][:],
+			circuit.TrieProofsReceiverAfter[i][7][:],
+			circuit.TrieProofsReceiverAfter[i][8][:],
+			circuit.TrieProofsReceiverAfter[i][9][:],
+			circuit.TrieProofsReceiverAfter[i][10][:],
+			circuit.TrieProofsReceiverAfter[i][11][:],
+			circuit.TrieProofsReceiverAfter[i][12][:],
+			circuit.TrieProofsReceiverAfter[i][13][:],
+			circuit.TrieProofsReceiverAfter[i][14][:],
+			circuit.TrieProofsReceiverAfter[i][15][:],
+			circuit.TrieProofsReceiverAfter[i][16][:],
+			circuit.TrieProofsReceiverAfter[i][17][:],
 			circuit.TriePathReceiverAfter[i][:])
 
 		// verify the transaction transfer
