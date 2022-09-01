@@ -61,15 +61,6 @@ func Validate(p *trie_mimc.Proof, rootBytes []byte) error {
 	return nil
 }
 
-func ValidateTest() {
-	inputs := []byte{42, 194, 10, 96, 133, 113, 88, 31, 86, 136, 60, 65, 11, 106, 226, 218, 169, 220, 186, 36, 114, 230, 53, 147, 171, 202, 12, 106, 45, 89, 231, 132, 0, 41, 110, 104, 212, 140, 165, 49, 87, 44, 32, 181, 221, 58, 86, 232, 118, 168, 2, 169, 90, 13, 92, 128, 54, 250, 117, 253, 216, 155, 33, 211, 90, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
-	outputs := []byte{8, 205, 235, 168, 70, 155, 72, 62, 195, 30, 12, 199, 164, 235, 36, 86, 198, 201, 78, 155, 86, 119, 14, 124, 221, 225, 228, 148, 151, 171, 196, 35}
-
-	results := trie_mimc.MIMCIt(inputs, 32)
-	fmt.Println("ValidateTest(): Output =", outputs)
-	fmt.Println("ValidateTest(): Results =", results)
-}
-
 // ValidateWithValue checks the proof and checks if the proof commits to the specific value
 func ValidateWithValue(p *trie_mimc.Proof, rootBytes []byte, value []byte) error {
 	if err := Validate(p, rootBytes); err != nil {
@@ -120,7 +111,6 @@ func verify(p *trie_mimc.Proof, pathIdx, keyIdx int) ([]byte, error) {
 			return nil, fmt.Errorf("wrong proof: proof path out of key bounds. Path position: %d, key position %d", pathIdx, keyIdx)
 		}
 		c, err := verify(p, pathIdx+1, nextKeyIdx)
-		fmt.Println("trie_mimc_verify: Current Sum =", c)
 		if err != nil {
 			return nil, err
 		}
@@ -154,16 +144,6 @@ func makeHashVector(e *trie_mimc.ProofElement, missingCommitment []byte, arity t
 	if arity.IsChildIndex(e.ChildIndex) {
 		hashes[e.ChildIndex] = missingCommitment
 	}
-	fmt.Println("makeHashVector")
-	for idx, h := range hashes {
-		if len(hashes[idx]) == 0 {
-			fmt.Print(h, " ")
-		} else {
-			fmt.Print(h, " ")
-		}
-	}
-	fmt.Println("")
-	// fmt.Println(hashes[0], hashes[1], binary.BigEndian.Uint64(hashes[2]), hashes[3])
 	return hashes
 }
 
