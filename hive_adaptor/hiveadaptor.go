@@ -4,7 +4,7 @@ package hive_adaptor
 import (
 	"errors"
 
-	"github.com/iotaledger/hive.go/kvstore"
+	"github.com/iotaledger/hive.go/core/kvstore"
 	"github.com/iotaledger/trie.go/trie"
 )
 
