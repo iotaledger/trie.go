@@ -23,8 +23,8 @@ import (
 	"math/big"
 
 	"github.com/consensys/gnark-crypto/ecc/bn254/fr/mimc"
-	"github.com/iotaledger/trie.go/models/trie_mimc"
-	"github.com/iotaledger/trie.go/models/trie_mimc/trie_mimc_verify"
+	"github.com/iotaledger/trie.go/models/trie_mimc1"
+	"github.com/iotaledger/trie.go/models/trie_mimc1/trie_mimc1_verify"
 	"github.com/iotaledger/trie.go/trie"
 )
 
@@ -149,7 +149,7 @@ func (o *Operator) updateState(t Transfer, numTransfer int) error {
 
 	index_to_segment := make(map[uint64][]byte)
 	store := trie.NewInMemoryKVStore()
-	model := trie_mimc.New(trie.PathArity2, trie_mimc.HashSize256)
+	model := trie_mimc1.New(trie.PathArity2)
 	tr := trie.New(model, store, nil)
 	tr.ReadAll(&buf, segmentSize, index_to_segment)
 	tr.Commit()
@@ -159,7 +159,7 @@ func (o *Operator) updateState(t Transfer, numTransfer int) error {
 	// This proof is analogous to the `proofSet` in gnark
 	proof := model.Proof(index_to_segment[posSender], tr)
 	// validate proof
-	err = trie_mimc_verify.Validate(proof, rootCommitment.Bytes())
+	err = trie_mimc1_verify.Validate(proof, rootCommitment.Bytes())
 
 	// fmt.Print("Root = ")
 	// fmt.Println(rootCommitment.Bytes())
@@ -306,7 +306,7 @@ func (o *Operator) updateState(t Transfer, numTransfer int) error {
 	return nil
 }
 
-func generateHashes(proofs []*trie_mimc.ProofElement) ([][proofSetSize][]byte, []int) {
+func generateHashes(proofs []*trie_mimc1.ProofElement) ([][proofSetSize][]byte, []int) {
 	proofsLength := len(proofs)
 	hashesAll := make([][proofSetSize][]byte, trieDepth)
 	path := make([]int, trieDepth-1)
@@ -321,11 +321,11 @@ func generateHashes(proofs []*trie_mimc.ProofElement) ([][proofSetSize][]byte, [
 			copy(hashes[0][:], p.Children[0])
 			copy(hashes[1][:], p.Children[1])
 			copy(hashes[2][:], p.Terminal)
-			copy(hashes[3][:], trie_mimc.CommitToDataRaw(p.PathFragment, 32))
+			copy(hashes[3][:], trie_mimc1.HashData(p.PathFragment))
 		} else {
 			copy(hashes[1-p.ChildIndex][:], p.Children[byte(1-p.ChildIndex)])
 			copy(hashes[2][:], p.Terminal)
-			copy(hashes[3][:], trie_mimc.CommitToDataRaw(p.PathFragment, 32))
+			copy(hashes[3][:], trie_mimc1.HashData(p.PathFragment))
 			path[proofsLength-i-2] = p.ChildIndex
 		}
 		hashesAll[proofsLength-i-1] = hashes

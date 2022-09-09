@@ -1,7 +1,7 @@
 === RUN   TestAccount
 --- PASS: TestAccount (0.00s)
 === RUN   TestCircuitSignature
-Root = [45 174 230 205 44 253 5 154 85 193 213 131 69 65 214 241 99 24 89 9 130 80 228 52 238 74 176 66 136 111 114 84]
+Root = [31 216 227 109 213 28 236 44 183 7 200 33 129 166 159 103 248 141 212 199 160 5 122 132 186 122 182 126 143 59 233 140]
 validating PoI for sender with index '0' PASS
 === RUN   TestCircuitSignature/BN254/marshal/json
 === PAUSE TestCircuitSignature/BN254/marshal/json
@@ -19,23 +19,23 @@ validating PoI for sender with index '0' PASS
 === RUN   TestCircuitSignature/fuzz/BN254/groth16
 === RUN   TestCircuitSignature/fuzz/BN254/plonk
 === CONT  TestCircuitSignature/BN254/marshal/json
-=== CONT  TestCircuitSignature/BN254/marshal-public/binary
-=== CONT  TestCircuitSignature/BN254/groth16
 === CONT  TestCircuitSignature/BN254/marshal/binary
-=== CONT  TestCircuitSignature/BN254/marshal-public/json
+=== CONT  TestCircuitSignature/BN254/marshal-public/binary
 === CONT  TestCircuitSignature/BN254/plonk
---- PASS: TestCircuitSignature (2.30s)
-    --- PASS: TestCircuitSignature/fuzz (2.03s)
-        --- PASS: TestCircuitSignature/fuzz/BN254/groth16 (0.97s)
-        --- PASS: TestCircuitSignature/fuzz/BN254/plonk (1.05s)
+=== CONT  TestCircuitSignature/BN254/groth16
+=== CONT  TestCircuitSignature/BN254/marshal-public/json
+--- PASS: TestCircuitSignature (2.04s)
+    --- PASS: TestCircuitSignature/fuzz (1.76s)
+        --- PASS: TestCircuitSignature/fuzz/BN254/groth16 (1.00s)
+        --- PASS: TestCircuitSignature/fuzz/BN254/plonk (0.76s)
     --- PASS: TestCircuitSignature/BN254/marshal-public/binary (0.00s)
     --- PASS: TestCircuitSignature/BN254/marshal/binary (0.00s)
-    --- PASS: TestCircuitSignature/BN254/marshal-public/json (0.01s)
+    --- PASS: TestCircuitSignature/BN254/marshal-public/json (0.02s)
     --- PASS: TestCircuitSignature/BN254/marshal/json (0.02s)
-    --- PASS: TestCircuitSignature/BN254/groth16 (1.56s)
-    --- PASS: TestCircuitSignature/BN254/plonk (2.04s)
+    --- PASS: TestCircuitSignature/BN254/groth16 (1.48s)
+    --- PASS: TestCircuitSignature/BN254/plonk (1.96s)
 === RUN   TestCircuitInclusionProof
-Root = [30 61 254 9 216 220 20 183 215 246 228 91 176 121 178 29 255 69 217 86 146 198 19 40 69 77 246 206 239 101 78 40]
+Root = [14 2 111 105 126 230 83 21 187 60 47 78 5 109 34 128 177 91 193 79 92 12 201 72 109 221 130 104 45 68 126 92]
 validating PoI for sender with index '0' PASS
 === RUN   TestCircuitInclusionProof/BN254/marshal/json
 === PAUSE TestCircuitInclusionProof/BN254/marshal/json
@@ -47,4 +47,4 @@ validating PoI for sender with index '0' PASS
 === PAUSE TestCircuitInclusionProof/BN254/marshal-public/binary
 === RUN   TestCircuitInclusionProof/BN254/groth16
 signal: killed
-FAIL	github.com/iotaledger/trie.go/examples/rollup256	63.322s
+FAIL	github.com/iotaledger/trie.go/examples/rollup256	44.759s

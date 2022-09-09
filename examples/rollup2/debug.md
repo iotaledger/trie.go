@@ -18,21 +18,21 @@ validating PoI for sender with index '0' PASS
 === RUN   TestCircuitSignature/fuzz/BN254/groth16
 === RUN   TestCircuitSignature/fuzz/BN254/plonk
 === CONT  TestCircuitSignature/BN254/marshal/json
-=== CONT  TestCircuitSignature/BN254/marshal-public/binary
-=== CONT  TestCircuitSignature/BN254/groth16
-=== CONT  TestCircuitSignature/BN254/plonk
-=== CONT  TestCircuitSignature/BN254/marshal/binary
 === CONT  TestCircuitSignature/BN254/marshal-public/json
---- PASS: TestCircuitSignature (1.66s)
-    --- PASS: TestCircuitSignature/fuzz (1.45s)
-        --- PASS: TestCircuitSignature/fuzz/BN254/groth16 (0.76s)
-        --- PASS: TestCircuitSignature/fuzz/BN254/plonk (0.69s)
+=== CONT  TestCircuitSignature/BN254/marshal/binary
+=== CONT  TestCircuitSignature/BN254/marshal-public/binary
+=== CONT  TestCircuitSignature/BN254/plonk
+=== CONT  TestCircuitSignature/BN254/groth16
+--- PASS: TestCircuitSignature (1.77s)
+    --- PASS: TestCircuitSignature/fuzz (1.56s)
+        --- PASS: TestCircuitSignature/fuzz/BN254/groth16 (0.77s)
+        --- PASS: TestCircuitSignature/fuzz/BN254/plonk (0.80s)
     --- PASS: TestCircuitSignature/BN254/marshal-public/binary (0.00s)
     --- PASS: TestCircuitSignature/BN254/marshal/binary (0.00s)
     --- PASS: TestCircuitSignature/BN254/marshal-public/json (0.00s)
     --- PASS: TestCircuitSignature/BN254/marshal/json (0.00s)
-    --- PASS: TestCircuitSignature/BN254/groth16 (1.48s)
-    --- PASS: TestCircuitSignature/BN254/plonk (2.02s)
+    --- PASS: TestCircuitSignature/BN254/groth16 (1.53s)
+    --- PASS: TestCircuitSignature/BN254/plonk (2.06s)
 === RUN   TestCircuitInclusionProof
 validating PoI for sender with index '0' PASS
 === RUN   TestCircuitInclusionProof/BN254/marshal/json
@@ -51,21 +51,21 @@ validating PoI for sender with index '0' PASS
 === RUN   TestCircuitInclusionProof/fuzz/BN254/groth16
 === RUN   TestCircuitInclusionProof/fuzz/BN254/plonk
 === CONT  TestCircuitInclusionProof/BN254/marshal/json
-=== CONT  TestCircuitInclusionProof/BN254/marshal/binary
 === CONT  TestCircuitInclusionProof/BN254/groth16
-=== CONT  TestCircuitInclusionProof/BN254/marshal-public/json
 === CONT  TestCircuitInclusionProof/BN254/plonk
+=== CONT  TestCircuitInclusionProof/BN254/marshal-public/json
 === CONT  TestCircuitInclusionProof/BN254/marshal-public/binary
---- PASS: TestCircuitInclusionProof (13.08s)
-    --- PASS: TestCircuitInclusionProof/fuzz (4.71s)
-        --- PASS: TestCircuitInclusionProof/fuzz/BN254/groth16 (2.47s)
-        --- PASS: TestCircuitInclusionProof/fuzz/BN254/plonk (2.24s)
-    --- PASS: TestCircuitInclusionProof/BN254/marshal/binary (0.00s)
+=== CONT  TestCircuitInclusionProof/BN254/marshal/binary
+--- PASS: TestCircuitInclusionProof (6.93s)
+    --- PASS: TestCircuitInclusionProof/fuzz (2.84s)
+        --- PASS: TestCircuitInclusionProof/fuzz/BN254/groth16 (1.11s)
+        --- PASS: TestCircuitInclusionProof/fuzz/BN254/plonk (1.73s)
     --- PASS: TestCircuitInclusionProof/BN254/marshal-public/binary (0.00s)
+    --- PASS: TestCircuitInclusionProof/BN254/marshal/binary (0.00s)
     --- PASS: TestCircuitInclusionProof/BN254/marshal-public/json (0.00s)
     --- PASS: TestCircuitInclusionProof/BN254/marshal/json (0.00s)
-    --- PASS: TestCircuitInclusionProof/BN254/groth16 (43.32s)
-    --- PASS: TestCircuitInclusionProof/BN254/plonk (51.65s)
+    --- PASS: TestCircuitInclusionProof/BN254/groth16 (20.23s)
+    --- PASS: TestCircuitInclusionProof/BN254/plonk (24.42s)
 === RUN   TestCircuitUpdateAccount
 validating PoI for sender with index '0' PASS
 === RUN   TestCircuitUpdateAccount/BN254/marshal/json
@@ -84,21 +84,21 @@ validating PoI for sender with index '0' PASS
 === RUN   TestCircuitUpdateAccount/fuzz/BN254/groth16
 === RUN   TestCircuitUpdateAccount/fuzz/BN254/plonk
 === CONT  TestCircuitUpdateAccount/BN254/marshal/json
+=== CONT  TestCircuitUpdateAccount/BN254/plonk
+=== CONT  TestCircuitUpdateAccount/BN254/marshal-public/binary
 === CONT  TestCircuitUpdateAccount/BN254/groth16
 === CONT  TestCircuitUpdateAccount/BN254/marshal-public/json
-=== CONT  TestCircuitUpdateAccount/BN254/marshal-public/binary
 === CONT  TestCircuitUpdateAccount/BN254/marshal/binary
-=== CONT  TestCircuitUpdateAccount/BN254/plonk
---- PASS: TestCircuitUpdateAccount (0.12s)
+--- PASS: TestCircuitUpdateAccount (0.13s)
     --- PASS: TestCircuitUpdateAccount/fuzz (0.04s)
-        --- PASS: TestCircuitUpdateAccount/fuzz/BN254/groth16 (0.01s)
+        --- PASS: TestCircuitUpdateAccount/fuzz/BN254/groth16 (0.02s)
         --- PASS: TestCircuitUpdateAccount/fuzz/BN254/plonk (0.02s)
     --- PASS: TestCircuitUpdateAccount/BN254/marshal-public/binary (0.00s)
     --- PASS: TestCircuitUpdateAccount/BN254/marshal/binary (0.00s)
-    --- PASS: TestCircuitUpdateAccount/BN254/marshal-public/json (0.00s)
     --- PASS: TestCircuitUpdateAccount/BN254/marshal/json (0.00s)
-    --- PASS: TestCircuitUpdateAccount/BN254/groth16 (0.30s)
-    --- PASS: TestCircuitUpdateAccount/BN254/plonk (0.40s)
+    --- PASS: TestCircuitUpdateAccount/BN254/marshal-public/json (0.00s)
+    --- PASS: TestCircuitUpdateAccount/BN254/groth16 (0.28s)
+    --- PASS: TestCircuitUpdateAccount/BN254/plonk (0.41s)
 === RUN   TestCircuitFull
 validating PoI for sender with index '0' PASS
 === RUN   TestCircuitFull/BN254/marshal/json
@@ -117,21 +117,21 @@ validating PoI for sender with index '0' PASS
 === RUN   TestCircuitFull/fuzz/BN254/groth16
 === RUN   TestCircuitFull/fuzz/BN254/plonk
 === CONT  TestCircuitFull/BN254/marshal/json
-=== CONT  TestCircuitFull/BN254/marshal/binary
 === CONT  TestCircuitFull/BN254/groth16
 === CONT  TestCircuitFull/BN254/marshal-public/json
-=== CONT  TestCircuitFull/BN254/plonk
 === CONT  TestCircuitFull/BN254/marshal-public/binary
---- PASS: TestCircuitFull (9.83s)
-    --- PASS: TestCircuitFull/fuzz (1.27s)
-        --- PASS: TestCircuitFull/fuzz/BN254/groth16 (0.60s)
-        --- PASS: TestCircuitFull/fuzz/BN254/plonk (0.67s)
-    --- PASS: TestCircuitFull/BN254/marshal/binary (0.00s)
+=== CONT  TestCircuitFull/BN254/plonk
+=== CONT  TestCircuitFull/BN254/marshal/binary
+--- PASS: TestCircuitFull (4.87s)
+    --- PASS: TestCircuitFull/fuzz (0.66s)
+        --- PASS: TestCircuitFull/fuzz/BN254/groth16 (0.35s)
+        --- PASS: TestCircuitFull/fuzz/BN254/plonk (0.31s)
     --- PASS: TestCircuitFull/BN254/marshal-public/binary (0.00s)
+    --- PASS: TestCircuitFull/BN254/marshal/binary (0.00s)
     --- PASS: TestCircuitFull/BN254/marshal-public/json (0.00s)
     --- PASS: TestCircuitFull/BN254/marshal/json (0.00s)
-    --- PASS: TestCircuitFull/BN254/groth16 (43.53s)
-    --- PASS: TestCircuitFull/BN254/plonk (49.60s)
+    --- PASS: TestCircuitFull/BN254/groth16 (21.68s)
+    --- PASS: TestCircuitFull/BN254/plonk (24.85s)
 === RUN   TestOperatorReadAccount
 --- PASS: TestOperatorReadAccount (0.02s)
 === RUN   TestSignTransfer
@@ -140,4 +140,4 @@ validating PoI for sender with index '0' PASS
 validating PoI for sender with index '0' PASS
 --- PASS: TestOperatorUpdateAccount (0.02s)
 PASS
-ok  	github.com/iotaledger/trie.go/examples/rollup2	122.945s
+ok      github.com/iotaledger/trie.go/examples/rollup2  63.179s
