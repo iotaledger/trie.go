@@ -195,6 +195,17 @@ func mimcIt(data []byte, sz HashSize) []byte {
 	panic("must be 256")
 }
 
+func MIMCIt(data []byte, sz HashSize) []byte {
+	switch sz {
+	case HashSize256:
+		h := mimc.NewMiMC()
+		h.Write(data)
+		ret := h.Sum(nil)
+		return ret[:]
+	}
+	panic("must be 256")
+}
+
 // makeHashVector makes the node vector to be hashed. Missing children are nil
 func (m *CommitmentModel) makeHashVector(nodeData *trie.NodeData) [][]byte {
 	hashes := make([][]byte, m.arity.VectorLength())
@@ -219,6 +230,7 @@ func HashTheVector(hashes [][]byte, arity trie.PathArity, sz HashSize) []byte {
 		pos := i * msz
 		copy(buf[pos:pos+msz], h)
 	}
+	// fmt.Printf("buf = %v, sz = %d \n", buf, sz)
 	return mimcIt(buf, sz)
 }
 

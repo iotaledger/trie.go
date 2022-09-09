@@ -9,6 +9,7 @@ package trie
 import (
 	"bytes"
 	"fmt"
+	"io"
 )
 
 // Trie is an updatable trie implemented on top of the unpackedKey/value store. It is virtualized and optimized by caching of the
@@ -373,6 +374,29 @@ func (tr *Trie) checkReorg(n *bufferedNode) (reorgStatus, byte) {
 		}
 	}
 	return nodeReorgNOP, 0
+}
+
+// Read all the segments and put them in the trie
+func (tr *Trie) ReadAll(r io.Reader, segmentSize int, m map[uint64][]byte) error {
+	index := uint64(0)
+	for {
+		segment := make([]byte, segmentSize)
+		n, readErr := io.ReadFull(r, segment)
+		if readErr == io.EOF {
+			// All data has been read.
+			break
+		} else if readErr == io.ErrUnexpectedEOF {
+			// This is the last segment, and there aren't enough bytes to fill
+			// the entire segment. Note that the next call will return io.EOF.
+			segment = segment[:n]
+		} else if readErr != nil {
+			return readErr
+		}
+		tr.UpdateStr(segment, segment)
+		m[index] = segment
+		index++
+	}
+	return nil
 }
 
 // UpdateStr updates unpackedKey/value pair in the trie
