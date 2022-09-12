@@ -1,18 +1,16 @@
-package trie_blake2b
+package trie_mimc1
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"io"
 
 	"github.com/iotaledger/trie.go/trie"
 )
 
-// Proof blake2b 20 byte model-specific proof of inclusion
+// Proof MIMC 32 byte model-specific proof of inclusion
 type Proof struct {
 	PathArity trie.PathArity
-	HashSize  HashSize
 	Key       []byte
 	Path      []*ProofElement
 }
@@ -26,12 +24,8 @@ type ProofElement struct {
 
 func ProofFromBytes(data []byte) (*Proof, error) {
 	ret := &Proof{}
-	rdr := bytes.NewReader(data)
-	if err := ret.Read(rdr); err != nil {
+	if err := ret.Read(bytes.NewReader(data)); err != nil {
 		return nil, err
-	}
-	if rdr.Len() != 0 {
-		return nil, trie.ErrNotAllBytesConsumed
 	}
 	return ret, nil
 }
@@ -45,7 +39,6 @@ func (m *CommitmentModel) Proof(key []byte, tr trie.NodeStore) *Proof {
 	}
 	ret := &Proof{
 		PathArity: tr.PathArity(),
-		HashSize:  m.hashSize,
 		Key:       proofGeneric.Key,
 		Path:      make([]*ProofElement, len(proofGeneric.Path)),
 	}
@@ -80,14 +73,14 @@ func (m *CommitmentModel) Proof(key []byte, tr trie.NodeStore) *Proof {
 			ChildIndex:   childIndex,
 		}
 		if node.Terminal() != nil {
-			em.Terminal = node.Terminal().(*terminalCommitment).bytes
+			em.Terminal = HashData(node.Terminal().(*terminalCommitment).rawCommitment)
 		}
 		for idx, v := range node.ChildCommitments() {
 			if int(idx) == childIndex {
 				// skipping the commitment which must come from the next child
 				continue
 			}
-			em.Children[idx] = v.(vectorCommitment)
+			em.Children[idx] = v.Bytes()
 		}
 		ret.Path[i] = em
 	}
@@ -103,9 +96,6 @@ func (p *Proof) Write(w io.Writer) error {
 	if err = trie.WriteByte(w, byte(p.PathArity)); err != nil {
 		return err
 	}
-	if err = trie.WriteByte(w, byte(p.HashSize)); err != nil {
-		return err
-	}
 	encodedKey, err := trie.EncodeUnpackedBytes(p.Key, p.PathArity)
 	if err != nil {
 		return err
@@ -117,7 +107,7 @@ func (p *Proof) Write(w io.Writer) error {
 		return err
 	}
 	for _, e := range p.Path {
-		if err = e.Write(w, p.PathArity, p.HashSize); err != nil {
+		if err = e.Write(w, p.PathArity); err != nil {
 			return err
 		}
 	}
@@ -130,15 +120,6 @@ func (p *Proof) Read(r io.Reader) error {
 		return err
 	}
 	p.PathArity = trie.PathArity(b)
-
-	b, err = trie.ReadByte(r)
-	if err != nil {
-		return err
-	}
-	p.HashSize = HashSize(b)
-	if p.HashSize != HashSize256 && p.HashSize != HashSize160 {
-		return errors.New("wrong hash size")
-	}
 
 	var encodedKey []byte
 	if encodedKey, err = trie.ReadBytes16(r); err != nil {
@@ -154,7 +135,7 @@ func (p *Proof) Read(r io.Reader) error {
 	p.Path = make([]*ProofElement, size)
 	for i := range p.Path {
 		p.Path[i] = &ProofElement{}
-		if err = p.Path[i].Read(r, p.PathArity, p.HashSize); err != nil {
+		if err = p.Path[i].Read(r, p.PathArity); err != nil {
 			return err
 		}
 	}
@@ -166,7 +147,7 @@ const (
 	hasChildrenFlag      = 0x02
 )
 
-func (e *ProofElement) Write(w io.Writer, arity trie.PathArity, sz HashSize) error {
+func (e *ProofElement) Write(w io.Writer, arity trie.PathArity) error {
 	encodedPathFragment, err := trie.EncodeUnpackedBytes(e.PathFragment, arity)
 	if err != nil {
 		return err
@@ -206,8 +187,8 @@ func (e *ProofElement) Write(w io.Writer, arity trie.PathArity, sz HashSize) err
 			if !ok {
 				continue
 			}
-			if len(child) != int(sz) {
-				return fmt.Errorf("wrong data size. Expected %s, got %d", sz.String(), len(child))
+			if len(child) != HashSize {
+				return fmt.Errorf("wrong data size. Expected %d, got %d", HashSize, len(child))
 			}
 			if _, err = w.Write(child); err != nil {
 				return err
@@ -217,7 +198,7 @@ func (e *ProofElement) Write(w io.Writer, arity trie.PathArity, sz HashSize) err
 	return nil
 }
 
-func (e *ProofElement) Read(r io.Reader, arity trie.PathArity, sz HashSize) error {
+func (e *ProofElement) Read(r io.Reader, arity trie.PathArity) error {
 	var err error
 	var encodedPathFragment []byte
 	if encodedPathFragment, err = trie.ReadBytes16(r); err != nil {
@@ -251,7 +232,7 @@ func (e *ProofElement) Read(r io.Reader, arity trie.PathArity, sz HashSize) erro
 		for i := 0; i < arity.NumChildren(); i++ {
 			ib := uint8(i)
 			if flags[i/8]&(0x1<<(i%8)) != 0 {
-				e.Children[ib] = make([]byte, sz)
+				e.Children[ib] = make([]byte, HashSize)
 				if _, err = r.Read(e.Children[ib]); err != nil {
 					return err
 				}

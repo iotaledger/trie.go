@@ -17,7 +17,6 @@ The proof in the `trie-mimc.CommitmentModel` implementation is represented by tw
 ```go
 type Proof struct {
     PathArity trie.PathArity
-    HashSize  HashSize
     Key       []byte
     Path      []*ProofElement
 }
@@ -36,14 +35,13 @@ The proof as a data has no dependencies to any data structures. The only functio
 is ability of MIMC-hashing of the binary representation of hashes.
 
 You will retrieve the proof by calling `proof := model.Proof(key, trie)` where `model` was created 
-with ` model := trie_mimc.New(trie.PathArity2, trie_mimc.HashSize256))` and the `trie := tr := trie.New(m, store, nil)`.
+with ` model := trie_mimc1.New(trie.PathArity2))` and the `trie := tr := trie.New(m, store, nil)`.
 
 This way it is guaranteed that the proof is correct. But to check it against specific root hash `root` 
-you call `trie_mimc_verify.Validate(proof, root)`. 
+you call `trie_mimc1_verify.Validate(proof, root)`. 
 
 The `Proof` structure has header information:
 * `PathArity` will be `1` for binary tries
-* `HashSize` will be always be `32` for the implementation of `trie_mimc`
 * `Key` will be equal the key you want to check in the key/value store i.e. what you provided in the call `model.Proof(key, trie)` 
 
 The `Path` is a list of `ProofElement`'s. Each proof element in the list is used to compute the hash `H[i]` above.
@@ -55,7 +53,8 @@ Let's say the `Path` contains `N` elements.
 
 For binary tree, the last element `proof.Path[N-1]` will always contain:
 * value `V` corresponding to the key `K` in the key/value store as
-`proof.Path[N-1].Terminal`. It cannot be `nil` for proof of existence (if the (K,V) exists in the key/value store).
+`proof.Path[N-1].Terminal`. It cannot be `nil` for proof of existence (if the (K,V) exists in the key/value store). 
+It will be MIMC hash of the raw commitment to data (which may by up to 33 byte long)
 * 0, 1 or 2 values in the map `proof.Path[N-1].Children`
 * `proof.Path[N-1].ChildIndex` is not important for the last element in the path
 
@@ -87,7 +86,7 @@ The whole logic of forming the vector for hashing is in the functions `hashIt`, 
 ## Summery: how to generate circuit
 1. Have key K
 2. Call `proof := model.Proof(key, trie)`
-3. Call `trie_mimc_verify.Validate(proof, root)`. It checks syntactic validity of the proof and is it the valid proof against you `root`. 
+3. Call `trie_mimc1_verify.Validate(proof, root)`. It checks syntactic validity of the proof and is it the valid proof against you `root`. 
 4. The proof will prove the inclusion of key K with the value committed in the `Terminal` field in the last element in the `Path`.
 5. You generate circuit going from the last element in the path `proof.Path[N-1]` to the element `0`. 
 6. In each step you generate a circuit corresponding to 4 values (not 2): 1 sibling, 1 child, terminal, and the path fragment. 

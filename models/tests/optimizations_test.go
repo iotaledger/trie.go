@@ -11,14 +11,19 @@ import (
 	"github.com/iotaledger/trie.go/models/trie_blake2b"
 	"github.com/iotaledger/trie.go/models/trie_blake2b/trie_blake2b_verify"
 	"github.com/iotaledger/trie.go/models/trie_kzg_bn256"
+	"github.com/iotaledger/trie.go/models/trie_mimc"
+	"github.com/iotaledger/trie.go/models/trie_mimc1"
 	"github.com/iotaledger/trie.go/trie"
 	"github.com/stretchr/testify/require"
 )
 
 func TestKeyCommitmentOptimization(t *testing.T) {
 	data := genRnd4()[:10_000]
-	runTest := func(model trie.CommitmentModel) {
+	runTest := func(model trie.CommitmentModel, shortData bool) {
 		t.Run(tn(model), func(t *testing.T) {
+			if shortData {
+				data = data[:1000]
+			}
 			store1 := trie.NewInMemoryKVStore()
 			store2 := trie.NewInMemoryKVStore()
 			tr1 := trie.New(model, store1, nil, true)
@@ -54,14 +59,20 @@ func TestKeyCommitmentOptimization(t *testing.T) {
 		})
 	}
 
-	runTest(trie_blake2b.New(trie.PathArity256, trie_blake2b.HashSize256))
-	runTest(trie_blake2b.New(trie.PathArity16, trie_blake2b.HashSize256))
-	runTest(trie_blake2b.New(trie.PathArity2, trie_blake2b.HashSize256))
-	runTest(trie_blake2b.New(trie.PathArity256, trie_blake2b.HashSize160))
-	runTest(trie_blake2b.New(trie.PathArity16, trie_blake2b.HashSize160))
-	runTest(trie_blake2b.New(trie.PathArity2, trie_blake2b.HashSize160))
+	runTest(trie_blake2b.New(trie.PathArity256, trie_blake2b.HashSize256), false)
+	runTest(trie_blake2b.New(trie.PathArity16, trie_blake2b.HashSize256), false)
+	runTest(trie_blake2b.New(trie.PathArity2, trie_blake2b.HashSize256), false)
+	runTest(trie_blake2b.New(trie.PathArity256, trie_blake2b.HashSize160), false)
+	runTest(trie_blake2b.New(trie.PathArity16, trie_blake2b.HashSize160), false)
+	runTest(trie_blake2b.New(trie.PathArity2, trie_blake2b.HashSize160), false)
+	runTest(trie_mimc.New(trie.PathArity256, trie_mimc.HashSize256), true)
+	runTest(trie_mimc.New(trie.PathArity16, trie_mimc.HashSize256), true)
+	runTest(trie_mimc.New(trie.PathArity2, trie_mimc.HashSize256), true)
+	runTest(trie_mimc1.New(trie.PathArity256), true)
+	runTest(trie_mimc1.New(trie.PathArity16), true)
+	runTest(trie_mimc1.New(trie.PathArity2), true)
 
-	runTest(trie_kzg_bn256.New())
+	runTest(trie_kzg_bn256.New(), true)
 }
 
 func TestKeyCommitmentOptimizationOptions(t *testing.T) {
@@ -89,12 +100,38 @@ func TestKeyCommitmentOptimizationOptions(t *testing.T) {
 			require.True(t, size1 < size2)
 		})
 	}
+	runTestMimc := func(arity trie.PathArity) {
+		t.Run("mimc_"+arity.String(), func(t *testing.T) {
+			size1 := runOptions(trie_mimc.New(arity, trie_mimc.HashSize256), true)
+			size2 := runOptions(trie_mimc.New(arity, trie_mimc.HashSize256), false)
+			t.Logf("   with key commitment optimization same data. Byte size: %d", size1)
+			t.Logf("without key commitment optimization same data. Byte size: %d", size2)
+			require.True(t, size1 < size2)
+		})
+	}
+	runTestMimc1 := func(arity trie.PathArity) {
+		t.Run("mimc1_"+arity.String(), func(t *testing.T) {
+			size1 := runOptions(trie_mimc1.New(arity), true)
+			size2 := runOptions(trie_mimc1.New(arity), false)
+			t.Logf("   with key commitment optimization same data. Byte size: %d", size1)
+			t.Logf("without key commitment optimization same data. Byte size: %d", size2)
+			require.True(t, size1 < size2)
+		})
+	}
 	runTest(trie.PathArity256, trie_blake2b.HashSize256)
 	runTest(trie.PathArity256, trie_blake2b.HashSize160)
 	runTest(trie.PathArity16, trie_blake2b.HashSize256)
 	runTest(trie.PathArity16, trie_blake2b.HashSize160)
 	runTest(trie.PathArity2, trie_blake2b.HashSize256)
 	runTest(trie.PathArity2, trie_blake2b.HashSize160)
+
+	data = data[:1000]
+	runTestMimc(trie.PathArity256)
+	runTestMimc(trie.PathArity16)
+	runTestMimc(trie.PathArity2)
+	runTestMimc1(trie.PathArity256)
+	runTestMimc1(trie.PathArity16)
+	runTestMimc1(trie.PathArity2)
 }
 
 const letters1 = "abcdefghijklmnop"
@@ -164,11 +201,98 @@ func TestTerminalOptimizationOptions(t *testing.T) {
 		})
 		return ret1, ret2
 	}
+	runOptionsMimc := func(arity trie.PathArity, thr int) (int, int) {
+		var ret1, ret2 int
+		tname := fmt.Sprintf("mimc_%s-thr=%d", arity, thr)
+		t.Run(tname, func(t *testing.T) {
+			trieStore1 := trie.NewInMemoryKVStore()
+			trieStore2 := trie.NewInMemoryKVStore()
+			valueStore := trie.NewInMemoryKVStore()
+
+			m1 := trie_mimc.New(arity, trie_mimc.HashSize256)
+			tr1 := trie.New(m1, trieStore1, nil)
+
+			m2 := trie_mimc.New(arity, trie_mimc.HashSize256, thr)
+			tr2 := trie.New(m2, trieStore2, valueStore)
+
+			for _, d := range data {
+				if len(d) > 0 {
+					k := []byte(d)
+					v := []byte(strings.Repeat(d, 10))
+					tr1.Update(k, v)
+					tr2.Update(k, v)
+					valueStore.Set(k, v)
+				}
+			}
+			tr1.Commit()
+			tr1.PersistMutations(trieStore1)
+			tr1.ClearCache()
+			tr2.Commit()
+			tr2.PersistMutations(trieStore2)
+			tr2.ClearCache()
+
+			ret1 = trie.ByteSize(trieStore1)
+			ret2 = trie.ByteSize(trieStore2)
+			num := trie.NumEntries(valueStore)
+			t.Logf("valueStore size = %d, num entries = %d",
+				trie.ByteSize(valueStore), num)
+			t.Logf("trieStore1 size = %d, %d bytes/entry", ret1, ret1/num)
+			t.Logf("trieStore2 size = %d, %d bytes/entry", ret2, ret2/num)
+			t.Logf("difference = %d bytes, %d%%", ret1-ret2, ((ret1 - ret2) * 100 / ret1))
+		})
+		return ret1, ret2
+	}
+	runOptionsMimc1 := func(arity trie.PathArity, thr int) (int, int) {
+		var ret1, ret2 int
+		tname := fmt.Sprintf("mimc1_%s-thr=%d", arity, thr)
+		t.Run(tname, func(t *testing.T) {
+			trieStore1 := trie.NewInMemoryKVStore()
+			trieStore2 := trie.NewInMemoryKVStore()
+			valueStore := trie.NewInMemoryKVStore()
+
+			m1 := trie_mimc1.New(arity)
+			tr1 := trie.New(m1, trieStore1, nil)
+
+			m2 := trie_mimc1.New(arity, thr)
+			tr2 := trie.New(m2, trieStore2, valueStore)
+
+			for _, d := range data {
+				if len(d) > 0 {
+					k := []byte(d)
+					v := []byte(strings.Repeat(d, 10))
+					tr1.Update(k, v)
+					tr2.Update(k, v)
+					valueStore.Set(k, v)
+				}
+			}
+			tr1.Commit()
+			tr1.PersistMutations(trieStore1)
+			tr1.ClearCache()
+			tr2.Commit()
+			tr2.PersistMutations(trieStore2)
+			tr2.ClearCache()
+
+			ret1 = trie.ByteSize(trieStore1)
+			ret2 = trie.ByteSize(trieStore2)
+			num := trie.NumEntries(valueStore)
+			t.Logf("valueStore size = %d, num entries = %d",
+				trie.ByteSize(valueStore), num)
+			t.Logf("trieStore1 size = %d, %d bytes/entry", ret1, ret1/num)
+			t.Logf("trieStore2 size = %d, %d bytes/entry", ret2, ret2/num)
+			t.Logf("difference = %d bytes, %d%%", ret1-ret2, ((ret1 - ret2) * 100 / ret1))
+		})
+		return ret1, ret2
+	}
 	runAllOptions := func(fun func(arity trie.PathArity, sz trie_blake2b.HashSize)) {
 		for _, a := range trie.AllPathArity {
 			for _, sz := range trie_blake2b.AllHashSize {
 				fun(a, sz)
 			}
+		}
+	}
+	runAllOptionsMimc := func(fun func(arity trie.PathArity)) {
+		for _, a := range trie.AllPathArity {
+			fun(a)
 		}
 	}
 	runAllOptions(func(arity trie.PathArity, sz trie_blake2b.HashSize) {
@@ -181,6 +305,32 @@ func TestTerminalOptimizationOptions(t *testing.T) {
 	})
 	runAllOptions(func(arity trie.PathArity, sz trie_blake2b.HashSize) {
 		size1, size2 := runOptions(arity, sz, 10000)
+		require.True(t, size2 < size1)
+	})
+
+	data = data[:2000]
+	runAllOptionsMimc(func(arity trie.PathArity) {
+		size1, size2 := runOptionsMimc(arity, 0)
+		require.EqualValues(t, size1, size2)
+	})
+	runAllOptionsMimc(func(arity trie.PathArity) {
+		size1, size2 := runOptionsMimc(arity, 10)
+		require.True(t, size2 < size1)
+	})
+	runAllOptionsMimc(func(arity trie.PathArity) {
+		size1, size2 := runOptionsMimc(arity, 10000)
+		require.True(t, size2 < size1)
+	})
+	runAllOptionsMimc(func(arity trie.PathArity) {
+		size1, size2 := runOptionsMimc1(arity, 0)
+		require.EqualValues(t, size1, size2)
+	})
+	runAllOptionsMimc(func(arity trie.PathArity) {
+		size1, size2 := runOptionsMimc1(arity, 10)
+		require.True(t, size2 < size1)
+	})
+	runAllOptionsMimc(func(arity trie.PathArity) {
+		size1, size2 := runOptionsMimc1(arity, 10000)
 		require.True(t, size2 < size1)
 	})
 }
