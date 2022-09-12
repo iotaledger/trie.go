@@ -66,7 +66,7 @@ func hashVectors(api frontend.API, hFunc mimc.MiMC,
 	return hFunc.Sum()
 }
 
-// Shift lsb N Bytes to left, with tailing 0s.
+// Shift lsb N Bytes to the left, with tailing 0s.
 func NBytesLeftShift(api frontend.API, input frontend.Variable, N int) frontend.Variable {
 	var lsb frontend.Variable = 0
 	var multiplier frontend.Variable = 1
