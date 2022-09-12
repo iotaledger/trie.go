@@ -33,7 +33,7 @@ func leastNBytes(api frontend.API, input frontend.Variable, N int) frontend.Vari
 	return lsb
 }
 
-// Right shift N Bytes
+// Right shift by N Bytes
 func rightShiftNBytes(api frontend.API, input frontend.Variable, N int) frontend.Variable {
 	var lsb frontend.Variable = 0
 	var multiplier frontend.Variable = 1
