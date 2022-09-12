@@ -13,7 +13,9 @@ func hashVectors(api frontend.API, hFunc mimc.MiMC, hashes ...frontend.Variable)
 }
 
 // Validate2 check the proof against the provided root commitments in a binary trie
-// ps0-3 are the proof sets
+// ps0-3 are the proof sets. The proof sets consist of children, terminal, and path fragments along the path.
+// For example, for binary trie, there are two children (ps0, ps1), terminal (ps2), and path fragment (ps3).
+// We name them as proof sets according to the original gnark example by using a binary complete tree.
 // paths indicate the children location through the path from the leaf to the root
 func Validate2(api frontend.API, hFunc mimc.MiMC, root frontend.Variable,
 	ps0, ps1, ps2, ps3 []frontend.Variable, paths []frontend.Variable) {
@@ -28,7 +30,9 @@ func Validate2(api frontend.API, hFunc mimc.MiMC, root frontend.Variable,
 }
 
 // Validate16 check the proof against the provided root commitments in a hexadecimal trie
-// ps0-17 are the proof sets
+// ps0-17 are the proof sets. The proof sets consist of children, terminal, and path fragments along the path.
+// For example, for binary trie, there are two children (ps0-15), terminal (ps16), and path fragment (ps17).
+// We name them as proof sets according to the original gnark example by using a binary complete tree.
 // paths indicate the children location through the path from the leaf to the root
 func Validate16(api frontend.API, hFunc mimc.MiMC, root frontend.Variable, ps0, ps1, ps2, ps3, ps4, ps5,
 	ps6, ps7, ps8, ps9, ps10, ps11, ps12, ps13, ps14, ps15, ps16, ps17 []frontend.Variable,
@@ -62,7 +66,9 @@ func Validate16(api frontend.API, hFunc mimc.MiMC, root frontend.Variable, ps0, 
 }
 
 // Validate256 check the proof against the provided root commitments in a 256 trie
-// ps0-258 are the proof sets
+// ps0-257 are the proof sets. The proof sets consist of children, terminal, and path fragments along the path.
+// For example, for binary trie, there are two children (ps0-255), terminal (ps256), and path fragment (ps257).
+// We name them as proof sets according to the original gnark example by using a binary complete tree.
 // paths indicate the children location through the path from the leaf to the root
 func Validate256(api frontend.API, hFunc mimc.MiMC, root frontend.Variable,
 	ps0, ps1, ps2, ps3, ps4, ps5, ps6, ps7, ps8, ps9, ps10, ps11, ps12, ps13, ps14, ps15,
