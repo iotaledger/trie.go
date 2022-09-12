@@ -71,6 +71,8 @@ func NBytesLeftShift(api frontend.API, input frontend.Variable, N int) frontend.
 	var lsb frontend.Variable = 0
 	var multiplier frontend.Variable = 1
 	inputBinary := api.ToBinary(input)
+
+	// Note: here we make sure all the calculations are within 32 bytes.
 	if N >= 32 {
 		return 0
 	}
