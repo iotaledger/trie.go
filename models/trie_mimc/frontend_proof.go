@@ -5,10 +5,10 @@ import (
 	"github.com/consensys/gnark/std/hash/mimc"
 )
 
-// Return the result of right shift by 1, input size = 32
-// Input: {42, 194, 10, 96, 133, 113, 88, 31, 86, 136, 60, 65, 11, 106, 226, 218, 169, 220, 186, 36, 114, 230, 53, 147, 171, 202, 12, 106, 45, 89, 231, 132}
-// Output: {42, 194, 10, 96, 133, 113, 88, 31, 86, 136, 60, 65, 11, 106, 226, 218, 169, 220, 186, 36, 114, 230, 53, 147, 171, 202, 12, 106, 45, 89, 231}
-func rightShift1(api frontend.API, input frontend.Variable) frontend.Variable {
+// Return the result of right shift by 1 byte, input size = 32 bytes (fixed)
+// Input: {42, 194, .. X other variables .., 231, 132} (Vector with length)
+// Output: {42, 194, .. X other variables .., 231} (Vector with length-1)
+func rightShift1Byte(api frontend.API, input frontend.Variable) frontend.Variable {
 	var lsb8 frontend.Variable = 0
 	var multiplier frontend.Variable = 1
 	inputBinary := api.ToBinary(input)
@@ -57,7 +57,7 @@ func hashVectors(api frontend.API, hFunc mimc.MiMC,
 	hashes ...frontend.Variable) frontend.Variable {
 
 	hFunc.Write(hashes[0])
-	hFunc.Write(rightShift1(api, hashes[1]))
+	hFunc.Write(rightShift1Byte(api, hashes[1]))
 	for n, h := range hashes[2:] {
 		hFunc.Write(api.Add(NBytesLeftShift(api, hashes[n+1], n+1),
 			rightShiftNBytes(api, h, n+2)))
@@ -85,15 +85,18 @@ func NBytesLeftShift(api frontend.API, input frontend.Variable, N int) frontend.
 	return api.Mul(lsb, multiplier)
 }
 
-// Return the result of right shift by 1, input size = 32
-// Input: {42, 194, 10, 96, 133, 113, 88, 31, 86, 136, 60, 65, 11, 106, 226, 218, 169, 220, 186, 36, 114, 230, 53, 147, 171, 202, 12, 106, 45, 89, 231}
-// Output: {42, 194, 10, 96, 133, 113, 88, 31, 86, 136, 60, 65, 11, 106, 226, 218, 169, 220, 186, 36, 114, 230, 53, 147, 171, 202, 12, 106, 45, 89, 231, 0}
+// Return the result of left shift by 1 byte, input size = 32 bytes (fixed)
+// Note: The MSB should be 0, or overflow occurs (the overflow behavior is not simply `mod`` by 2^256)
+// Input: {0, 42, 194, .. X other variables .., 231}
+// Output: {42, 194, , .. X other variables .., 231, 0}
 func leftShift1Byte(api frontend.API, input frontend.Variable) frontend.Variable {
 	return api.Mul(input, 256)
 }
 
 // Validate2 check the proof against the provided root commitments in a binary trie
-// ps0-3 are the proof sets
+// ps0-3 are the proof sets. The proof sets consist of children, terminal, and path fragments along the path.
+// For example, for binary trie, there are two children (ps0, ps1), terminal (ps2), and path fragment (ps3).
+// We name them as proof sets according to the original gnark example by using a binary complete tree.
 // paths indicate the children location through the path from the leaf to the root
 func Validate2(api frontend.API, hFunc mimc.MiMC, root frontend.Variable,
 	ps0, ps1, ps2, ps3 []frontend.Variable, paths []frontend.Variable) {
@@ -108,7 +111,9 @@ func Validate2(api frontend.API, hFunc mimc.MiMC, root frontend.Variable,
 }
 
 // Validate16 check the proof against the provided root commitments in a hexadecimal trie
-// ps0-17 are the proof sets
+// ps0-17 are the proof sets. The proof sets consist of children, terminal, and path fragments along the path.
+// For example, for binary trie, there are two children (ps0-15), terminal (ps16), and path fragment (ps17).
+// We name them as proof sets according to the original gnark example by using a binary complete tree.
 // paths indicate the children location through the path from the leaf to the root
 func Validate16(api frontend.API, hFunc mimc.MiMC, root frontend.Variable, ps0, ps1, ps2, ps3, ps4, ps5,
 	ps6, ps7, ps8, ps9, ps10, ps11, ps12, ps13, ps14, ps15, ps16, ps17 []frontend.Variable,
@@ -142,7 +147,9 @@ func Validate16(api frontend.API, hFunc mimc.MiMC, root frontend.Variable, ps0, 
 }
 
 // Validate256 check the proof against the provided root commitments in a 256 trie
-// ps0-258 are the proof sets
+// ps0-257 are the proof sets. The proof sets consist of children, terminal, and path fragments along the path.
+// For example, for binary trie, there are two children (ps0-255), terminal (ps256), and path fragment (ps257).
+// We name them as proof sets according to the original gnark example by using a binary complete tree.
 // paths indicate the children location through the path from the leaf to the root
 func Validate256(api frontend.API, hFunc mimc.MiMC, root frontend.Variable,
 	ps0, ps1, ps2, ps3, ps4, ps5, ps6, ps7, ps8, ps9, ps10, ps11, ps12, ps13, ps14, ps15,
