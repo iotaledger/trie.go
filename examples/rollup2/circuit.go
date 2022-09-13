@@ -22,7 +22,7 @@ import (
 	"github.com/consensys/gnark/std/algebra/twistededwards"
 	"github.com/consensys/gnark/std/hash/mimc"
 	"github.com/consensys/gnark/std/signature/eddsa"
-	"github.com/iotaledger/trie.go/models/trie_mimc"
+	"github.com/iotaledger/trie.go/models/trie_mimc1"
 )
 
 const (
@@ -128,26 +128,26 @@ func (circuit *Circuit) Define(api frontend.API) error {
 	// creation of the circuit
 	for i := 0; i < batchSize; i++ {
 		// verify the proof created by trie.go
-		trie_mimc.Validate2(api, hFunc, circuit.TrieRootHashesBefore[i],
+		trie_mimc1.Validate2(api, hFunc, circuit.TrieRootHashesBefore[i],
 			circuit.TrieProofsSenderBefore[i][0][:],
 			circuit.TrieProofsSenderBefore[i][1][:],
 			circuit.TrieProofsSenderBefore[i][2][:],
 			circuit.TrieProofsSenderBefore[i][3][:],
 			circuit.TriePathSenderBefore[i][:])
-		trie_mimc.Validate2(api, hFunc, circuit.TrieRootHashesBefore[i],
+		trie_mimc1.Validate2(api, hFunc, circuit.TrieRootHashesBefore[i],
 			circuit.TrieProofsReceiverBefore[i][0][:],
 			circuit.TrieProofsReceiverBefore[i][1][:],
 			circuit.TrieProofsReceiverBefore[i][2][:],
 			circuit.TrieProofsReceiverBefore[i][3][:],
 			circuit.TriePathReceiverBefore[i][:])
 
-		trie_mimc.Validate2(api, hFunc, circuit.TrieRootHashesAfter[i],
+		trie_mimc1.Validate2(api, hFunc, circuit.TrieRootHashesAfter[i],
 			circuit.TrieProofsSenderAfter[i][0][:],
 			circuit.TrieProofsSenderAfter[i][1][:],
 			circuit.TrieProofsSenderAfter[i][2][:],
 			circuit.TrieProofsSenderAfter[i][3][:],
 			circuit.TriePathSenderAfter[i][:])
-		trie_mimc.Validate2(api, hFunc, circuit.TrieRootHashesAfter[i],
+		trie_mimc1.Validate2(api, hFunc, circuit.TrieRootHashesAfter[i],
 			circuit.TrieProofsReceiverAfter[i][0][:],
 			circuit.TrieProofsReceiverAfter[i][1][:],
 			circuit.TrieProofsReceiverAfter[i][2][:],

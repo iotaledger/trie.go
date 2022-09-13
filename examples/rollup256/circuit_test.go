@@ -23,7 +23,7 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/hash/mimc"
 	"github.com/consensys/gnark/test"
-	"github.com/iotaledger/trie.go/models/trie_mimc"
+	"github.com/iotaledger/trie.go/models/trie_mimc1"
 )
 
 type circuitSignature Circuit
@@ -93,7 +93,7 @@ func (t *circuitInclusionProof) Define(api frontend.API) error {
 		return err
 	}
 
-	trie_mimc.Validate256(api, hashFunc, t.TrieRootHashesBefore[0],
+	trie_mimc1.Validate256(api, hashFunc, t.TrieRootHashesBefore[0],
 		t.TrieProofsSenderBefore[0][0][:],
 		t.TrieProofsSenderBefore[0][1][:],
 		t.TrieProofsSenderBefore[0][2][:],
@@ -353,7 +353,7 @@ func (t *circuitInclusionProof) Define(api frontend.API) error {
 		t.TrieProofsSenderBefore[0][256][:],
 		t.TrieProofsSenderBefore[0][257][:],
 		t.TriePathSenderBefore[0][:])
-	trie_mimc.Validate256(api, hashFunc, t.TrieRootHashesBefore[0],
+	trie_mimc1.Validate256(api, hashFunc, t.TrieRootHashesBefore[0],
 		t.TrieProofsReceiverBefore[0][0][:],
 		t.TrieProofsReceiverBefore[0][1][:],
 		t.TrieProofsReceiverBefore[0][2][:],
@@ -614,7 +614,7 @@ func (t *circuitInclusionProof) Define(api frontend.API) error {
 		t.TrieProofsReceiverBefore[0][257][:],
 		t.TriePathReceiverBefore[0][:])
 
-	trie_mimc.Validate256(api, hashFunc, t.TrieRootHashesAfter[0],
+	trie_mimc1.Validate256(api, hashFunc, t.TrieRootHashesAfter[0],
 		t.TrieProofsSenderAfter[0][0][:],
 		t.TrieProofsSenderAfter[0][1][:],
 		t.TrieProofsSenderAfter[0][2][:],
@@ -874,7 +874,7 @@ func (t *circuitInclusionProof) Define(api frontend.API) error {
 		t.TrieProofsSenderAfter[0][256][:],
 		t.TrieProofsSenderAfter[0][257][:],
 		t.TriePathSenderAfter[0][:])
-	trie_mimc.Validate256(api, hashFunc, t.TrieRootHashesAfter[0],
+	trie_mimc1.Validate256(api, hashFunc, t.TrieRootHashesAfter[0],
 		t.TrieProofsReceiverAfter[0][0][:],
 		t.TrieProofsReceiverAfter[0][1][:],
 		t.TrieProofsReceiverAfter[0][2][:],

@@ -23,7 +23,7 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/hash/mimc"
 	"github.com/consensys/gnark/test"
-	"github.com/iotaledger/trie.go/models/trie_mimc"
+	"github.com/iotaledger/trie.go/models/trie_mimc1"
 )
 
 type circuitSignature Circuit
@@ -92,26 +92,26 @@ func (t *circuitInclusionProof) Define(api frontend.API) error {
 	if err != nil {
 		return err
 	}
-	trie_mimc.Validate2(api, hashFunc, t.TrieRootHashesBefore[0],
+	trie_mimc1.Validate2(api, hashFunc, t.TrieRootHashesBefore[0],
 		t.TrieProofsSenderBefore[0][0][:],
 		t.TrieProofsSenderBefore[0][1][:],
 		t.TrieProofsSenderBefore[0][2][:],
 		t.TrieProofsSenderBefore[0][3][:],
 		t.TriePathSenderBefore[0][:])
-	trie_mimc.Validate2(api, hashFunc, t.TrieRootHashesBefore[0],
+	trie_mimc1.Validate2(api, hashFunc, t.TrieRootHashesBefore[0],
 		t.TrieProofsReceiverBefore[0][0][:],
 		t.TrieProofsReceiverBefore[0][1][:],
 		t.TrieProofsReceiverBefore[0][2][:],
 		t.TrieProofsReceiverBefore[0][3][:],
 		t.TriePathReceiverBefore[0][:])
 
-	trie_mimc.Validate2(api, hashFunc, t.TrieRootHashesAfter[0],
+	trie_mimc1.Validate2(api, hashFunc, t.TrieRootHashesAfter[0],
 		t.TrieProofsSenderAfter[0][0][:],
 		t.TrieProofsSenderAfter[0][1][:],
 		t.TrieProofsSenderAfter[0][2][:],
 		t.TrieProofsSenderAfter[0][3][:],
 		t.TriePathSenderAfter[0][:])
-	trie_mimc.Validate2(api, hashFunc, t.TrieRootHashesAfter[0],
+	trie_mimc1.Validate2(api, hashFunc, t.TrieRootHashesAfter[0],
 		t.TrieProofsReceiverAfter[0][0][:],
 		t.TrieProofsReceiverAfter[0][1][:],
 		t.TrieProofsReceiverAfter[0][2][:],
