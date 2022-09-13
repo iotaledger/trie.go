@@ -135,13 +135,6 @@ func Test2Keys1(t *testing.T) {
 	require.EqualValues(t, cut3, dec3)
 }
 
-/*
-2022-08-31T11:17:28Z	WARN	Chains.c-fa0043.c	consensus/action.go:168	GENERAL VM EXCEPTION: the task (ACS id 840878536644970430) has been abandoned due to:
-trie::nodeStore::getNode assert 2: err: 'EOF' nodeBin: '', unpackedKey: '0002050e040b030c0402000100000a', arity: PathArity16
-2022-08-31T11:17:28Z	ERROR	Chains.c-fa0043.c	consensus/action.go:170	runVM result: VM task failed:
-trie::nodeStore::getNode assert 2: err: 'EOF' nodeBin: '', unpackedKey: '0002050e040b030c0402000100000a', arity: PathArity16
-*/
-
 func TestCheckingKey(t *testing.T) {
 	const unpackedKey = "0002050e040b030c0402000100000a"
 	unpackedBin, err := hex.DecodeString(unpackedKey)
