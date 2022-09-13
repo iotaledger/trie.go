@@ -34,6 +34,7 @@ func leastNBytes(api frontend.API, input frontend.Variable, N int) frontend.Vari
 }
 
 // Right shift by N Bytes
+// As DivUnchecked does not work with remainder we subtract N lsb, before dividing
 func rightShiftNBytes(api frontend.API, input frontend.Variable, N int) frontend.Variable {
 	var lsb frontend.Variable = 0
 	var multiplier frontend.Variable = 1
@@ -88,7 +89,7 @@ func NBytesLeftShift(api frontend.API, input frontend.Variable, N int) frontend.
 }
 
 // Return the result of left shift by 1 byte, input size = 32 bytes (fixed)
-// Note: The MSB should be 0, or overflow occurs (the overflow behavior is not simply `mod`` by 2^256)
+// Note: The MSB should be 0, or overflow occurs (the overflow behavior is not simply ``mod'' by 2^256)
 // Input: {0, 42, 194, .. X other variables .., 231}
 // Output: {42, 194, , .. X other variables .., 231, 0}
 func leftShift1Byte(api frontend.API, input frontend.Variable) frontend.Variable {
