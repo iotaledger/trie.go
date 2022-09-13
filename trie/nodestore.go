@@ -30,7 +30,7 @@ func (sr *nodeStore) getNode(unpackedKey []byte) (*nodeReadOnly, bool) {
 		err, hex.EncodeToString(unpackedKey), sr.arity.String())
 
 	nodeBin := sr.trieStore.Get(encodedKey)
-	if nodeBin == nil {
+	if len(nodeBin) == 0 {
 		return nil, false
 	}
 	n, err := nodeReadOnlyFromBytes(sr.m, nodeBin, unpackedKey, sr.arity, sr.valueStore)
