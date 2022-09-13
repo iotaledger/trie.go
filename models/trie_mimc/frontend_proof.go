@@ -96,7 +96,7 @@ func leftShift1Byte(api frontend.API, input frontend.Variable) frontend.Variable
 	return api.Mul(input, 256)
 }
 
-// Validate2 check the proof against the provided root commitments in a binary trie
+// Validate2 checks the proof against the provided root commitments in a binary trie
 // ps0-3 are the proof sets. The proof sets consist of children, terminal, and path fragments along the path.
 // For example, for binary trie, there are two children (ps0, ps1), terminal (ps2), and path fragment (ps3).
 // We name them as proof sets according to the original gnark example by using a binary complete tree.
