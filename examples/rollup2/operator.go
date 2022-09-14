@@ -194,6 +194,12 @@ func (o *Operator) updateState(t Transfer, numTransfer int) error {
 		}
 	}
 
+	// ps0[0], p=0x2523648240000001BA344D80000000086121000000000013A700000000000013
+	o.witnesses.TrieProofsSenderBefore[0][0][0] = []byte{37, 35, 100, 130, 64, 0, 0, 1, 186, 52, 77, 128, 0, 0, 0, 8, 97, 33, 0, 0, 0, 0, 0, 19, 167, 0, 0, 0, 0, 0, 0, 19}
+	// ps1[0], p=0x2523648240000001BA344D80000000086121000000000013A700000000000013 - 1
+	o.witnesses.TrieProofsSenderBefore[0][1][0] = []byte{37, 35, 100, 130, 64, 0, 0, 1, 186, 52, 77, 128, 0, 0, 0, 8, 97, 33, 0, 0, 0, 0, 0, 19, 167, 0, 0, 0, 0, 0, 0, 18}
+	// ps2[0], p=0x2523648240000001BA344D80000000086121000000000013A700000000000013 - 2
+	o.witnesses.TrieProofsSenderBefore[0][2][0] = []byte{37, 35, 100, 130, 64, 0, 0, 1, 186, 52, 77, 128, 0, 0, 0, 8, 97, 33, 0, 0, 0, 0, 0, 19, 167, 0, 0, 0, 0, 0, 0, 17}
 	// set witnesses for the transfer
 	o.witnesses.Transfers[numTransfer].Amount = t.amount
 	o.witnesses.Transfers[numTransfer].Signature.R.X = t.signature.R.X

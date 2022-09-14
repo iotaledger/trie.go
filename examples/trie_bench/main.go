@@ -44,6 +44,8 @@ func main() {
 	flag.Parse()
 	tail := flag.Args()
 	if len(tail) < 2 {
+		fmt.Println(tail)
+		fmt.Println("XXX0")
 		fmt.Printf(usage)
 		os.Exit(1)
 	}
@@ -65,6 +67,7 @@ func main() {
 	case 256:
 		arity = trie.PathArity256
 	default:
+		fmt.Println("XXX")
 		fmt.Printf(usage)
 		os.Exit(1)
 	}
@@ -75,6 +78,7 @@ func main() {
 	case 32:
 		model = trie_blake2b.New(arity, trie_blake2b.HashSize256, *optterm)
 	default:
+		fmt.Println("XXX2")
 		fmt.Printf(usage)
 		os.Exit(1)
 	}
@@ -109,6 +113,7 @@ func main() {
 		scandbbadger()
 
 	default:
+		fmt.Println("XXX3")
 		fmt.Printf(usage)
 		os.Exit(1)
 	}
