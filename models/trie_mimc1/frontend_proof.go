@@ -19,18 +19,9 @@ func hashVectors(api frontend.API, hFunc mimc.MiMC, hashes ...frontend.Variable)
 // paths indicate the children location through the path from the leaf to the root
 func Validate2(api frontend.API, hFunc mimc.MiMC, root frontend.Variable,
 	ps0, ps1, ps2, ps3 []frontend.Variable, paths []frontend.Variable) {
-	api.Println(ps0[0]) // p
-	api.Println(api.DivUnchecked(ps0[0], 10))
-	api.Println(api.Add(ps0[0], 1))
-	api.Println(api.Add(ps0[0], 2))
-	api.Println(ps1[0])                       // p-1
-	api.Println(api.DivUnchecked(ps1[0], 10)) // (p-1) / 10
-	api.Println(api.Add(ps1[0], 1))
-	api.Println(api.Add(ps1[0], 2))
-	api.Println(ps2[0])                       // p-2
-	api.Println(api.DivUnchecked(ps2[0], 10)) // (p-2) / 10
-	api.Println(api.Add(ps2[0], 1))
-	api.Println(api.Add(ps2[0], 2))
+	api.Println(ps0[0])             // p
+	api.Println(api.Mul(ps0[0], 2)) // pHelp = p*2 , calculate p*2 - pHelp (without field)
+	api.Println(api.Sub(0, 1))
 
 	h := hashVectors(api, hFunc, ps0[0], ps1[0], ps2[0], ps3[0])
 	// for i := 1; i < len(ps0); i++ {
