@@ -54,6 +54,7 @@ func rightShiftNBytes(api frontend.API, input frontend.Variable, N int) frontend
 	return api.DivUnchecked(api.Sub(input, lsb), divider)
 }
 
+// Hash the proof sets, including all children, terminal, and path fragment.
 func hashVectors(api frontend.API, hFunc mimc.MiMC,
 	hashes ...frontend.Variable) frontend.Variable {
 
@@ -108,6 +109,8 @@ func Validate2(api frontend.API, hFunc mimc.MiMC, root frontend.Variable,
 		s0 := api.Select(paths[i-1], ps0[i], h)
 		s1 := api.Select(paths[i-1], h, ps1[i])
 		tmp := hashVectors(api, hFunc, s0, s1, ps2[i], ps3[i])
+		// Note that all the proof set are 0 if there is no elements for that path step,
+		// thus h from the previous step is carried forward.
 		h = api.Select(api.Cmp(api.Add(ps0[i], ps1[i], ps2[i], ps3[i]), 0), tmp, h)
 	}
 	api.AssertIsEqual(h, root)
@@ -143,6 +146,8 @@ func Validate16(api frontend.API, hFunc mimc.MiMC, root frontend.Variable, ps0, 
 		s15 := api.Select(api.IsZero(api.Sub(paths[i-1], 15)), h, ps15[i])
 		tmp := hashVectors(api, hFunc, s0, s1, s2, s3, s4, s5, s6, s7, s8,
 			s9, s10, s11, s12, s13, s14, s15, ps16[i], ps17[i])
+		// Note that all the proof set are 0 if there is no elements for that path step,
+		// thus h from the previous step is carried forward.
 		h = api.Select(api.Cmp(api.Add(ps0[i], ps1[i], ps2[i], ps3[i], ps4[i], ps5[i], ps6[i], ps7[i], ps8[i],
 			ps9[i], ps10[i], ps11[i], ps12[i], ps13[i], ps14[i], ps15[i], ps16[i], ps17[i]), 0), tmp, h)
 	}
@@ -465,6 +470,8 @@ func Validate256(api frontend.API, hFunc mimc.MiMC, root frontend.Variable,
 			s224, s225, s226, s227, s228, s229, s230, s231, s232, s233, s234, s235, s236, s237, s238, s239,
 			s240, s241, s242, s243, s244, s245, s246, s247, s248, s249, s250, s251, s252, s253, s254, s255,
 			ps256[i], ps257[i])
+		// Note that all the proof set are 0 if there is no elements for that path step,
+		// thus h from the previous step is carried forward.
 		h = api.Select(api.Cmp(api.Add(ps0[i], ps1[i], ps2[i], ps3[i], ps4[i], ps5[i], ps6[i], ps7[i], ps8[i], ps9[i], ps10[i], ps11[i], ps12[i], ps13[i], ps14[i], ps15[i],
 			ps16[i], ps17[i], ps18[i], ps19[i], ps20[i], ps21[i], ps22[i], ps23[i], ps24[i], ps25[i], ps26[i], ps27[i], ps28[i], ps29[i], ps30[i], ps31[i],
 			ps32[i], ps33[i], ps34[i], ps35[i], ps36[i], ps37[i], ps38[i], ps39[i], ps40[i], ps41[i], ps42[i], ps43[i], ps44[i], ps45[i], ps46[i], ps47[i],
