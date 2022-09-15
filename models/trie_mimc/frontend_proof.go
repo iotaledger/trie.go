@@ -5,6 +5,13 @@ import (
 	"github.com/consensys/gnark/std/hash/mimc"
 )
 
+// Preliminary note
+// The following is currently used as prime order, which is the same as for curve alt_bn128.
+// However, it this prime order is not listed in the root README.md
+// hex q=30644E72E131A029B85045B68181585D2833E84879B9709143E1F593F0000001
+// in decimal 21888242871839275222246405745257275088548364400416034343698204186575808495617
+// in bytes = []byte{48, 100, 78, 114, 225, 49, 160, 41, 184, 80, 69, 182, 129, 129, 88, 93, 40, 51, 232, 72, 121, 185, 112, 145, 67, 225, 245, 147, 240, 0, 0, 1}
+
 // Return the result of right shift by 1 byte, input size = 32 bytes (fixed)
 // Input: {42, 194, .. X other variables .., 231, 132} (Vector with length)
 // Output: {42, 194, .. X other variables .., 231} (Vector with length-1)
@@ -84,7 +91,7 @@ func NBytesLeftShift(api frontend.API, input frontend.Variable, N int) frontend.
 }
 
 // Return the result of left shift by 1 byte, input size = 32 bytes (fixed)
-// Note: The MSB should be 0, or overflow occurs (the overflow behavior is not simply ``mod'' by 2^256)
+// Note: The MSB should be 0, or overflow occurs (the overflow behavior is not simply “mod” by 2^256)
 // Input: {0, 42, 194, .. X other variables .., 231}
 // Output: {42, 194, , .. X other variables .., 231, 0}
 func leftShift1Byte(api frontend.API, input frontend.Variable) frontend.Variable {
