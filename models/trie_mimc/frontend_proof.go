@@ -34,24 +34,18 @@ func leastNBytes(api frontend.API, input frontend.Variable, N int) frontend.Vari
 }
 
 // Right shift by N Bytes
-// As DivUnchecked does not work with remainder we subtract N lsb, before dividing
 func rightShiftNBytes(api frontend.API, input frontend.Variable, N int) frontend.Variable {
-	var lsb frontend.Variable = 0
+	var result frontend.Variable = 0
 	var multiplier frontend.Variable = 1
-	inputBinary := api.ToBinary(input)
 	if N >= 32 {
 		return 0
 	}
-	for i := 0; i < N*8; i++ {
-		lsb = api.Add(lsb, api.Mul(inputBinary[i], multiplier))
+	inputBinary := api.ToBinary(input)
+	for i := N * 8; i < len(inputBinary); i++ {
+		result = api.Add(result, api.Mul(inputBinary[i], multiplier))
 		multiplier = api.Mul(multiplier, 2)
 	}
-
-	var divider frontend.Variable = 1
-	for i := 0; i < N; i++ {
-		divider = api.Mul(divider, 256)
-	}
-	return api.DivUnchecked(api.Sub(input, lsb), divider)
+	return result
 }
 
 // Hash the proof sets, including all children, terminal, and path fragment.
