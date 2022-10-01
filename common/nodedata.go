@@ -33,13 +33,15 @@ func NodeDataFromBytes(model CommitmentModel, data, unpackedKey []byte, arity Pa
 // Clone deep copy
 func (n *NodeData) Clone() *NodeData {
 	ret := &NodeData{
-		PathFragment:     make([]byte, len(n.PathFragment)),
+		PathFragment:     Concat(n.PathFragment),
 		ChildCommitments: make(map[byte]VCommitment),
 	}
-	if n.Terminal != nil {
+	if !IsNil(n.Terminal) {
 		ret.Terminal = n.Terminal.Clone()
 	}
-	copy(ret.PathFragment, n.PathFragment)
+	if !IsNil(n.Commitment) {
+		ret.Commitment = n.Commitment.Clone()
+	}
 	for i, c := range n.ChildCommitments {
 		ret.ChildCommitments[i] = c.Clone()
 	}

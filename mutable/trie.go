@@ -108,7 +108,7 @@ func (tr *Trie) newTerminalNode(unpackedKey, unpackedPathFragment []byte, newTer
 // Commit calculates a new root commitment value from the cache and commits all mutations in the cached TrieReader
 // It is a re-calculation of the trie. bufferedNode caches are updated accordingly.
 func (tr *Trie) Commit() {
-	tr.commitNode(nil, nil)
+	tr.commitNode(nil)
 }
 
 // commitNode re-calculates node commitment and, recursively, its children commitments
@@ -117,39 +117,37 @@ func (tr *Trie) Commit() {
 // It calls implementation-specific function UpdateNodeCommitment and passes parameter
 // calcDelta = true if node's commitment can be updated incrementally. The implementation
 // of UpdateNodeCommitment may use this parameter to optimize underlying cryptography
-func (tr *Trie) commitNode(key []byte, update *common.VCommitment) {
+func (tr *Trie) commitNode(key []byte) *bufferedNode {
 	n, ok := tr.nodeStore.getNode(key)
 	if !ok {
-		if update != nil {
-			*update = nil
-		}
-		return
+		return nil
 	}
 	isModified := n.pathChanged || len(n.modifiedChildren) > 0 || !tr.Model().EqualCommitments(n.newTerminal, n.n.Terminal)
 	if !isModified {
-		return
+		return n
 	}
-	mutate := common.NodeData{
-		PathFragment:     n.n.PathFragment,
-		ChildCommitments: n.n.ChildCommitments,
-		Terminal:         n.n.Terminal,
-	}
+	mutate := n.n.Clone()
 	childUpdates := make(map[byte]common.VCommitment)
 	for childIndex := range n.modifiedChildren {
-		curCommitment := mutate.ChildCommitments[childIndex] // may be nil
-		tr.commitNode(childKey(n, childIndex), &curCommitment)
-		childUpdates[childIndex] = curCommitment
+		//curCommitment := mutate.ChildCommitments[childIndex] // may be nil
+		child := tr.commitNode(childKey(n, childIndex))
+		if child != nil {
+			childUpdates[childIndex] = child.n.Commitment
+		} else {
+			childUpdates[childIndex] = nil
+		}
 	}
 
-	calcDelta := !n.pathChanged && update != nil && *update == nil
-	tr.Model().UpdateNodeCommitment(&mutate, childUpdates, calcDelta, n.newTerminal, update)
+	calcDelta := !n.pathChanged
+	tr.Model().UpdateNodeCommitment(mutate, childUpdates, n.newTerminal, n.PathFragment(), calcDelta)
 
-	n.n.Terminal = n.newTerminal
+	n.n = *mutate
 	if len(n.modifiedChildren) > 0 {
 		// clean the modification marks if any
 		n.modifiedChildren = make(map[byte]struct{})
 	}
 	n.pathChanged = false
+	return n
 }
 
 // Update updates Trie with the unpackedKey/value. Reorganizes and re-calculates trie, keeps cache consistent

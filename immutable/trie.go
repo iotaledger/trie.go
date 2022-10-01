@@ -61,21 +61,17 @@ func (tr *Trie) Commit() {
 // calcDelta = true if node's commitment can be updated incrementally. The implementation
 // of UpdateNodeCommitment may use this parameter to optimize underlying cryptography
 func (tr *Trie) commitNode(node *bufferedNode) {
-	if node.isCommitted() {
-		return
-	}
-
 	childUpdates := make(map[byte]common.VCommitment)
 	for idx, child := range node.uncommittedChildren {
 		if child == nil {
 			childUpdates[idx] = nil
 		} else {
 			tr.commitNode(child)
-			childUpdates[idx] = child.commitment()
+			childUpdates[idx] = child.nodeData.Commitment
 		}
 	}
-	mutate := node.nodeModified.Clone()
-	c := node.nodeFetched.Commitment.Clone()
+	mutate := node.nodeData.Clone()
+	c := node.nodeData.Commitment.Clone()
 	tr.Model().UpdateNodeCommitment(mutate, childUpdates, !common.IsNil(c), node.nodeModified.Terminal, &c)
 	node.nodeModified.Commitment = c
 	node.uncommittedChildren = make(map[byte]*bufferedNode)

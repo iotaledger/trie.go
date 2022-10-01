@@ -19,13 +19,13 @@ type CommitmentModel interface {
 	// CalcNodeCommitment calculates commitment of the node data
 	CalcNodeCommitment(*NodeData) VCommitment
 	// UpdateNodeCommitment updates mutable NodeData with the update information.
-	// It also (optionally, if 'update' != nil) updates previous commitment to the node
-	// If update != nil and *update != nil, parameter calcDelta specifies if commitment is calculated
+	// The node commitment value is part of the mutable NodeData.
+	// Parameter 'calcDelta' specifies if commitment is calculated
 	// from scratch using CalcNodeCommitment, or it can be calculated by applying additive delta
-	// I can be used by implementation to optimize the computation of update. For examples KZG implementation
+	// I can be used by implementation to optimize the computation of update. For example KZG implementation
 	// can be made dramatically faster this way than strictly computing each time whole expensive vector commitment
 	// This interface takes into account different ways how updates are propagated in the trie
-	UpdateNodeCommitment(mutate *NodeData, childUpdates map[byte]VCommitment, calcDelta bool, terminal TCommitment, update *VCommitment)
+	UpdateNodeCommitment(mutate *NodeData, childUpdates map[byte]VCommitment, terminal TCommitment, pathFragment []byte, calcDelta bool)
 	// ForceStoreTerminalWithNode if == true, terminal commitment will always be serialized with the node,
 	// otherwise it may be skipped to optimize storage, depending on the trie setting
 	ForceStoreTerminalWithNode(c TCommitment) bool

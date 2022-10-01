@@ -156,10 +156,8 @@ func (m *CommitmentModel) UpdateVCommitment(c *common.VCommitment, delta common.
 }
 
 // UpdateNodeCommitment updates mutated part of node's data and, optionaly, upper
-func (m *CommitmentModel) UpdateNodeCommitment(mutate *common.NodeData, childUpdates map[byte]common.VCommitment, calcDelta bool, terminal common.TCommitment, update *common.VCommitment) {
+func (m *CommitmentModel) UpdateNodeCommitment(mutate *common.NodeData, childUpdates map[byte]common.VCommitment, terminal common.TCommitment, pathFragment []byte, calcDelta bool) {
 	var deltas map[int]kyber.Scalar
-
-	common.Assert(!calcDelta || (update != nil && *update != nil), "UpdateNodeCommitment: inconsistent parameters")
 
 	if calcDelta {
 		deltas = make(map[int]kyber.Scalar)
@@ -181,8 +179,8 @@ func (m *CommitmentModel) UpdateNodeCommitment(mutate *common.NodeData, childUpd
 					prevS := scalarFromPoint(m.TrustedSetup.Suite.G1().Scalar(), prevC.(*vectorCommitment).Point)
 					delta.Sub(delta, prevS)
 				}
-				deltas[int(i)] = delta
 			}
+			deltas[int(i)] = delta
 		}
 		// update mutated part
 		if childUpd == nil {
@@ -211,8 +209,8 @@ func (m *CommitmentModel) UpdateNodeCommitment(mutate *common.NodeData, childUpd
 		var prevP kyber.Point
 
 		// update upper commitment by adding calculated delta
-		if *update != nil {
-			prevP = (*update).(*vectorCommitment).Point
+		if !common.IsNil(mutate.Commitment) {
+			prevP = mutate.Commitment.(*vectorCommitment).Point
 		} else {
 			prevP = m.TrustedSetup.Suite.G1().Point().Null()
 		}
@@ -221,12 +219,9 @@ func (m *CommitmentModel) UpdateNodeCommitment(mutate *common.NodeData, childUpd
 			elem.Mul(deltaS, m.TrustedSetup.LagrangeBasis[i])
 			prevP.Add(prevP, elem)
 		}
-		*update = m.newVectorCommitment(prevP)
+		mutate.Commitment = m.newVectorCommitment(prevP)
 	} else {
-		if update != nil {
-			// otherwise, calculate commitment from scratch
-			*update = m.CalcNodeCommitment(mutate)
-		}
+		mutate.Commitment = m.CalcNodeCommitment(mutate)
 	}
 }
 

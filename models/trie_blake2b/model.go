@@ -107,7 +107,7 @@ func equalCommitments(c1, c2 common.Serializable) bool {
 
 // UpdateNodeCommitment computes update to the node data and, optionally, updates existing commitment
 // In blake2b implementation delta it just means computing the hash of data
-func (m *CommitmentModel) UpdateNodeCommitment(mutate *common.NodeData, childUpdates map[byte]common.VCommitment, _ bool, newTerminalUpdate common.TCommitment, update *common.VCommitment) {
+func (m *CommitmentModel) UpdateNodeCommitment(mutate *common.NodeData, childUpdates map[byte]common.VCommitment, newTerminalUpdate common.TCommitment, pathFragment []byte, _ bool) {
 	deleted := make([]byte, 0, 256)
 	for i, upd := range childUpdates {
 		mutate.ChildCommitments[i] = upd
@@ -120,12 +120,11 @@ func (m *CommitmentModel) UpdateNodeCommitment(mutate *common.NodeData, childUpd
 		delete(mutate.ChildCommitments, i)
 	}
 	mutate.Terminal = newTerminalUpdate // for hash commitment just replace
+	mutate.PathFragment = pathFragment
 	if len(mutate.ChildCommitments) == 0 && mutate.Terminal == nil {
 		return
 	}
-	if update != nil {
-		*update = (vectorCommitment)(HashTheVector(m.makeHashVector(mutate), m.arity, m.hashSize))
-	}
+	mutate.Commitment = (vectorCommitment)(HashTheVector(m.makeHashVector(mutate), m.arity, m.hashSize))
 }
 
 // CalcNodeCommitment computes commitment of the node. It is suboptimal in KZG trie.
