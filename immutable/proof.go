@@ -8,7 +8,7 @@ import (
 )
 
 // ProofGeneric represents a generic proof of inclusion or a maximal path in the trie which corresponds to the 'unpackedKey'
-// The Ending indicates what represent the proof: it can be either 'proof of inclusion' of a unpackedKey/value Terminal,
+// The Ending indicates what represent the proof: it can be either 'proof of inclusion' of a unpackedKey/value terminal,
 // or a reorg code, which means what operation on the trie must be performed in order to update the unpackedKey/value pair
 type ProofGeneric struct {
 	Key    []byte
@@ -69,13 +69,13 @@ func GetProofGeneric(nodeStore *immutableNodeStore, root common.VCommitment, tri
 // - path of keys which leads to 'finalKey'
 // - common prefix between the last unpackedKey and the fragment
 // - the 'endingCode' which indicates how it ends:
-// -- EndingTerminal means 'finalKey' points to the node with non-nil Terminal commitment, thus the path is a proof of inclusion
+// -- EndingTerminal means 'finalKey' points to the node with non-nil terminal commitment, thus the path is a proof of inclusion
 // -- EndingSplit means the 'finalKey' is a new unpackedKey, it does not point to any node and none of existing TrieReader are
 //    prefix of the 'finalKey'. The trie must be reorged to include the new unpackedKey
 // -- EndingExtend the path is a prefix of the 'finalKey', so trie must be extended to the same direction with new node
 // - terminal of the last node
 //func (tr *Trie) proofPath(unpackedKey []byte) ([]*bufferedNode, []byte, ProofEndingCode) {
-//	n := tr.root
+//	n := tr.mutatedRoot
 //
 //	proof := make([]*bufferedNode, 0)
 //	var trieKey []byte
@@ -84,16 +84,16 @@ func GetProofGeneric(nodeStore *immutableNodeStore, root common.VCommitment, tri
 //		proof = append(proof, n)
 //		Assert(len(trieKey) <= len(unpackedKey), "trie::proofPath assert: len(unpackedKey) <= len(unpackedKey), trieKey: '%s', unpackedKey: '%s'",
 //			hex.EncodeToString(trieKey), hex.EncodeToString(unpackedKey))
-//		if bytes.Equal(unpackedKey[len(trieKey):], n.PathFragment()) {
+//		if bytes.Equal(unpackedKey[len(trieKey):], n.pathFragment()) {
 //			return proof, nil, EndingTerminal
 //		}
-//		prefix := commonPrefix(unpackedKey[len(trieKey):], n.PathFragment())
+//		prefix := commonPrefix(unpackedKey[len(trieKey):], n.pathFragment())
 //
-//		if len(prefix) < len(n.PathFragment()) {
+//		if len(prefix) < len(n.pathFragment()) {
 //			return proof, prefix, EndingSplit
 //		}
-//		Assert(len(prefix) == len(n.PathFragment()), "trie::proofPath assert: len(prefix)==len(n.PathFragment), prefix: '%s', pathFragment: '%s'",
-//			hex.EncodeToString(prefix), hex.EncodeToString(n.PathFragment()))
+//		Assert(len(prefix) == len(n.pathFragment()), "trie::proofPath assert: len(prefix)==len(n.pathFragment), prefix: '%s', pathFragment: '%s'",
+//			hex.EncodeToString(prefix), hex.EncodeToString(n.pathFragment()))
 //		childIndexPosition := len(trieKey) + len(prefix)
 //		Assert(childIndexPosition < len(unpackedKey), "childIndexPosition<len(unpackedKey)")
 //
@@ -129,7 +129,7 @@ func commonPrefix(b1, b2 []byte) ([]byte, []byte, []byte) {
 // getLeafByKey goes along the path the same way proofPath, just does not produce the proof but instead returns last terminal, if found
 func getLeafByKey(nodeStore *immutableNodeStore, root common.VCommitment, triePath []byte) common.TCommitment {
 	panic("implement me")
-	//n, found := nodeStore.FetchNodeData(AsKey(root), nil)
+	//n, found := nodeStore.FetchNodeData(AsKey(mutatedRoot), nil)
 	//if !found {
 	//	return nil
 	//}
@@ -138,16 +138,16 @@ func getLeafByKey(nodeStore *immutableNodeStore, root common.VCommitment, triePa
 	//for {
 	//	Assert(len(trieKey) <= len(triePath), "trie::getLeafByKey assert: len(triePath) <= len(triePath), trieKey: '%s', triePath: '%s'",
 	//		hex.EncodeToString(trieKey), hex.EncodeToString(triePath))
-	//	if bytes.Equal(triePath[len(trieKey):], n.PathFragment) {
-	//		return n.Terminal // found trieKey
+	//	if bytes.Equal(triePath[len(trieKey):], n.pathFragment) {
+	//		return n.terminal // found trieKey
 	//	}
-	//	prefix := commonPrefix(triePath[len(trieKey):], n.PathFragment)
+	//	prefix := commonPrefix(triePath[len(trieKey):], n.pathFragment)
 	//
-	//	if len(prefix) < len(n.PathFragment) {
+	//	if len(prefix) < len(n.pathFragment) {
 	//		return nil
 	//	}
-	//	Assert(len(prefix) == len(n.PathFragment), "trie::getLeafByKey assert: len(prefix)==len(n.PathFragment), prefix: '%s', pathFragment: '%s'",
-	//		hex.EncodeToString(prefix), hex.EncodeToString(n.PathFragment))
+	//	Assert(len(prefix) == len(n.pathFragment), "trie::getLeafByKey assert: len(prefix)==len(n.pathFragment), prefix: '%s', pathFragment: '%s'",
+	//		hex.EncodeToString(prefix), hex.EncodeToString(n.pathFragment))
 	//	childIndexPosition := len(trieKey) + len(prefix)
 	//	Assert(childIndexPosition < len(triePath), "childIndexPosition<len(triePath)")
 	//
@@ -160,7 +160,7 @@ func getLeafByKey(nodeStore *immutableNodeStore, root common.VCommitment, triePa
 
 func fetchPath(nodeStore *immutableNodeStore, root common.VCommitment, triePath []byte) ([]ProofGenericElement, ProofEndingCode) {
 	panic("implement me")
-	//n, found := nodeStore.FetchNodeData(AsKey(root), nil)
+	//n, found := nodeStore.FetchNodeData(AsKey(mutatedRoot), nil)
 	//if !found {
 	//	return nil, EndingRootNotFound
 	//}
@@ -175,16 +175,16 @@ func fetchPath(nodeStore *immutableNodeStore, root common.VCommitment, triePath 
 	//
 	//	Assert(len(trieKey) <= len(triePath), "trie::getLeafByKey assert: len(triePath) <= len(triePath), trieKey: '%s', triePath: '%s'",
 	//		hex.EncodeToString(trieKey), hex.EncodeToString(triePath))
-	//	if bytes.Equal(triePath[len(trieKey):], n.PathFragment) {
+	//	if bytes.Equal(triePath[len(trieKey):], n.pathFragment) {
 	//		return ret, EndingTerminal // found trieKey
 	//	}
-	//	prefix := commonPrefix(triePath[len(trieKey):], n.PathFragment)
+	//	prefix := commonPrefix(triePath[len(trieKey):], n.pathFragment)
 	//
-	//	if len(prefix) < len(n.PathFragment) {
+	//	if len(prefix) < len(n.pathFragment) {
 	//		return ret, EndingSplit
 	//	}
-	//	Assert(len(prefix) == len(n.PathFragment), "trie::getLeafByKey assert: len(prefix)==len(n.PathFragment), prefix: '%s', pathFragment: '%s'",
-	//		hex.EncodeToString(prefix), hex.EncodeToString(n.PathFragment))
+	//	Assert(len(prefix) == len(n.pathFragment), "trie::getLeafByKey assert: len(prefix)==len(n.pathFragment), prefix: '%s', pathFragment: '%s'",
+	//		hex.EncodeToString(prefix), hex.EncodeToString(n.pathFragment))
 	//	childIndexPosition := len(trieKey) + len(prefix)
 	//	Assert(childIndexPosition < len(triePath), "childIndexPosition<len(triePath)")
 	//

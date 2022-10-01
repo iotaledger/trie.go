@@ -1,5 +1,5 @@
 // Package trie implements functionality of generic verkle trie with 256 child commitment in each node
-// + Terminal commitment + commitment to the path fragment: 258 commitments in total.
+// + terminal commitment + commitment to the path fragment: 258 commitments in total.
 // It mainly follows the definition from https://hackmd.io/@Evaldas/H13YFOVGt (except commitment to the path fragment)
 // The commitment to the path fragment is needed to provide proofs of absence of keys
 //
@@ -93,7 +93,7 @@ func (tr *Trie) ClearCache() {
 	tr.nodeStore.clearCache()
 }
 
-// newTerminalNode creates new node in the trie with specified PathFragment and Terminal commitment.
+// newTerminalNode creates new node in the trie with specified pathFragment and terminal commitment.
 // Assumes 'unpackedKey' does not exist in the Trie
 func (tr *Trie) newTerminalNode(unpackedKey, unpackedPathFragment []byte, newTerminal common.TCommitment) *bufferedNode {
 	tr.nodeStore.unDelete(unpackedKey)
@@ -223,7 +223,7 @@ func (tr *Trie) splitNode(fullKey, lastKey, commonPrefix []byte, newTerminal com
 
 	// create new node with keyNewNode, move everything from old to the new node
 	// Only path fragment and unpackedKey changes
-	newNode := n.Clone() // children and Terminal remains the same, PathFragment changes
+	newNode := n.Clone() // children and terminal remains the same, pathFragment changes
 	newNode.setNewKey(keyNewNode)
 	newNode.setNewPathFragment(n.PathFragment()[splitIndex+1:])
 	tr.nodeStore.insertNewNode(newNode)
@@ -236,7 +236,7 @@ func (tr *Trie) splitNode(fullKey, lastKey, commonPrefix []byte, newTerminal com
 	n.n.Terminal = nil
 	n.newTerminal = nil
 
-	// insert Terminal
+	// insert terminal
 	if childPosition == len(fullKey) {
 		// no need for the new node
 		n.newTerminal = newTerminal
@@ -286,7 +286,7 @@ func (tr *Trie) Delete(key []byte) {
 	}
 }
 
-// mergeNode merges nodes when it is possible, i.e. first node does not contain Terminal commitment and has only one
+// mergeNode merges nodes when it is possible, i.e. first node does not contain terminal commitment and has only one
 // child commitment. In this case pathFragments can be merged in one resulting node
 func (tr *Trie) mergeNode(key []byte, n *bufferedNode, childIndex byte) {
 	nextKey := childKey(n, childIndex)
@@ -318,7 +318,7 @@ func (tr *Trie) hasCommitment(key []byte) bool {
 		return false
 	}
 	if n.newTerminal != nil {
-		// commits to Terminal
+		// commits to terminal
 		return true
 	}
 	for childIndex := range n.modifiedChildren {

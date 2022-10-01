@@ -88,7 +88,7 @@ func proofPath(trieAccess NodeStore, unpackedKey []byte) ([][]byte, []byte, Proo
 		if len(prefix) < len(n.PathFragment()) {
 			return proof, prefix, EndingSplit
 		}
-		common.Assert(len(prefix) == len(n.PathFragment()), "trie::proofPath assert: len(prefix)==len(n.PathFragment), prefix: '%s', pathFragment: '%s'",
+		common.Assert(len(prefix) == len(n.PathFragment()), "trie::proofPath assert: len(prefix)==len(n.pathFragment), prefix: '%s', pathFragment: '%s'",
 			hex.EncodeToString(prefix), hex.EncodeToString(n.PathFragment()))
 		childIndexPosition := len(key) + len(prefix)
 		common.Assert(childIndexPosition < len(unpackedKey), "childIndexPosition<len(unpackedKey)")

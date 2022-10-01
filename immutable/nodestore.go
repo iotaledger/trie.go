@@ -48,6 +48,6 @@ func (ns *immutableNodeStore) MustFetchNodeData(nodeCommitment common.VCommitmen
 	return ret
 }
 
-func (ns *immutableNodeStore) ClearCache() {
+func (ns *immutableNodeStore) clearCache() {
 	ns.cache = make(map[string]*common.NodeData)
 }

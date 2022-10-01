@@ -3,22 +3,9 @@ package immutable
 import (
 	"bytes"
 	"encoding/hex"
-	"fmt"
 
 	"github.com/iotaledger/trie.go/common"
 )
-
-// Node is a read-only interface to the 256+ trie node
-type Node interface {
-	// PathFragment of the node (trieBuffer)
-	PathFragment() []byte
-	// Terminal of the node (trieBuffer)
-	Terminal() common.TCommitment
-	// ChildCommitments can return old commitments if node is not trieBuffer
-	ChildCommitments() map[byte]common.VCommitment
-	// Commitment is the commitment to the node
-	Commitment() common.VCommitment
-}
 
 // bufferedNode is a modified node
 type bufferedNode struct {
@@ -47,7 +34,7 @@ func (n *bufferedNode) isRoot() bool {
 	return len(n.triePath) == 0
 }
 
-// indexAsChild return index of the node as a child in the parent commitment and flag if it is a root
+// indexAsChild return index of the node as a child in the parent commitment and flag if it is a mutatedRoot
 func (n *bufferedNode) indexAsChild() byte {
 	common.Assert(!n.isRoot(), "indexAsChild:: receiver can't be a root node")
 	return n.triePath[len(n.triePath)-1]
@@ -85,19 +72,15 @@ func (n *bufferedNode) setTriePath(triePath []byte) {
 	n.triePath = triePath
 }
 
-func (n *bufferedNode) PathFragment() []byte {
+func (n *bufferedNode) pathFragment() []byte {
 	return n.nodeModified.PathFragment
 }
 
-func (n *bufferedNode) Terminal() common.TCommitment {
+func (n *bufferedNode) terminal() common.TCommitment {
 	return n.nodeModified.Terminal
 }
 
-func (n *bufferedNode) ChildCommitments() map[byte]common.VCommitment {
-	return n.nodeModified.ChildCommitments
-}
-
-func (n *bufferedNode) Commitment() common.VCommitment {
+func (n *bufferedNode) commitment() common.VCommitment {
 	return n.nodeModified.Commitment
 }
 
@@ -110,7 +93,7 @@ func (n *bufferedNode) getChild(childIndex byte, db *immutableNodeStore) *buffer
 		return nil
 	}
 	common.Assert(!common.IsNil(childCommitment), "Trie::getChild: child commitment can be nil")
-	childTriePath := common.Concat(n.triePath, n.PathFragment(), childIndex)
+	childTriePath := common.Concat(n.triePath, n.pathFragment(), childIndex)
 
 	nodeFetched, ok := db.FetchNodeData(childCommitment, childTriePath)
 	common.Assert(ok, "Trie::getChild: can't fetch node. triePath: '%s', dbKey: '%s",
@@ -129,7 +112,7 @@ func (n *bufferedNode) isCommitted() bool {
 // Otherwise node has to be merged/removed
 // It can only happen during deletion
 func (n *bufferedNode) hasToBeRemoved(nodeStore *immutableNodeStore) (bool, *bufferedNode) {
-	if n.Terminal() != nil {
+	if n.terminal() != nil {
 		return false, nil
 	}
 	var theOnlyChildCommitted *bufferedNode
@@ -147,11 +130,12 @@ func (n *bufferedNode) hasToBeRemoved(nodeStore *immutableNodeStore) (bool, *buf
 	return true, theOnlyChildCommitted
 }
 
-func ToString(n Node) string {
-	return fmt.Sprintf("nodeData(dbKey: '%s', pathFragment: '%s', term: '%s', numChildren: %d",
-		hex.EncodeToString(common.AsKey(n.Commitment())),
-		hex.EncodeToString(n.PathFragment()),
-		n.Terminal().String(),
-		len(n.ChildCommitments()),
-	)
-}
+//
+//func ToString(n Node) string {
+//	return fmt.Sprintf("nodeData(dbKey: '%s', pathFragment: '%s', term: '%s', numChildren: %d",
+//		hex.EncodeToString(common.AsKey(n.commitment())),
+//		hex.EncodeToString(n.pathFragment()),
+//		n.terminal().String(),
+//		len(n.ChildCommitments()),
+//	)
+//}

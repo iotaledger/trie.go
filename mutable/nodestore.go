@@ -147,7 +147,7 @@ func (sc *nodeStoreBuffered) persistMutations(store common.KVWriter) int {
 	return counter
 }
 
-// ClearCache clears the node cache
+// clearCache clears the node cache
 func (sc *nodeStoreBuffered) clearCache() {
 	sc.nodeCache = make(map[string]*bufferedNode)
 	sc.deleted = make(map[string]struct{})

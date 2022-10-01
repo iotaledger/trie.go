@@ -64,7 +64,7 @@ func (n *NodeData) String() string {
 // The serialization of the node takes advantage of the fact that most of the
 // nodes has just few children.
 // the 'smallFlags' (1 byte) contains information:
-// - 'takeTerminalFromKeyFlag' does node contain Terminal commitment
+// - 'takeTerminalFromKeyFlag' does node contain terminal commitment
 // - 'serializeChildrenFlag' does node contain at least one child
 // - 'terminalExistsFlag' is optimization case when commitment to the terminal == commitment to the unpackedKey
 //    In this case terminal is not serialized
@@ -147,7 +147,7 @@ func (n *NodeData) Write(w io.Writer, arity PathArity, skipTerminal bool) error 
 			return err
 		}
 	}
-	// write Terminal commitment if not skipped for at least one of three reasons
+	// write terminal commitment if not skipped for at least one of three reasons
 	if smallFlags&terminalExistsFlag != 0 {
 		// terminal exists
 		if smallFlags&takeTerminalFromValueFlag == 0 {
