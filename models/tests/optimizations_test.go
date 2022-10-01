@@ -67,6 +67,7 @@ func TestTerminalOptimizationOptions(t *testing.T) {
 			tr1.Commit()
 			tr1.PersistMutations(trieStore1)
 			tr1.ClearCache()
+
 			tr2.Commit()
 			tr2.PersistMutations(trieStore2)
 			tr2.ClearCache()

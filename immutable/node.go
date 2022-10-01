@@ -101,7 +101,7 @@ func (n *bufferedNode) Commitment() common.VCommitment {
 	return n.nodeModified.Commitment
 }
 
-func (n *bufferedNode) getChild(childIndex byte, db *NodeStore) *bufferedNode {
+func (n *bufferedNode) getChild(childIndex byte, db *immutableNodeStore) *bufferedNode {
 	if ret, already := n.uncommittedChildren[childIndex]; already {
 		return ret
 	}
@@ -112,7 +112,7 @@ func (n *bufferedNode) getChild(childIndex byte, db *NodeStore) *bufferedNode {
 	common.Assert(!common.IsNil(childCommitment), "Trie::getChild: child commitment can be nil")
 	childTriePath := common.Concat(n.triePath, n.PathFragment(), childIndex)
 
-	nodeFetched, ok := db.FetchNodeData(common.AsKey(childCommitment), childTriePath)
+	nodeFetched, ok := db.FetchNodeData(childCommitment, childTriePath)
 	common.Assert(ok, "Trie::getChild: can't fetch node. triePath: '%s', dbKey: '%s",
 		hex.EncodeToString(common.AsKey(childCommitment)), hex.EncodeToString(childTriePath))
 
@@ -128,7 +128,7 @@ func (n *bufferedNode) isCommitted() bool {
 // - it commits to at least 2 children
 // Otherwise node has to be merged/removed
 // It can only happen during deletion
-func (n *bufferedNode) hasToBeRemoved(nodeStore *NodeStore) (bool, *bufferedNode) {
+func (n *bufferedNode) hasToBeRemoved(nodeStore *immutableNodeStore) (bool, *bufferedNode) {
 	if n.Terminal() != nil {
 		return false, nil
 	}

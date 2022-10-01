@@ -2,29 +2,30 @@ package immutable
 
 import (
 	"bytes"
-	"encoding/hex"
 	"fmt"
+
+	"github.com/iotaledger/trie.go/common"
 )
 
 // Trie is an updatable trie implemented on top of the unpackedKey/value store. It is virtualized and optimized by caching of the
 // trie update operation and keeping consistent trie in the cache
 type Trie struct {
-	nodeStore      *NodeStore
-	persistentRoot VCommitment
+	nodeStore      *immutableNodeStore
+	persistentRoot common.VCommitment
 	root           *bufferedNode
 }
 
 // TrieReader direct read-only access to trie
 type TrieReader struct {
-	nodeStore      *NodeStore
-	persistentRoot VCommitment
+	nodeStore      *immutableNodeStore
+	persistentRoot common.VCommitment
 }
 
-func New(nodeStore *NodeStore, root VCommitment) (*Trie, error) {
-	rootNodeData, ok := nodeStore.FetchNodeData(AsKey(root), nil)
+func New(nodeStore *immutableNodeStore, root common.VCommitment) (*Trie, error) {
+	rootNodeData, ok := nodeStore.FetchNodeData(root, nil)
 	if !ok {
 		return nil, fmt.Errorf("root commitment '%s', dbKey '%s' does not exist",
-			root.String(), hex.EncodeToString(AsKey(root)))
+			root.String(), root.String())
 	}
 	ret := &Trie{
 		persistentRoot: root,
@@ -34,22 +35,22 @@ func New(nodeStore *NodeStore, root VCommitment) (*Trie, error) {
 	return ret, nil
 }
 
-func (tr *Trie) Root() VCommitment {
+func (tr *Trie) Root() common.VCommitment {
 	return tr.root.Commitment()
 }
 
-func (tr *Trie) Model() CommitmentModel {
+func (tr *Trie) Model() common.CommitmentModel {
 	return tr.nodeStore.m
 }
 
-func (tr *Trie) PathArity() PathArity {
+func (tr *Trie) PathArity() common.PathArity {
 	return tr.nodeStore.arity
 }
 
 // PersistMutations persists/append the cache to the store.
 // Returns deleted part for possible use in the mutable state implementation
 // Does not clear cache
-func (tr *Trie) PersistMutations(store KVWriter) (int, map[string]struct{}) {
+func (tr *Trie) PersistMutations(store common.KVWriter) (int, map[string]struct{}) {
 	panic("implement me")
 }
 
@@ -58,7 +59,7 @@ func (tr *Trie) ClearCache() {
 	panic("implement me")
 }
 
-func (tr *Trie) newTerminalNode(triePath, pathFragment []byte, newTerminal TCommitment) *bufferedNode {
+func (tr *Trie) newTerminalNode(triePath, pathFragment []byte, newTerminal common.TCommitment) *bufferedNode {
 	ret := newBufferedNode(nil, triePath)
 	ret.setPathFragment(pathFragment)
 	ret.setTerminal(newTerminal, tr.Model())
@@ -82,7 +83,7 @@ func (tr *Trie) commitNode(node *bufferedNode) {
 		return
 	}
 
-	childUpdates := make(map[byte]VCommitment)
+	childUpdates := make(map[byte]common.VCommitment)
 	for idx, child := range node.uncommittedChildren {
 		if child == nil {
 			childUpdates[idx] = nil
@@ -93,17 +94,17 @@ func (tr *Trie) commitNode(node *bufferedNode) {
 	}
 	mutate := node.nodeModified.Clone()
 	c := node.nodeFetched.Commitment.Clone()
-	tr.Model().UpdateNodeCommitment(mutate, childUpdates, !IsNil(c), node.nodeModified.Terminal, &c)
+	tr.Model().UpdateNodeCommitment(mutate, childUpdates, !common.IsNil(c), node.nodeModified.Terminal, &c)
 	node.nodeModified.Commitment = c
 	node.uncommittedChildren = make(map[byte]*bufferedNode)
 }
 
 // Update updates Trie with the unpackedKey/value. Reorganizes and re-calculates trie, keeps cache consistent
 func (tr *Trie) Update(triePath []byte, value []byte) {
-	var c TCommitment
+	var c common.TCommitment
 	c = tr.Model().CommitToData(value)
-	unpackedTriePath := UnpackBytes(triePath, tr.PathArity())
-	if IsNil(c) {
+	unpackedTriePath := common.UnpackBytes(triePath, tr.PathArity())
+	if common.IsNil(c) {
 		tr.root, _ = tr.delete(tr.root, unpackedTriePath)
 	} else {
 		tr.root = tr.update(tr.root, unpackedTriePath, c)
@@ -170,14 +171,14 @@ func (tr *Trie) DeleteStr(key interface{}) {
 	tr.Delete(k)
 }
 
-func (tr *Trie) VectorCommitmentFromBytes(data []byte) (VCommitment, error) {
+func (tr *Trie) VectorCommitmentFromBytes(data []byte) (common.VCommitment, error) {
 	ret := tr.nodeStore.m.NewVectorCommitment()
 	rdr := bytes.NewReader(data)
 	if err := ret.Read(rdr); err != nil {
 		return nil, err
 	}
 	if rdr.Len() != 0 {
-		return nil, ErrNotAllBytesConsumed
+		return nil, common.ErrNotAllBytesConsumed
 	}
 	return ret, nil
 }
@@ -185,7 +186,7 @@ func (tr *Trie) VectorCommitmentFromBytes(data []byte) (VCommitment, error) {
 // Reconcile returns a list of keys in the store which cannot be proven in the trie
 // Trie is consistent if empty slice is returned
 // May be an expensive operation
-func (tr *Trie) Reconcile(store KVIterator) [][]byte {
+func (tr *Trie) Reconcile(store common.KVIterator) [][]byte {
 	panic("implement me")
 	//ret := make([][]byte, 0)
 	//store.Iterate(func(k, v []byte) bool {
@@ -210,7 +211,7 @@ func (tr *Trie) Reconcile(store KVIterator) [][]byte {
 
 // UpdateAll mass-updates trie from the unpackedKey/value store.
 // To be used to build trie for arbitrary unpackedKey/value data sets
-func (tr *Trie) UpdateAll(store KVIterator) {
+func (tr *Trie) UpdateAll(store common.KVIterator) {
 	store.Iterate(func(k, v []byte) bool {
 		tr.Update(k, v)
 		return true
@@ -220,40 +221,4 @@ func (tr *Trie) UpdateAll(store KVIterator) {
 func (tr *Trie) DangerouslyDumpCacheToString() string {
 	panic("implement me")
 	//return tr.trieBuffer.dangerouslyDumpCacheToString()
-}
-
-func NewTrieReader(model CommitmentModel, trieStore, valueStore KVReader) *TrieReader {
-	return &TrieReader{
-		reader: NewNodeStore(trieStore, valueStore, model, model.PathArity()),
-	}
-}
-
-func (tr *TrieReader) RootKey() []byte {
-	return tr.rootKey
-}
-
-func (tr *TrieReader) GetNode(dbKey, triePath []byte) (Node, bool) {
-	return tr.reader.getNode(dbKey, triePath)
-}
-
-func (tr *TrieReader) Model() CommitmentModel {
-	return tr.reader.m
-}
-
-func (tr *TrieReader) PathArity() PathArity {
-	return tr.reader.arity
-}
-
-func (tr *TrieReader) Info() string {
-	return fmt.Sprintf("TrieReader ( model: %s, path arity: %s )",
-		tr.reader.m.Description(), tr.reader.arity,
-	)
-}
-
-func (tr *TrieReader) ValueStore() KVReader {
-	return tr.reader.valueStore
-}
-
-func (tr *TrieReader) ClearCache() {
-	// does nothing for the pure trieBuffer
 }

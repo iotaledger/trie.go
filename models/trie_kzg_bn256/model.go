@@ -124,6 +124,10 @@ func (m *CommitmentModel) ForceStoreTerminalWithNode(_ common.TCommitment) bool 
 	return true
 }
 
+func (m *CommitmentModel) AlwaysStoreTerminalWithNode() bool {
+	return true
+}
+
 func (m *CommitmentModel) newVectorCommitment(p ...kyber.Point) *vectorCommitment {
 	if len(p) == 0 {
 		return &vectorCommitment{Point: m.Suite.G1().Point()}

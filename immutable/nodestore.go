@@ -6,8 +6,8 @@ import (
 	"github.com/iotaledger/trie.go/common"
 )
 
-// NodeStore direct access to trie db
-type NodeStore struct {
+// immutableNodeStore direct access to trie db
+type immutableNodeStore struct {
 	m          common.CommitmentModel
 	trieStore  common.KVReader
 	valueStore common.KVReader
@@ -15,8 +15,8 @@ type NodeStore struct {
 	cache      map[string]*common.NodeData
 }
 
-func NewNodeStore(trieStore, valueStore common.KVReader, model common.CommitmentModel, arity common.PathArity) *NodeStore {
-	return &NodeStore{
+func NewNodeStore(trieStore, valueStore common.KVReader, model common.CommitmentModel, arity common.PathArity) *immutableNodeStore {
+	return &immutableNodeStore{
 		m:          model,
 		trieStore:  trieStore,
 		valueStore: valueStore,
@@ -25,7 +25,8 @@ func NewNodeStore(trieStore, valueStore common.KVReader, model common.Commitment
 	}
 }
 
-func (ns *NodeStore) FetchNodeData(dbKey, triePath []byte) (*common.NodeData, bool) {
+func (ns *immutableNodeStore) FetchNodeData(nodeCommitment common.VCommitment, triePath []byte) (*common.NodeData, bool) {
+	dbKey := common.AsKey(nodeCommitment)
 	if ret, inCache := ns.cache[string(dbKey)]; inCache {
 		return ret, true
 	}
@@ -33,19 +34,20 @@ func (ns *NodeStore) FetchNodeData(dbKey, triePath []byte) (*common.NodeData, bo
 	if len(nodeBin) == 0 {
 		return nil, false
 	}
-	ret, err := common.NodeDataFromBytes(ns.m, nodeBin, triePath, dbKey, ns.arity, ns.valueStore)
-	common.Assert(err == nil, "trie::trieBuffer::FetchNodeData err: '%v' nodeBin: '%s', unpackedKey: '%s', arity: %s",
-		err, hex.EncodeToString(nodeBin), hex.EncodeToString(dbKey), ns.arity.String())
+	ret, err := common.NodeDataFromBytes(ns.m, nodeBin, triePath, ns.arity, ns.valueStore)
+	common.Assert(err == nil, "immutableNodeStore::FetchNodeData err: '%v' nodeBin: '%s', commitment: %s, triePath: '%s', arity: %s",
+		err, hex.EncodeToString(nodeBin), nodeCommitment.String(), hex.EncodeToString(triePath), ns.arity.String())
+	ret.Commitment = nodeCommitment
 	return ret, true
 }
 
-func (ns *NodeStore) MustFetchNodeData(dbKey, triePath []byte) *common.NodeData {
-	ret, ok := ns.FetchNodeData(dbKey, triePath)
-	common.Assert(ok, "trie::trieBuffer::MustFetchNodeData: cannot find node data: dbKey: '%s', triePath: '%s'",
-		hex.EncodeToString(dbKey), hex.EncodeToString(triePath))
+func (ns *immutableNodeStore) MustFetchNodeData(nodeCommitment common.VCommitment, triePath []byte) *common.NodeData {
+	ret, ok := ns.FetchNodeData(nodeCommitment, triePath)
+	common.Assert(ok, "immutableNodeStore::MustFetchNodeData: cannot find node data: commitment: '%s', triePath: '%s'",
+		nodeCommitment.String(), hex.EncodeToString(triePath))
 	return ret
 }
 
-func (ns *NodeStore) ClearCache() {
+func (ns *immutableNodeStore) ClearCache() {
 	ns.cache = make(map[string]*common.NodeData)
 }

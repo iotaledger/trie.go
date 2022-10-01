@@ -1,10 +1,14 @@
 package immutable
 
-import "bytes"
+import (
+	"bytes"
 
-func (tr *Trie) update(node *bufferedNode, triePath []byte, terminal TCommitment) *bufferedNode {
+	"github.com/iotaledger/trie.go/common"
+)
+
+func (tr *Trie) update(node *bufferedNode, triePath []byte, terminal common.TCommitment) *bufferedNode {
 	trieKey := node.triePath
-	Assert(len(trieKey) <= len(triePath), "len(trieKey) <= len(triePath)")
+	common.Assert(len(trieKey) <= len(triePath), "len(trieKey) <= len(triePath)")
 	remainingTriePath := triePath[len(trieKey):]
 
 	prefix, triePathTail, pathFragmentTail := commonPrefix(node.PathFragment(), remainingTriePath)
@@ -17,10 +21,10 @@ func (tr *Trie) update(node *bufferedNode, triePath []byte, terminal TCommitment
 
 	if len(pathFragmentTail) == 0 {
 		// nowhere to continue, extend the current node
-		Assert(len(triePathTail) > 0, "len(triePathTail) > 0") // we are not at the end yet
-		childIndex := triePathTail[0]                          // we will continue with this index
+		common.Assert(len(triePathTail) > 0, "len(triePathTail) > 0") // we are not at the end yet
+		childIndex := triePathTail[0]                                 // we will continue with this index
 
-		nextTrieKey := Concat(trieKey, node.PathFragment(), childIndex)
+		nextTrieKey := common.Concat(trieKey, node.PathFragment(), childIndex)
 		child := node.getChild(childIndex, tr.nodeStore)
 		if child != nil {
 			child = tr.update(child, triePath, terminal)
@@ -33,12 +37,12 @@ func (tr *Trie) update(node *bufferedNode, triePath []byte, terminal TCommitment
 
 	// split the current node
 	forkPathIndex := len(prefix)
-	Assert(forkPathIndex < len(node.PathFragment()), "forkPathIndex<len(node.PathFragment())")
-	Assert(forkPathIndex <= len(triePath), "forkPathIndex<=len(triePath)")
+	common.Assert(forkPathIndex < len(node.PathFragment()), "forkPathIndex<len(node.PathFragment())")
+	common.Assert(forkPathIndex <= len(triePath), "forkPathIndex<=len(triePath)")
 
 	childIndexContinue := pathFragmentTail[0]
 	pathFragmentContinue := pathFragmentTail[1:]
-	trieKeyToContinue := Concat(trieKey, prefix, childIndexContinue)
+	trieKeyToContinue := common.Concat(trieKey, prefix, childIndexContinue)
 
 	node.setPathFragment(pathFragmentContinue)
 	node.setTriePath(trieKeyToContinue)
@@ -51,7 +55,7 @@ func (tr *Trie) update(node *bufferedNode, triePath []byte, terminal TCommitment
 		forkingNode.setTerminal(terminal, tr.Model())
 	} else {
 		childIndexToBranch := remainingTriePath[0]
-		trieKeyToContinue = Concat(trieKey, prefix, childIndexToBranch)
+		trieKeyToContinue = common.Concat(trieKey, prefix, childIndexToBranch)
 
 		newNodeWithTerminal := tr.newTerminalNode(trieKeyToContinue, triePath[len(trieKeyToContinue):], terminal)
 		forkingNode.setModifiedChild(newNodeWithTerminal)
@@ -60,12 +64,12 @@ func (tr *Trie) update(node *bufferedNode, triePath []byte, terminal TCommitment
 }
 
 func (tr *Trie) delete(node *bufferedNode, triePath []byte) (*bufferedNode, bool) {
-	keyPlusPathFragment := Concat(node.triePath, node.PathFragment())
+	keyPlusPathFragment := common.Concat(node.triePath, node.PathFragment())
 	if len(triePath) < len(keyPlusPathFragment) {
 		return nil, false
 	}
 	if bytes.Equal(keyPlusPathFragment, triePath) {
-		if IsNil(node.Terminal()) {
+		if common.IsNil(node.Terminal()) {
 			return node, false
 		}
 		node.setTerminal(nil, tr.Model())
@@ -74,7 +78,7 @@ func (tr *Trie) delete(node *bufferedNode, triePath []byte) (*bufferedNode, bool
 	if len(triePath) == len(keyPlusPathFragment) {
 		return node, false
 	}
-	Assert(len(triePath) > len(keyPlusPathFragment), "len(triePath) > len(keyPlusPathFragment)")
+	common.Assert(len(triePath) > len(keyPlusPathFragment), "len(triePath) > len(keyPlusPathFragment)")
 	childIndex := triePath[len(keyPlusPathFragment)]
 	child := node.getChild(childIndex, tr.nodeStore)
 	if child == nil {
@@ -98,7 +102,7 @@ func (tr *Trie) mergeNodeIfNeeded(node *bufferedNode) *bufferedNode {
 		return nil
 	}
 	// merge with child
-	newPathFragment := Concat(node.PathFragment(), theOnlyChildToMergeWith.indexAsChild(), theOnlyChildToMergeWith.PathFragment())
+	newPathFragment := common.Concat(node.PathFragment(), theOnlyChildToMergeWith.indexAsChild(), theOnlyChildToMergeWith.PathFragment())
 	theOnlyChildToMergeWith.setPathFragment(newPathFragment)
 	return theOnlyChildToMergeWith
 }

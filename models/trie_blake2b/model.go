@@ -60,7 +60,7 @@ type CommitmentModel struct {
 // i.e. ForceStoreTerminalWithNode will return true. For terminal commitments
 // of this or smaller size, the choice depends on the trie setup
 // Default valueSizeOptimizationThreshold = 0, which means that by default all
-// values are stored in the node.
+// value commitments are stored in the node.
 // If valueSizeOptimizationThreshold > 0 valueStore must be specified in the trie parameters
 // Reasonable value of valueSizeOptimizationThreshold, allows significantly optimize trie storage without
 // requiring hashing big data each time
@@ -164,8 +164,12 @@ func (m *CommitmentModel) NewVectorCommitment() common.VCommitment {
 	return newVectorCommitment(m.hashSize)
 }
 
+func (m *CommitmentModel) AlwaysStoreTerminalWithNode() bool {
+	return m.valueSizeOptimizationThreshold == 0
+}
+
 func (m *CommitmentModel) ForceStoreTerminalWithNode(c common.TCommitment) bool {
-	return c.(*terminalCommitment).isCostlyCommitment
+	return m.AlwaysStoreTerminalWithNode() || c.(*terminalCommitment).isCostlyCommitment
 }
 
 // CommitToDataRaw commits to data

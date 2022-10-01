@@ -3,6 +3,8 @@ package immutable
 import (
 	"encoding/hex"
 	"fmt"
+
+	"github.com/iotaledger/trie.go/common"
 )
 
 // ProofGeneric represents a generic proof of inclusion or a maximal path in the trie which corresponds to the 'unpackedKey'
@@ -15,7 +17,7 @@ type ProofGeneric struct {
 }
 
 type ProofGenericElement struct {
-	NodeData   *NodeData
+	NodeData   *common.NodeData
 	ChildIndex byte
 }
 
@@ -53,7 +55,7 @@ func (p *ProofGeneric) String() string {
 // GetProofGeneric returns generic proof path. Contains references trie node cache.
 // Should be immediately converted into the specific proof model independent of the trie
 // Normally only called by the model
-func GetProofGeneric(nodeStore *NodeStore, root VCommitment, triePath []byte) *ProofGeneric {
+func GetProofGeneric(nodeStore *immutableNodeStore, root common.VCommitment, triePath []byte) *ProofGeneric {
 	p, ending := fetchPath(nodeStore, root, triePath)
 	return &ProofGeneric{
 		Key:    triePath,
@@ -125,7 +127,7 @@ func commonPrefix(b1, b2 []byte) ([]byte, []byte, []byte) {
 }
 
 // getLeafByKey goes along the path the same way proofPath, just does not produce the proof but instead returns last terminal, if found
-func getLeafByKey(nodeStore *NodeStore, root VCommitment, triePath []byte) TCommitment {
+func getLeafByKey(nodeStore *immutableNodeStore, root common.VCommitment, triePath []byte) common.TCommitment {
 	panic("implement me")
 	//n, found := nodeStore.FetchNodeData(AsKey(root), nil)
 	//if !found {
@@ -156,7 +158,7 @@ func getLeafByKey(nodeStore *NodeStore, root VCommitment, triePath []byte) TComm
 	//}
 }
 
-func fetchPath(nodeStore *NodeStore, root VCommitment, triePath []byte) ([]ProofGenericElement, ProofEndingCode) {
+func fetchPath(nodeStore *immutableNodeStore, root common.VCommitment, triePath []byte) ([]ProofGenericElement, ProofEndingCode) {
 	panic("implement me")
 	//n, found := nodeStore.FetchNodeData(AsKey(root), nil)
 	//if !found {
