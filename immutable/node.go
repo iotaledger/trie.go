@@ -32,7 +32,7 @@ type bufferedNode struct {
 
 func newBufferedNode(n *common.NodeData, triePath []byte) *bufferedNode {
 	if n == nil {
-		n = common.NewNodeData(nil)
+		n = common.NewNodeData()
 	}
 	ret := &bufferedNode{
 		nodeFetched:         n,
@@ -49,7 +49,7 @@ func (n *bufferedNode) isRoot() bool {
 
 // indexAsChild return index of the node as a child in the parent commitment and flag if it is a root
 func (n *bufferedNode) indexAsChild() byte {
-	Assert(!n.isRoot(), "indexAsChild:: receiver can't be a root node")
+	common.Assert(!n.isRoot(), "indexAsChild:: receiver can't be a root node")
 	return n.triePath[len(n.triePath)-1]
 
 }
@@ -60,7 +60,7 @@ func (n *bufferedNode) setModifiedChild(child *bufferedNode, idx ...byte) {
 	if child != nil {
 		index = child.indexAsChild()
 	} else {
-		Assert(len(idx) > 0, "setModifiedChild: index of the child must be specified if the child is nil")
+		common.Assert(len(idx) > 0, "setModifiedChild: index of the child must be specified if the child is nil")
 		index = idx[0]
 	}
 	n.uncommittedChildren[index] = child
@@ -74,7 +74,7 @@ func (n *bufferedNode) setPathFragment(pf []byte) {
 	}
 }
 
-func (n *bufferedNode) setTerminal(term TCommitment, m CommitmentModel) {
+func (n *bufferedNode) setTerminal(term common.TCommitment, m common.CommitmentModel) {
 	n.nodeModified.Terminal = term
 	if !m.EqualCommitments(n.nodeFetched.Terminal, n.nodeModified.Terminal) {
 		n.nodeModified.Commitment = nil
@@ -89,15 +89,15 @@ func (n *bufferedNode) PathFragment() []byte {
 	return n.nodeModified.PathFragment
 }
 
-func (n *bufferedNode) Terminal() TCommitment {
+func (n *bufferedNode) Terminal() common.TCommitment {
 	return n.nodeModified.Terminal
 }
 
-func (n *bufferedNode) ChildCommitments() map[byte]VCommitment {
+func (n *bufferedNode) ChildCommitments() map[byte]common.VCommitment {
 	return n.nodeModified.ChildCommitments
 }
 
-func (n *bufferedNode) Commitment() VCommitment {
+func (n *bufferedNode) Commitment() common.VCommitment {
 	return n.nodeModified.Commitment
 }
 
@@ -109,18 +109,18 @@ func (n *bufferedNode) getChild(childIndex byte, db *NodeStore) *bufferedNode {
 	if !ok {
 		return nil
 	}
-	Assert(!IsNil(childCommitment), "Trie::getChild: child commitment can be nil")
-	childTriePath := Concat(n.triePath, n.PathFragment(), childIndex)
+	common.Assert(!common.IsNil(childCommitment), "Trie::getChild: child commitment can be nil")
+	childTriePath := common.Concat(n.triePath, n.PathFragment(), childIndex)
 
-	nodeFetched, ok := db.FetchNodeData(AsKey(childCommitment), childTriePath)
-	Assert(ok, "Trie::getChild: can't fetch node. triePath: '%s', dbKey: '%s",
-		hex.EncodeToString(AsKey(childCommitment)), hex.EncodeToString(childTriePath))
+	nodeFetched, ok := db.FetchNodeData(common.AsKey(childCommitment), childTriePath)
+	common.Assert(ok, "Trie::getChild: can't fetch node. triePath: '%s', dbKey: '%s",
+		hex.EncodeToString(common.AsKey(childCommitment)), hex.EncodeToString(childTriePath))
 
 	return newBufferedNode(nodeFetched, childTriePath)
 }
 
 func (n *bufferedNode) isCommitted() bool {
-	return !IsNil(n.nodeModified.Commitment)
+	return !common.IsNil(n.nodeModified.Commitment)
 }
 
 // node is in the trie if at least one of the two is true:
@@ -149,7 +149,7 @@ func (n *bufferedNode) hasToBeRemoved(nodeStore *NodeStore) (bool, *bufferedNode
 
 func ToString(n Node) string {
 	return fmt.Sprintf("nodeData(dbKey: '%s', pathFragment: '%s', term: '%s', numChildren: %d",
-		hex.EncodeToString(AsKey(n.Commitment())),
+		hex.EncodeToString(common.AsKey(n.Commitment())),
 		hex.EncodeToString(n.PathFragment()),
 		n.Terminal().String(),
 		len(n.ChildCommitments()),

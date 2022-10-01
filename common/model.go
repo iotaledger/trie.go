@@ -40,6 +40,8 @@ type NodeData struct {
 	PathFragment     []byte
 	ChildCommitments map[byte]VCommitment
 	Terminal         TCommitment
+	// used for immutable only
+	Commitment VCommitment
 }
 
 type PathArity byte
