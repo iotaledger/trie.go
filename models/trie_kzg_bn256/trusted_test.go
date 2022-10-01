@@ -2,13 +2,15 @@ package trie_kzg_bn256
 
 import (
 	"encoding/hex"
-	"github.com/iotaledger/trie.go/trie"
-	"go.dedis.ch/kyber/v3"
 	"math/big"
 	"math/rand"
 	"runtime"
 	"testing"
 	"time"
+
+	"github.com/iotaledger/trie.go/common"
+	"github.com/iotaledger/trie.go/mutable"
+	"go.dedis.ch/kyber/v3"
 
 	"github.com/stretchr/testify/require"
 	"go.dedis.ch/kyber/v3/pairing/bn256"
@@ -230,11 +232,11 @@ func TestValidate2Load(t *testing.T) {
 }
 
 func TestStaticTrustedSetup(t *testing.T) {
-	model := New()
-	require.EqualValues(t, 258, model.D)
+	m := New()
+	require.EqualValues(t, 258, m.D)
 
-	store := trie.NewInMemoryKVStore()
-	tr := trie.New(model, store, nil)
+	store := common.NewInMemoryKVStore()
+	tr := mutable.New(m, store, nil)
 
 	tr.Update(nil, []byte("kuku"))
 	tr.Commit()

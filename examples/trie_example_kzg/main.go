@@ -3,21 +3,22 @@ package main
 import (
 	"fmt"
 
+	"github.com/iotaledger/trie.go/common"
 	"github.com/iotaledger/trie.go/models/trie_kzg_bn256"
-	"github.com/iotaledger/trie.go/trie"
+	"github.com/iotaledger/trie.go/mutable"
 )
 
 var data = []string{"a", "abc", "abcd", "b", "abd", "klmn", "oprst", "ab", "bcd"}
 
 func main() {
 	// create store where trie nodes will be stored
-	store := trie.NewInMemoryKVStore()
+	store := common.NewInMemoryKVStore()
 
-	// create kzg commitment model for 256-ary trie
-	model := trie_kzg_bn256.New()
+	// create kzg commitment common for 256-ary trie
+	m := trie_kzg_bn256.New()
 
 	// create the trie with binary keys
-	tr := trie.New(model, store, nil)
+	tr := mutable.New(m, store, nil)
 	fmt.Printf("\nExample of trie.\n%s\n", tr.Info())
 
 	// add data key/value pairs to the trie
@@ -27,7 +28,7 @@ func main() {
 	}
 	// recalculate commitments in the trie
 	tr.Commit()
-	rootCommitment := trie.RootCommitment(tr)
+	rootCommitment := mutable.RootCommitment(tr)
 	fmt.Printf("root commitment: %s\n", rootCommitment)
 	// remove some keys from the trie
 	for _, i := range []int{1, 5, 6} {
@@ -36,19 +37,19 @@ func main() {
 	}
 	// recalc trie again
 	tr.Commit()
-	rootCommitment = trie.RootCommitment(tr)
+	rootCommitment = mutable.RootCommitment(tr)
 	fmt.Printf("root commitment: %s\n", rootCommitment)
 
 	// check PoI for all data
 	for _, s := range data {
 		// retrieve proof
-		proof, exists := model.ProofOfInclusion([]byte(s), tr)
+		proof, exists := m.ProofOfInclusion([]byte(s), tr)
 		if !exists {
 			fmt.Printf("key not found: '%s'\n", s)
 			continue
 		}
 		fmt.Printf("PoI of the key '%s': length %d, serialized size %d bytes\n",
-			s, len(proof.Path), trie.MustSize(proof))
+			s, len(proof.Path), common.MustSize(proof))
 		// validate proof
 		err := proof.Validate(rootCommitment)
 		errstr := "OK"

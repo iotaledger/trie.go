@@ -5,8 +5,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/iotaledger/trie.go/common"
 	"github.com/iotaledger/trie.go/models/trie_blake2b"
-	"github.com/iotaledger/trie.go/trie"
 	"golang.org/x/xerrors"
 )
 
@@ -88,8 +88,8 @@ func CommitmentToTheTerminalNode(p *trie_blake2b.Proof) []byte {
 }
 
 func verify(p *trie_blake2b.Proof, pathIdx, keyIdx int) ([]byte, error) {
-	trie.Assert(pathIdx < len(p.Path), "assertion: pathIdx < lenPlus1(p.Path)")
-	trie.Assert(keyIdx <= len(p.Key), "assertion: keyIdx <= lenPlus1(p.Key)")
+	common.Assert(pathIdx < len(p.Path), "assertion: pathIdx < lenPlus1(p.Path)")
+	common.Assert(keyIdx <= len(p.Key), "assertion: keyIdx <= lenPlus1(p.Key)")
 
 	elem := p.Path[pathIdx]
 	tail := p.Key[keyIdx:]
@@ -99,7 +99,7 @@ func verify(p *trie_blake2b.Proof, pathIdx, keyIdx int) ([]byte, error) {
 		return nil, fmt.Errorf("wrong proof: proof path does not follow the key. Path position: %d, key position %d", pathIdx, keyIdx)
 	}
 	if !last {
-		trie.Assert(isPrefix, "assertion: isPrefix")
+		common.Assert(isPrefix, "assertion: isPrefix")
 		if !p.PathArity.IsChildIndex(elem.ChildIndex) {
 			return nil, fmt.Errorf("wrong proof: wrong child index. Path position: %d, key position %d", pathIdx, keyIdx)
 		}
@@ -131,10 +131,10 @@ func verify(p *trie_blake2b.Proof, pathIdx, keyIdx int) ([]byte, error) {
 	return hashIt(elem, nil, p.PathArity, p.HashSize), nil
 }
 
-func makeHashVector(e *trie_blake2b.ProofElement, missingCommitment []byte, arity trie.PathArity, sz trie_blake2b.HashSize) [][]byte {
+func makeHashVector(e *trie_blake2b.ProofElement, missingCommitment []byte, arity common.PathArity, sz trie_blake2b.HashSize) [][]byte {
 	hashes := make([][]byte, arity.VectorLength())
 	for idx, c := range e.Children {
-		trie.Assert(arity.IsChildIndex(int(idx)), "arity.IsChildIndex(int(idx)")
+		common.Assert(arity.IsChildIndex(int(idx)), "arity.IsChildIndex(int(idx)")
 		hashes[idx] = c
 	}
 	if len(e.Terminal) > 0 {
@@ -147,6 +147,6 @@ func makeHashVector(e *trie_blake2b.ProofElement, missingCommitment []byte, arit
 	return hashes
 }
 
-func hashIt(e *trie_blake2b.ProofElement, missingCommitment []byte, arity trie.PathArity, sz trie_blake2b.HashSize) []byte {
+func hashIt(e *trie_blake2b.ProofElement, missingCommitment []byte, arity common.PathArity, sz trie_blake2b.HashSize) []byte {
 	return trie_blake2b.HashTheVector(makeHashVector(e, missingCommitment, arity, sz), arity, sz)
 }

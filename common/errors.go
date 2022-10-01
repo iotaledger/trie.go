@@ -1,4 +1,4 @@
-package trie
+package common
 
 import "golang.org/x/xerrors"
 

@@ -5,7 +5,8 @@ import (
 	"errors"
 
 	"github.com/iotaledger/hive.go/core/kvstore"
-	"github.com/iotaledger/trie.go/trie"
+	"github.com/iotaledger/trie.go/common"
+	"github.com/iotaledger/trie.go/mutable"
 )
 
 // HiveKVStoreAdaptor maps a partition of the Hive KVStore to trie_go.KVStore
@@ -29,7 +30,7 @@ func makeKey(prefix, k []byte) []byte {
 	if len(prefix) == 0 {
 		return k
 	}
-	return trie.Concat(prefix, k)
+	return common.Concat(prefix, k)
 }
 
 func (kvs *HiveKVStoreAdaptor) Get(key []byte) []byte {
@@ -79,14 +80,14 @@ type HiveBatchedUpdater struct {
 	wValue           batchWriter
 	triePrefix       []byte
 	valueStorePrefix []byte
-	trie             *trie.Trie
+	trie             *mutable.Trie
 }
 
 // NewHiveBatchedUpdater creates new batch updater with the hive.go batch as a backend
-func NewHiveBatchedUpdater(kvs kvstore.KVStore, model trie.CommitmentModel, triePrefix, valueStorePrefix []byte, optimizeKeyCommitments bool) (*HiveBatchedUpdater, error) {
+func NewHiveBatchedUpdater(kvs kvstore.KVStore, model common.CommitmentModel, triePrefix, valueStorePrefix []byte, optimizeKeyCommitments bool) (*HiveBatchedUpdater, error) {
 	ret := &HiveBatchedUpdater{
 		kvs: kvs,
-		trie: trie.New(
+		trie: mutable.New(
 			model,
 			NewHiveKVStoreAdaptor(kvs, triePrefix),
 			NewHiveKVStoreAdaptor(kvs, valueStorePrefix),

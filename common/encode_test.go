@@ -1,4 +1,4 @@
-package trie
+package common
 
 import (
 	"encoding/hex"
@@ -141,7 +141,7 @@ func TestCheckingKey(t *testing.T) {
 	require.NoError(t, err)
 	t.Logf("unpackedBin = %+v", unpackedBin)
 
-	encBin := mustEncodeUnpackedBytes(unpackedBin, PathArity16)
+	encBin := MustEncodeUnpackedBytes(unpackedBin, PathArity16)
 	t.Logf("encodedBin = %+v, hex = %x, str: %s", encBin, encBin, string(encBin))
 
 	unpackedBinBack, err := decode16(encBin)

@@ -1,9 +1,11 @@
-package trie
+package mutable
 
 import (
 	"bytes"
 	"encoding/hex"
 	"fmt"
+
+	"github.com/iotaledger/trie.go/common"
 )
 
 // Node is a read-only interface to the 256+ trie node
@@ -13,9 +15,9 @@ type Node interface {
 	// PathFragment of the node (committed)
 	PathFragment() []byte
 	// Terminal of the node (committed)
-	Terminal() TCommitment
+	Terminal() common.TCommitment
 	// ChildCommitments can return old commitments if node is not committed
-	ChildCommitments() map[byte]VCommitment
+	ChildCommitments() map[byte]common.VCommitment
 }
 
 // Implementations of read-only and buffered/updatable nodes of the 256+ trie
@@ -23,7 +25,7 @@ type Node interface {
 // nodeReadOnly is non-buffered node data
 type nodeReadOnly struct {
 	// persistent
-	n NodeData
+	n common.NodeData
 	// persisted in the key of the map
 	key []byte
 }
@@ -32,7 +34,7 @@ func (n *nodeReadOnly) PathFragment() []byte {
 	return n.n.PathFragment
 }
 
-func (n *nodeReadOnly) Terminal() TCommitment {
+func (n *nodeReadOnly) Terminal() common.TCommitment {
 	return n.n.Terminal
 }
 
@@ -40,8 +42,8 @@ func (n *nodeReadOnly) Key() []byte {
 	return n.key
 }
 
-func (n *nodeReadOnly) ChildCommitments() map[byte]VCommitment {
-	Assert(n.IsCommitted(), "trie::nodeReadOnly::ChildCommitments: node is not committed: key: '%s'",
+func (n *nodeReadOnly) ChildCommitments() map[byte]common.VCommitment {
+	common.Assert(n.IsCommitted(), "trie::nodeReadOnly::ChildCommitments: node is not committed: key: '%s'",
 		hex.EncodeToString(n.key))
 	return n.n.ChildCommitments
 }
@@ -50,8 +52,8 @@ func (n *nodeReadOnly) IsCommitted() bool {
 	return true
 }
 
-func nodeReadOnlyFromBytes(model CommitmentModel, data, unpackedKey []byte, arity PathArity, valueStore KVReader) (*nodeReadOnly, error) {
-	ret, err := NodeDataFromBytes(model, data, unpackedKey, arity, valueStore)
+func nodeReadOnlyFromBytes(m common.CommitmentModel, data, unpackedKey []byte, arity common.PathArity, valueStore common.KVReader) (*nodeReadOnly, error) {
+	ret, err := common.NodeDataFromBytes(m, data, unpackedKey, arity, valueStore)
 	if err != nil {
 		return nil, err
 	}
@@ -64,18 +66,18 @@ func nodeReadOnlyFromBytes(model CommitmentModel, data, unpackedKey []byte, arit
 // bufferedNode is a node of the 256+-ary Trie with cache
 type bufferedNode struct {
 	// persistent
-	n NodeData
+	n common.NodeData
 	// persisted in the unpackedKey of the map
 	unpackedKey []byte
 	// non-persistent
-	newTerminal      TCommitment       // next value of Terminal
-	modifiedChildren map[byte]struct{} // children which has been modified
-	pathChanged      bool              // position of the node in trie has been changed duo to modifications
+	newTerminal      common.TCommitment // next value of Terminal
+	modifiedChildren map[byte]struct{}  // children which has been modified
+	pathChanged      bool               // position of the node in trie has been changed duo to modifications
 }
 
 func newBufferedNode(key []byte) *bufferedNode {
 	return &bufferedNode{
-		n:                *NewNodeData(),
+		n:                *common.NewNodeData(),
 		unpackedKey:      key,
 		newTerminal:      nil,
 		modifiedChildren: make(map[byte]struct{}),
@@ -86,7 +88,7 @@ func (n *bufferedNode) PathFragment() []byte {
 	return n.n.PathFragment
 }
 
-func (n *bufferedNode) Terminal() TCommitment {
+func (n *bufferedNode) Terminal() common.TCommitment {
 	return n.newTerminal
 }
 
@@ -94,7 +96,7 @@ func (n *bufferedNode) Key() []byte {
 	return n.unpackedKey
 }
 
-func (n *bufferedNode) ChildCommitments() map[byte]VCommitment {
+func (n *bufferedNode) ChildCommitments() map[byte]common.VCommitment {
 	return n.n.ChildCommitments
 }
 
@@ -102,7 +104,7 @@ func (n *bufferedNode) Clone() *bufferedNode {
 	if n == nil {
 		return nil
 	}
-	var newTerminal TCommitment
+	var newTerminal common.TCommitment
 	if n.newTerminal == nil {
 		newTerminal = nil
 	} else {
@@ -132,7 +134,7 @@ func (n *bufferedNode) setNewPathFragment(pf []byte) {
 	n.pathChanged = true
 }
 
-func (n *bufferedNode) setNewTerminal(t TCommitment) {
+func (n *bufferedNode) setNewTerminal(t common.TCommitment) {
 	n.newTerminal = t
 }
 
@@ -140,23 +142,23 @@ func (n *bufferedNode) markChildModified(index byte) {
 	n.modifiedChildren[index] = struct{}{}
 }
 
-func (n *bufferedNode) Bytes(model CommitmentModel, arity PathArity, optimizeKeyCommitments bool) []byte {
+func (n *bufferedNode) Bytes(m common.CommitmentModel, arity common.PathArity, optimizeKeyCommitments bool) []byte {
 	// Optimization: if terminal commits to unpackedKey, no need to serialize it,
 	// because all information is in the key
 	isKeyCommitment := false
 	if optimizeKeyCommitments && len(n.unpackedKey) > 0 {
-		keyCommitment := model.CommitToData(Concat(n.unpackedKey, n.n.PathFragment))
-		isKeyCommitment = model.EqualCommitments(n.n.Terminal, keyCommitment)
+		keyCommitment := m.CommitToData(common.Concat(n.unpackedKey, n.n.PathFragment))
+		isKeyCommitment = m.EqualCommitments(n.n.Terminal, keyCommitment)
 	}
 	var buf bytes.Buffer
-	skipStoreTerminal := n.n.Terminal != nil && !model.ForceStoreTerminalWithNode(n.n.Terminal)
+	skipStoreTerminal := n.n.Terminal != nil && !m.ForceStoreTerminalWithNode(n.n.Terminal)
 	err := n.n.Write(&buf, arity, isKeyCommitment, skipStoreTerminal)
-	Assert(err == nil, "trie::bufferedNode::Bytes: %v", err)
+	common.Assert(err == nil, "trie::bufferedNode::Bytes: %v", err)
 	return buf.Bytes()
 }
 
 func childKey(n Node, childIndex byte) []byte {
-	return Concat(n.Key(), n.PathFragment(), childIndex)
+	return common.Concat(n.Key(), n.PathFragment(), childIndex)
 }
 
 func ToString(n Node) string {

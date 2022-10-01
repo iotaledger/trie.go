@@ -6,7 +6,7 @@ import (
 	"io"
 	"io/ioutil"
 
-	"github.com/iotaledger/trie.go/trie"
+	"github.com/iotaledger/trie.go/common"
 	"go.dedis.ch/kyber/v3"
 	"go.dedis.ch/kyber/v3/pairing/bn256"
 	"golang.org/x/crypto/blake2b"
@@ -116,7 +116,7 @@ func TrustedSetupFromBytes(suite *bn256.Suite, data []byte) (*TrustedSetup, erro
 		return nil, err
 	}
 	if rdr.Len() != 0 {
-		return nil, trie.ErrNotAllBytesConsumed
+		return nil, common.ErrNotAllBytesConsumed
 	}
 	if !ret.Omega.Equal(ret.ZeroG1) {
 		for i := range ret.Domain {

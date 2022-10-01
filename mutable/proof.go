@@ -1,9 +1,11 @@
-package trie
+package mutable
 
 import (
 	"bytes"
 	"encoding/hex"
 	"fmt"
+
+	"github.com/iotaledger/trie.go/common"
 )
 
 // ProofGeneric represents a generic proof of inclusion or a maximal path in the trie which corresponds to the 'unpackedKey'
@@ -45,8 +47,8 @@ func (p *ProofGeneric) String() string {
 }
 
 // GetProofGeneric returns generic proof path. Contains references trie node cache.
-// Should be immediately converted into the specific proof model independent of the trie
-// Normally only called by the model
+// Should be immediately converted into the specific proof common independent of the trie
+// Normally only called by the common
 func GetProofGeneric(tr NodeStore, unpackedKey []byte) *ProofGeneric {
 	p, _, ending := proofPath(tr, unpackedKey)
 	return &ProofGeneric{
@@ -76,7 +78,7 @@ func proofPath(trieAccess NodeStore, unpackedKey []byte) ([][]byte, []byte, Proo
 
 	for {
 		proof = append(proof, key)
-		Assert(len(key) <= len(unpackedKey), "trie::proofPath assert: len(unpackedKey) <= len(unpackedKey), key: '%s', unpackedKey: '%s'",
+		common.Assert(len(key) <= len(unpackedKey), "trie::proofPath assert: len(unpackedKey) <= len(unpackedKey), key: '%s', unpackedKey: '%s'",
 			hex.EncodeToString(key), hex.EncodeToString(unpackedKey))
 		if bytes.Equal(unpackedKey[len(key):], n.PathFragment()) {
 			return proof, nil, EndingTerminal
@@ -86,10 +88,10 @@ func proofPath(trieAccess NodeStore, unpackedKey []byte) ([][]byte, []byte, Proo
 		if len(prefix) < len(n.PathFragment()) {
 			return proof, prefix, EndingSplit
 		}
-		Assert(len(prefix) == len(n.PathFragment()), "trie::proofPath assert: len(prefix)==len(n.PathFragment), prefix: '%s', pathFragment: '%s'",
+		common.Assert(len(prefix) == len(n.PathFragment()), "trie::proofPath assert: len(prefix)==len(n.PathFragment), prefix: '%s', pathFragment: '%s'",
 			hex.EncodeToString(prefix), hex.EncodeToString(n.PathFragment()))
 		childIndexPosition := len(key) + len(prefix)
-		Assert(childIndexPosition < len(unpackedKey), "childIndexPosition<len(unpackedKey)")
+		common.Assert(childIndexPosition < len(unpackedKey), "childIndexPosition<len(unpackedKey)")
 
 		key = childKey(n, unpackedKey[childIndexPosition])
 

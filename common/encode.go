@@ -1,4 +1,4 @@
-package trie
+package common
 
 import (
 	"encoding/hex"
@@ -179,9 +179,9 @@ func PackUnpackedBytes(unpacked []byte, arity PathArity) ([]byte, error) {
 	return nil, ErrWrongArity
 }
 
-func mustEncodeUnpackedBytes(unpacked []byte, arity PathArity) []byte {
+func MustEncodeUnpackedBytes(unpacked []byte, arity PathArity) []byte {
 	ret, err := EncodeUnpackedBytes(unpacked, arity)
-	Assert(err == nil, "trie::mustEncodeUnpackedBytes: err: %v, unpacked: %s, arity: %s",
+	Assert(err == nil, "trie::MustEncodeUnpackedBytes: err: %v, unpacked: %s, arity: %s",
 		err, hex.EncodeToString(unpacked), arity.String())
 	return ret
 }

@@ -5,7 +5,8 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/iotaledger/trie.go/trie"
+	"github.com/iotaledger/trie.go/common"
+	"github.com/iotaledger/trie.go/mutable"
 	"go.dedis.ch/kyber/v3"
 	"golang.org/x/xerrors"
 )
@@ -45,18 +46,18 @@ func ProofOfInclusionFromBytes(data []byte) (*ProofOfInclusion, error) {
 		return nil, err
 	}
 	if rdr.Len() != 0 {
-		return nil, trie.ErrNotAllBytesConsumed
+		return nil, common.ErrNotAllBytesConsumed
 	}
 	return ret, nil
 }
 
 // ProofOfInclusion converts generic proof path of existing key to the verifiable proof path
 // Returns nil, false if path does not exist
-func (m *CommitmentModel) ProofOfInclusion(key []byte, tr trie.NodeStore) (*ProofOfInclusion, bool) {
-	trie.Assert(tr.PathArity() == trie.PathArity256, "for KZG commitment model only 256-ary trie is supported")
+func (m *CommitmentModel) ProofOfInclusion(key []byte, tr mutable.NodeStore) (*ProofOfInclusion, bool) {
+	common.Assert(tr.PathArity() == common.PathArity256, "for KZG commitment common only 256-ary trie is supported")
 
-	proofGeneric := trie.GetProofGeneric(tr, key)
-	if proofGeneric == nil || len(proofGeneric.Path) == 0 || proofGeneric.Ending != trie.EndingTerminal {
+	proofGeneric := mutable.GetProofGeneric(tr, key)
+	if proofGeneric == nil || len(proofGeneric.Path) == 0 || proofGeneric.Ending != mutable.EndingTerminal {
 		// key is not present in the state
 		return nil, false
 	}
@@ -68,13 +69,13 @@ func (m *CommitmentModel) ProofOfInclusion(key []byte, tr trie.NodeStore) (*Proo
 	}
 
 	proofLength := len(proofGeneric.Path)
-	nodes := make([]*trie.NodeData, proofLength)
+	nodes := make([]*common.NodeData, proofLength)
 
 	for i, k := range proofGeneric.Path {
 		n, ok := tr.GetNode(k)
-		trie.Assert(ok, "can't find node with key '%x'", k)
+		common.Assert(ok, "can't find node with key '%x'", k)
 
-		nodes[i] = &trie.NodeData{
+		nodes[i] = &common.NodeData{
 			PathFragment:     n.PathFragment(),
 			ChildCommitments: n.ChildCommitments(),
 			Terminal:         n.Terminal(),
@@ -107,17 +108,17 @@ func (m *CommitmentModel) ProofOfInclusion(key []byte, tr trie.NodeStore) (*Proo
 // ProofOfPath returns proof of path along the key, if key is absent. If key is present, it returns nil, false,
 // The proof of path can be used as a proof of absence of the key in the state, i.e. to prove that something else is
 // committed in the state instead of what should be committed if the key would be present
-func (m *CommitmentModel) ProofOfPath(key []byte, tr trie.NodeStore) (*ProofOfPath, bool) {
+func (m *CommitmentModel) ProofOfPath(key []byte, tr mutable.NodeStore) (*ProofOfPath, bool) {
 	panic("implement me")
 }
 
 func (p *ProofOfInclusion) Bytes() []byte {
-	return trie.MustBytes(p)
+	return common.MustBytes(p)
 }
 
 // Validate check the proof against the provided root commitments
 // if 'value' is specified, checks if commitment to that value is the terminal of the last element in path
-func (p *ProofOfInclusion) Validate(root trie.VCommitment, value ...[]byte) error {
+func (p *ProofOfInclusion) Validate(root common.VCommitment, value ...[]byte) error {
 	if len(value) > 0 {
 		ct := commitToData(value[0], Model.Suite)
 		if !equalCommitments(ct, &terminalCommitment{Scalar: p.Terminal}) {
@@ -146,13 +147,13 @@ func (p *ProofOfInclusion) Validate(root trie.VCommitment, value ...[]byte) erro
 }
 
 func (p *ProofOfInclusion) Write(w io.Writer) error {
-	if err := trie.WriteBytes16(w, p.Key); err != nil {
+	if err := common.WriteBytes16(w, p.Key); err != nil {
 		return err
 	}
 	if _, err := p.Terminal.MarshalTo(w); err != nil {
 		return err
 	}
-	if err := trie.WriteUint16(w, uint16(len(p.Path))); err != nil {
+	if err := common.WriteUint16(w, uint16(len(p.Path))); err != nil {
 		return err
 	}
 	for _, e := range p.Path {
@@ -165,7 +166,7 @@ func (p *ProofOfInclusion) Write(w io.Writer) error {
 
 func (p *ProofOfInclusion) Read(r io.Reader) error {
 	var err error
-	if p.Key, err = trie.ReadBytes16(r); err != nil {
+	if p.Key, err = common.ReadBytes16(r); err != nil {
 		return err
 	}
 	p.Terminal = Model.Suite.G1().Scalar()
@@ -173,7 +174,7 @@ func (p *ProofOfInclusion) Read(r io.Reader) error {
 		return err
 	}
 	var size uint16
-	if err = trie.ReadUint16(r, &size); err != nil {
+	if err = common.ReadUint16(r, &size); err != nil {
 		return err
 	}
 	p.Path = make([]*ProofElement, size)
@@ -190,7 +191,7 @@ func (e *ProofElement) Write(w io.Writer) error {
 	if _, err := e.C.MarshalTo(w); err != nil {
 		return err
 	}
-	if err := trie.WriteUint16(w, e.VectorIndex); err != nil {
+	if err := common.WriteUint16(w, e.VectorIndex); err != nil {
 		return err
 	}
 	if _, err := e.Proof.MarshalTo(w); err != nil {
@@ -204,7 +205,7 @@ func (e *ProofElement) Read(r io.Reader) error {
 	if _, err := e.C.UnmarshalFrom(r); err != nil {
 		return err
 	}
-	if err := trie.ReadUint16(r, &e.VectorIndex); err != nil {
+	if err := common.ReadUint16(r, &e.VectorIndex); err != nil {
 		return err
 	}
 	e.Proof = Model.Suite.G1().Point()

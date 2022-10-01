@@ -3,22 +3,23 @@ package main
 import (
 	"fmt"
 
+	"github.com/iotaledger/trie.go/common"
 	"github.com/iotaledger/trie.go/models/trie_blake2b"
 	"github.com/iotaledger/trie.go/models/trie_blake2b/trie_blake2b_verify"
-	"github.com/iotaledger/trie.go/trie"
+	"github.com/iotaledger/trie.go/mutable"
 )
 
 var data = []string{"a", "abc", "abcd", "b", "abd", "klmn", "oprst", "ab", "bcd"}
 
 func main() {
 	// create store where trie nodes will be stored
-	store := trie.NewInMemoryKVStore()
+	store := common.NewInMemoryKVStore()
 
-	// create blake2b 20 bytes (160 bit) commitment model for binary trie
-	model := trie_blake2b.New(trie.PathArity2, trie_blake2b.HashSize160)
+	// create blake2b 20 bytes (160 bit) commitment common for binary trie
+	m := trie_blake2b.New(common.PathArity2, trie_blake2b.HashSize160)
 
 	// create the trie with binary keys
-	tr := trie.New(model, store, nil)
+	tr := mutable.New(m, store, nil)
 	fmt.Printf("\nExample of trie.\n%s\n", tr.Info())
 
 	// add data key/value pairs to the trie
@@ -28,7 +29,7 @@ func main() {
 	}
 	// recalculate commitments in the trie
 	tr.Commit()
-	rootCommitment := trie.RootCommitment(tr)
+	rootCommitment := mutable.RootCommitment(tr)
 	fmt.Printf("root commitment: %s\n", rootCommitment)
 	// remove some keys from the trie
 	for _, i := range []int{1, 5, 6} {
@@ -37,15 +38,15 @@ func main() {
 	}
 	// recalc trie again
 	tr.Commit()
-	rootCommitment = trie.RootCommitment(tr)
+	rootCommitment = mutable.RootCommitment(tr)
 	fmt.Printf("root commitment: %s\n", rootCommitment)
 
 	// check PoI for all data
 	for _, s := range data {
 		// retrieve proof
-		proof := model.Proof([]byte(s), tr)
+		proof := m.Proof([]byte(s), tr)
 		fmt.Printf("PoI of the key '%s': length %d, serialized size %d bytes\n",
-			s, len(proof.Path), trie.MustSize(proof))
+			s, len(proof.Path), common.MustSize(proof))
 		// validate proof
 		err := trie_blake2b_verify.Validate(proof, rootCommitment.Bytes())
 		errstr := "OK"

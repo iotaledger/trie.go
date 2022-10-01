@@ -11,10 +11,11 @@ import (
 	"github.com/iotaledger/hive.go/core/kvstore"
 	"github.com/iotaledger/hive.go/core/kvstore/badger"
 	"github.com/iotaledger/hive.go/core/kvstore/mapdb"
+	model2 "github.com/iotaledger/trie.go/common"
 	"github.com/iotaledger/trie.go/hive_adaptor"
 	"github.com/iotaledger/trie.go/models/trie_blake2b"
 	"github.com/iotaledger/trie.go/models/trie_blake2b/trie_blake2b_verify"
-	"github.com/iotaledger/trie.go/trie"
+	"github.com/iotaledger/trie.go/mutable"
 	"golang.org/x/crypto/blake2b"
 	"golang.org/x/xerrors"
 )
@@ -56,14 +57,14 @@ func main() {
 		os.Exit(1)
 	}
 	name = tail[1]
-	var arity trie.PathArity
+	var arity model2.PathArity
 	switch *arityPar {
 	case 2:
-		arity = trie.PathArity2
+		arity = model2.PathArity2
 	case 16:
-		arity = trie.PathArity16
+		arity = model2.PathArity16
 	case 256:
-		arity = trie.PathArity256
+		arity = model2.PathArity256
 	default:
 		fmt.Printf(usage)
 		os.Exit(1)
@@ -78,7 +79,7 @@ func main() {
 		fmt.Printf(usage)
 		os.Exit(1)
 	}
-	fmt.Printf("Commitment model: '%s'\n", model.Description())
+	fmt.Printf("Commitment common: '%s'\n", model.Description())
 	fmt.Printf("Optimize key commitments: %v\n", *optkey)
 	fmt.Printf("Terminal optimization threshold: %d\n", *optterm)
 	fname = name + ".bin"
@@ -127,13 +128,13 @@ const (
 )
 
 func genrnd() {
-	rndIterator := trie.NewRandStreamIterator(trie.RandStreamParams{
+	rndIterator := model2.NewRandStreamIterator(model2.RandStreamParams{
 		Seed:       time.Now().UnixNano(),
 		NumKVPairs: *num,
 		MaxKey:     *maxKey,
 		MaxValue:   *maxValue,
 	})
-	fileWriter, err := trie.CreateKVStreamFile(fname)
+	fileWriter, err := model2.CreateKVStreamFile(fname)
 	must(err)
 	defer func() { _ = fileWriter.Close() }()
 
@@ -244,8 +245,8 @@ func scandbbadger() {
 	fmt.Printf("TRIE: number of nodes: %d, avg key len: %d, avg node size: %d\n",
 		recCounter, keyByteCounter/recCounter, valueByteCounter/recCounter)
 
-	tr := trie.NewTrieReader(model, trieKVS, valueKVS)
-	root := trie.RootCommitment(tr)
+	tr := mutable.NewTrieReader(model, trieKVS, valueKVS)
+	root := mutable.RootCommitment(tr)
 	fmt.Printf("root commitment: %s\n", root)
 
 	recCounter = 1
@@ -284,13 +285,13 @@ var (
 )
 
 func file2kvs(kvs kvstore.KVStore) {
-	streamIn, err := trie.OpenKVStreamFile(fname)
+	streamIn, err := model2.OpenKVStreamFile(fname)
 	must(err)
 	defer func() { _ = streamIn.Close() }()
 
 	tm := newTimer()
 	counterRec := 1
-	tr := trie.NewTrieReader(model, hive_adaptor.NewHiveKVStoreAdaptor(kvs, triePrefix), nil)
+	tr := mutable.NewTrieReader(model, hive_adaptor.NewHiveKVStoreAdaptor(kvs, triePrefix), nil)
 	updater, err := hive_adaptor.NewHiveBatchedUpdater(kvs, model, triePrefix, valueStorePrefix, *optkey)
 	must(err)
 	var mem runtime.MemStats
@@ -315,11 +316,11 @@ func file2kvs(kvs kvstore.KVStore) {
 	}
 	fmt.Printf("Speed: %f records/sec\n", float64(counterRec)/tm.Duration().Seconds())
 
-	fmt.Printf("root commitment: %s\n", trie.RootCommitment(tr))
+	fmt.Printf("root commitment: %s\n", mutable.RootCommitment(tr))
 }
 
 func file2kvsNoTrie(kvs kvstore.KVStore) {
-	streamIn, err := trie.OpenKVStreamFile(fname)
+	streamIn, err := model2.OpenKVStreamFile(fname)
 	must(err)
 	defer func() { _ = streamIn.Close() }()
 

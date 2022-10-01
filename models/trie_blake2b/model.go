@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/iotaledger/trie.go/trie"
+	"github.com/iotaledger/trie.go/common"
 	"golang.org/x/crypto/blake2b"
 )
 
@@ -47,10 +47,10 @@ func (hs HashSize) String() string {
 	panic("wrong hash size")
 }
 
-// CommitmentModel provides commitment model implementation for the 256+ trie
+// CommitmentModel provides commitment common implementation for the 256+ trie
 type CommitmentModel struct {
 	hashSize                       HashSize
-	arity                          trie.PathArity
+	arity                          common.PathArity
 	valueSizeOptimizationThreshold int
 }
 
@@ -64,7 +64,7 @@ type CommitmentModel struct {
 // If valueSizeOptimizationThreshold > 0 valueStore must be specified in the trie parameters
 // Reasonable value of valueSizeOptimizationThreshold, allows significantly optimize trie storage without
 // requiring hashing big data each time
-func New(arity trie.PathArity, hashSize HashSize, valueSizeOptimizationThreshold ...int) *CommitmentModel {
+func New(arity common.PathArity, hashSize HashSize, valueSizeOptimizationThreshold ...int) *CommitmentModel {
 	t := 0
 	if len(valueSizeOptimizationThreshold) > 0 {
 		t = valueSizeOptimizationThreshold[0]
@@ -76,19 +76,19 @@ func New(arity trie.PathArity, hashSize HashSize, valueSizeOptimizationThreshold
 	}
 }
 
-func (m *CommitmentModel) PathArity() trie.PathArity {
+func (m *CommitmentModel) PathArity() common.PathArity {
 	return m.arity
 }
 
 func (m *CommitmentModel) HashSize() HashSize {
 	return m.hashSize
 }
-func (m *CommitmentModel) EqualCommitments(c1, c2 trie.Serializable) bool {
+func (m *CommitmentModel) EqualCommitments(c1, c2 common.Serializable) bool {
 	return equalCommitments(c1, c2)
 }
 
-func equalCommitments(c1, c2 trie.Serializable) bool {
-	if equals, conclusive := trie.CheckNils(c1, c2); conclusive {
+func equalCommitments(c1, c2 common.Serializable) bool {
+	if equals, conclusive := common.CheckNils(c1, c2); conclusive {
 		return equals
 	}
 	// both not nils
@@ -107,7 +107,7 @@ func equalCommitments(c1, c2 trie.Serializable) bool {
 
 // UpdateNodeCommitment computes update to the node data and, optionally, updates existing commitment
 // In blake2b implementation delta it just means computing the hash of data
-func (m *CommitmentModel) UpdateNodeCommitment(mutate *trie.NodeData, childUpdates map[byte]trie.VCommitment, _ bool, newTerminalUpdate trie.TCommitment, update *trie.VCommitment) {
+func (m *CommitmentModel) UpdateNodeCommitment(mutate *common.NodeData, childUpdates map[byte]common.VCommitment, _ bool, newTerminalUpdate common.TCommitment, update *common.VCommitment) {
 	deleted := make([]byte, 0, 256)
 	for i, upd := range childUpdates {
 		mutate.ChildCommitments[i] = upd
@@ -130,14 +130,14 @@ func (m *CommitmentModel) UpdateNodeCommitment(mutate *trie.NodeData, childUpdat
 
 // CalcNodeCommitment computes commitment of the node. It is suboptimal in KZG trie.
 // Used in computing root commitment
-func (m *CommitmentModel) CalcNodeCommitment(par *trie.NodeData) trie.VCommitment {
+func (m *CommitmentModel) CalcNodeCommitment(par *common.NodeData) common.VCommitment {
 	if len(par.ChildCommitments) == 0 && par.Terminal == nil {
 		return nil
 	}
 	return vectorCommitment(HashTheVector(m.makeHashVector(par), m.arity, m.hashSize))
 }
 
-func (m *CommitmentModel) CommitToData(data []byte) trie.TCommitment {
+func (m *CommitmentModel) CommitToData(data []byte) common.TCommitment {
 	if len(data) == 0 {
 		// empty slice -> no data (deleted)
 		return nil
@@ -146,7 +146,7 @@ func (m *CommitmentModel) CommitToData(data []byte) trie.TCommitment {
 }
 
 func (m *CommitmentModel) Description() string {
-	return fmt.Sprintf("trie commitment model implementation based on blake2b %s, arity: %s, terminal optimization threshold: %d",
+	return fmt.Sprintf("trie commitment common implementation based on blake2b %s, arity: %s, terminal optimization threshold: %d",
 		m.hashSize, m.arity, m.valueSizeOptimizationThreshold)
 }
 
@@ -155,16 +155,16 @@ func (m *CommitmentModel) ShortName() string {
 }
 
 // NewTerminalCommitment creates empty terminal commitment
-func (m *CommitmentModel) NewTerminalCommitment() trie.TCommitment {
+func (m *CommitmentModel) NewTerminalCommitment() common.TCommitment {
 	return newTerminalCommitment(m.hashSize)
 }
 
 // NewVectorCommitment create empty vector commitment
-func (m *CommitmentModel) NewVectorCommitment() trie.VCommitment {
+func (m *CommitmentModel) NewVectorCommitment() common.VCommitment {
 	return newVectorCommitment(m.hashSize)
 }
 
-func (m *CommitmentModel) ForceStoreTerminalWithNode(c trie.TCommitment) bool {
+func (m *CommitmentModel) ForceStoreTerminalWithNode(c common.TCommitment) bool {
 	return c.(*terminalCommitment).isCostlyCommitment
 }
 
@@ -190,7 +190,7 @@ func (m *CommitmentModel) commitToData(data []byte) *terminalCommitment {
 func blakeIt(data []byte, sz HashSize) []byte {
 	switch sz {
 	case HashSize160:
-		ret := trie.Blake2b160(data)
+		ret := common.Blake2b160(data)
 		return ret[:]
 	case HashSize256:
 		ret := blake2b.Sum256(data)
@@ -200,10 +200,10 @@ func blakeIt(data []byte, sz HashSize) []byte {
 }
 
 // makeHashVector makes the node vector to be hashed. Missing children are nil
-func (m *CommitmentModel) makeHashVector(nodeData *trie.NodeData) [][]byte {
+func (m *CommitmentModel) makeHashVector(nodeData *common.NodeData) [][]byte {
 	hashes := make([][]byte, m.arity.VectorLength())
 	for i, c := range nodeData.ChildCommitments {
-		trie.Assert(int(i) < m.arity.VectorLength(), "int(i)<m.arity.VectorLength()")
+		common.Assert(int(i) < m.arity.VectorLength(), "int(i)<m.arity.VectorLength()")
 		hashes[i] = c.Bytes()
 	}
 	if nodeData.Terminal != nil {
@@ -213,7 +213,7 @@ func (m *CommitmentModel) makeHashVector(nodeData *trie.NodeData) [][]byte {
 	return hashes
 }
 
-func HashTheVector(hashes [][]byte, arity trie.PathArity, sz HashSize) []byte {
+func HashTheVector(hashes [][]byte, arity common.PathArity, sz HashSize) []byte {
 	msz := sz.MaxCommitmentSize()
 	buf := make([]byte, arity.VectorLength()*msz)
 	for i, h := range hashes {
@@ -227,14 +227,14 @@ func HashTheVector(hashes [][]byte, arity trie.PathArity, sz HashSize) []byte {
 }
 
 // *vectorCommitment implements trie_go.VCommitment
-var _ trie.VCommitment = &vectorCommitment{}
+var _ common.VCommitment = &vectorCommitment{}
 
 func newVectorCommitment(sz HashSize) vectorCommitment {
 	return make([]byte, sz)
 }
 
 func (v vectorCommitment) Bytes() []byte {
-	return trie.MustBytes(v)
+	return common.MustBytes(v)
 }
 
 func (v vectorCommitment) Read(r io.Reader) error {
@@ -251,7 +251,7 @@ func (v vectorCommitment) String() string {
 	return hex.EncodeToString(v)
 }
 
-func (v vectorCommitment) Clone() trie.VCommitment {
+func (v vectorCommitment) Clone() common.VCommitment {
 	if len(v) == 0 {
 		return nil
 	}
@@ -260,7 +260,7 @@ func (v vectorCommitment) Clone() trie.VCommitment {
 	return vectorCommitment(ret)
 }
 
-func (v vectorCommitment) Update(delta trie.VCommitment) {
+func (v vectorCommitment) Update(delta common.VCommitment) {
 	m, ok := delta.(vectorCommitment)
 	if !ok {
 		panic("blake2b hash commitment expected")
@@ -269,7 +269,7 @@ func (v vectorCommitment) Update(delta trie.VCommitment) {
 }
 
 // *terminalCommitment implements trie_go.TCommitment
-var _ trie.TCommitment = &terminalCommitment{}
+var _ common.TCommitment = &terminalCommitment{}
 
 func newTerminalCommitment(sz HashSize) *terminalCommitment {
 	// all 0 non hashed value
@@ -285,12 +285,12 @@ const (
 )
 
 func (t *terminalCommitment) Write(w io.Writer) error {
-	trie.Assert(len(t.bytes) <= 32, "len(t.bytes) <= 32")
+	common.Assert(len(t.bytes) <= 32, "len(t.bytes) <= 32")
 	l := byte(len(t.bytes))
 	if t.isCostlyCommitment {
 		l |= costlyCommitmentMask
 	}
-	if err := trie.WriteByte(w, l); err != nil {
+	if err := common.WriteByte(w, l); err != nil {
 		return err
 	}
 	_, err := w.Write(t.bytes)
@@ -300,7 +300,7 @@ func (t *terminalCommitment) Write(w io.Writer) error {
 func (t *terminalCommitment) Read(r io.Reader) error {
 	var err error
 	var l byte
-	if l, err = trie.ReadByte(r); err != nil {
+	if l, err = common.ReadByte(r); err != nil {
 		return err
 	}
 	t.isCostlyCommitment = (l & costlyCommitmentMask) != 0
@@ -324,14 +324,14 @@ func (t *terminalCommitment) Read(r io.Reader) error {
 }
 
 func (t *terminalCommitment) Bytes() []byte {
-	return trie.MustBytes(t)
+	return common.MustBytes(t)
 }
 
 func (t *terminalCommitment) String() string {
 	return hex.EncodeToString(t.bytes[:])
 }
 
-func (t *terminalCommitment) Clone() trie.TCommitment {
+func (t *terminalCommitment) Clone() common.TCommitment {
 	if t == nil {
 		return nil
 	}

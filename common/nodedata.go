@@ -1,4 +1,4 @@
-package trie
+package common
 
 import (
 	"bytes"
@@ -8,13 +8,6 @@ import (
 
 	"golang.org/x/xerrors"
 )
-
-// NodeData contains all data trie node needs to compute commitment
-type NodeData struct {
-	PathFragment     []byte
-	ChildCommitments map[byte]VCommitment
-	Terminal         TCommitment
-}
 
 func NewNodeData() *NodeData {
 	return &NodeData{

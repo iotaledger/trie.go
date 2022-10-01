@@ -3,12 +3,14 @@
 // It mainly follows the definition from https://hackmd.io/@Evaldas/H13YFOVGt (except commitment to the path fragment)
 // The commitment to the path fragment is needed to provide proofs of absence of keys
 //
-// The specific implementation of the commitment model is presented as a CommitmentModel interface
-package trie
+// The specific implementation of the commitment common is presented as a CommitmentModel interface
+package mutable
 
 import (
 	"bytes"
 	"fmt"
+
+	"github.com/iotaledger/trie.go/common"
 )
 
 // Trie is an updatable trie implemented on top of the unpackedKey/value store. It is virtualized and optimized by caching of the
@@ -28,18 +30,18 @@ type TrieReader struct {
 // - Trie implement a cached TrieReader
 type NodeStore interface {
 	GetNode(unpackedKey []byte) (Node, bool)
-	Model() CommitmentModel
-	PathArity() PathArity
+	Model() common.CommitmentModel
+	PathArity() common.PathArity
 	Info() string
 }
 
 // RootCommitment computes root commitment from the root node of the trie represented as a NodeStore
-func RootCommitment(tr NodeStore) VCommitment {
+func RootCommitment(tr NodeStore) common.VCommitment {
 	n, ok := tr.GetNode(nil)
 	if !ok {
 		return nil
 	}
-	return tr.Model().CalcNodeCommitment(&NodeData{
+	return tr.Model().CalcNodeCommitment(&common.NodeData{
 		PathFragment:     n.PathFragment(),
 		ChildCommitments: n.ChildCommitments(),
 		Terminal:         n.Terminal(),
@@ -49,7 +51,7 @@ func RootCommitment(tr NodeStore) VCommitment {
 // Trie implements NodeStore interface. It buffers (caches) all TrieReader for optimization purposes
 var _ NodeStore = &Trie{}
 
-func New(model CommitmentModel, trieStore, valueStore KVReader, optimizeKeyCommitments ...bool) *Trie {
+func New(model common.CommitmentModel, trieStore, valueStore common.KVReader, optimizeKeyCommitments ...bool) *Trie {
 	o := false
 	if len(optimizeKeyCommitments) > 0 {
 		o = optimizeKeyCommitments[0]
@@ -67,11 +69,11 @@ func (tr *Trie) Clone() *Trie {
 	}
 }
 
-func (tr *Trie) Model() CommitmentModel {
+func (tr *Trie) Model() common.CommitmentModel {
 	return tr.nodeStore.reader.m
 }
 
-func (tr *Trie) PathArity() PathArity {
+func (tr *Trie) PathArity() common.PathArity {
 	return tr.nodeStore.arity
 }
 
@@ -81,14 +83,14 @@ func (tr *Trie) GetNode(unpackedKey []byte) (Node, bool) {
 }
 
 func (tr *Trie) Info() string {
-	return fmt.Sprintf("Trie( model dscr: '%s', optimize key commitments: %v)",
+	return fmt.Sprintf("Trie( common dscr: '%s', optimize key commitments: %v)",
 		tr.nodeStore.reader.m.Description(), tr.nodeStore.optimizeKeyCommitments,
 	)
 }
 
 // PersistMutations persists the cache to the unpackedKey/value store
 // Does not clear cache
-func (tr *Trie) PersistMutations(store KVWriter) int {
+func (tr *Trie) PersistMutations(store common.KVWriter) int {
 	return tr.nodeStore.persistMutations(store)
 }
 
@@ -99,7 +101,7 @@ func (tr *Trie) ClearCache() {
 
 // newTerminalNode creates new node in the trie with specified PathFragment and Terminal commitment.
 // Assumes 'unpackedKey' does not exist in the Trie
-func (tr *Trie) newTerminalNode(unpackedKey, unpackedPathFragment []byte, newTerminal TCommitment) *bufferedNode {
+func (tr *Trie) newTerminalNode(unpackedKey, unpackedPathFragment []byte, newTerminal common.TCommitment) *bufferedNode {
 	tr.nodeStore.unDelete(unpackedKey)
 	ret := newBufferedNode(unpackedKey)
 	ret.newTerminal = newTerminal
@@ -121,7 +123,7 @@ func (tr *Trie) Commit() {
 // It calls implementation-specific function UpdateNodeCommitment and passes parameter
 // calcDelta = true if node's commitment can be updated incrementally. The implementation
 // of UpdateNodeCommitment may use this parameter to optimize underlying cryptography
-func (tr *Trie) commitNode(key []byte, update *VCommitment) {
+func (tr *Trie) commitNode(key []byte, update *common.VCommitment) {
 	n, ok := tr.nodeStore.getNode(key)
 	if !ok {
 		if update != nil {
@@ -133,12 +135,12 @@ func (tr *Trie) commitNode(key []byte, update *VCommitment) {
 	if !isModified {
 		return
 	}
-	mutate := NodeData{
+	mutate := common.NodeData{
 		PathFragment:     n.n.PathFragment,
 		ChildCommitments: n.n.ChildCommitments,
 		Terminal:         n.n.Terminal,
 	}
-	childUpdates := make(map[byte]VCommitment)
+	childUpdates := make(map[byte]common.VCommitment)
 	for childIndex := range n.modifiedChildren {
 		curCommitment := mutate.ChildCommitments[childIndex] // may be nil
 		tr.commitNode(childKey(n, childIndex), &curCommitment)
@@ -158,9 +160,9 @@ func (tr *Trie) commitNode(key []byte, update *VCommitment) {
 
 // Update updates Trie with the unpackedKey/value. Reorganizes and re-calculates trie, keeps cache consistent
 func (tr *Trie) Update(key []byte, value []byte) {
-	var c TCommitment
+	var c common.TCommitment
 	if tr.nodeStore.optimizeKeyCommitments && bytes.Equal(key, value) {
-		c = tr.nodeStore.reader.m.CommitToData(UnpackBytes(value, tr.nodeStore.arity))
+		c = tr.nodeStore.reader.m.CommitToData(common.UnpackBytes(value, tr.nodeStore.arity))
 	} else {
 		c = tr.nodeStore.reader.m.CommitToData(value)
 	}
@@ -170,7 +172,7 @@ func (tr *Trie) Update(key []byte, value []byte) {
 		return
 	}
 	// find path in the trie corresponding to the unpackedKey
-	unpackedKey := UnpackBytes(key, tr.nodeStore.arity)
+	unpackedKey := common.UnpackBytes(key, tr.nodeStore.arity)
 	proof, lastCommonPrefix, ending := proofPath(tr, unpackedKey)
 	if len(proof) == 0 {
 		tr.newTerminalNode(nil, unpackedKey, c)
@@ -183,7 +185,7 @@ func (tr *Trie) Update(key []byte, value []byte) {
 
 	case EndingExtend:
 		childIndexPosition := len(lastKey) + len(lastCommonPrefix)
-		Assert(childIndexPosition < len(unpackedKey), "childPosition < len(unpackedKey)")
+		common.Assert(childIndexPosition < len(unpackedKey), "childPosition < len(unpackedKey)")
 		childIndex := unpackedKey[childIndexPosition]
 		tr.nodeStore.removeKey(unpackedKey[:childIndexPosition+1])
 		tr.newTerminalNode(unpackedKey[:childIndexPosition+1], unpackedKey[childIndexPosition+1:], c)
@@ -212,16 +214,16 @@ func (tr *Trie) InsertKeyCommitment(key []byte) {
 	tr.Update(key, key)
 }
 
-func (tr *Trie) splitNode(fullKey, lastKey, commonPrefix []byte, newTerminal TCommitment) {
+func (tr *Trie) splitNode(fullKey, lastKey, commonPrefix []byte, newTerminal common.TCommitment) {
 	splitIndex := len(commonPrefix)
 	childPosition := len(lastKey) + splitIndex
-	Assert(childPosition <= len(fullKey), "childPosition <= len(fullKey)")
+	common.Assert(childPosition <= len(fullKey), "childPosition <= len(fullKey)")
 
 	n := tr.nodeStore.mustGetNode(lastKey)
 
 	keyNewNode := make([]byte, childPosition+1)
 	copy(keyNewNode, fullKey)
-	Assert(splitIndex < len(n.n.PathFragment), "splitIndex < len(n.newPathFragment)")
+	common.Assert(splitIndex < len(n.n.PathFragment), "splitIndex < len(n.newPathFragment)")
 	childContinue := n.n.PathFragment[splitIndex]
 	keyNewNode[len(keyNewNode)-1] = childContinue
 
@@ -234,7 +236,7 @@ func (tr *Trie) splitNode(fullKey, lastKey, commonPrefix []byte, newTerminal TCo
 
 	// modify the node under the old unpackedKey
 	n.setNewPathFragment(commonPrefix)
-	n.n.ChildCommitments = make(map[uint8]VCommitment)
+	n.n.ChildCommitments = make(map[uint8]common.VCommitment)
 	n.modifiedChildren = make(map[uint8]struct{})
 	n.markChildModified(childContinue)
 	n.n.Terminal = nil
@@ -248,7 +250,7 @@ func (tr *Trie) splitNode(fullKey, lastKey, commonPrefix []byte, newTerminal TCo
 		// create a new node
 		keyFork := fullKey[:len(keyNewNode)]
 		childForkIndex := keyFork[len(keyFork)-1]
-		Assert(childForkIndex != childContinue, "childForkIndex != childContinue")
+		common.Assert(childForkIndex != childContinue, "childForkIndex != childContinue")
 		tr.newTerminalNode(keyFork, fullKey[len(keyFork):], newTerminal)
 		n.markChildModified(childForkIndex)
 	}
@@ -256,7 +258,7 @@ func (tr *Trie) splitNode(fullKey, lastKey, commonPrefix []byte, newTerminal TCo
 
 // Delete deletes Key/value from the Trie, reorganizes the trie
 func (tr *Trie) Delete(key []byte) {
-	unpackedKey := UnpackBytes(key, tr.nodeStore.arity)
+	unpackedKey := common.UnpackBytes(key, tr.nodeStore.arity)
 	proof, _, ending := proofPath(tr, unpackedKey)
 	if len(proof) == 0 || ending != EndingTerminal {
 		return
@@ -299,7 +301,7 @@ func (tr *Trie) mergeNode(key []byte, n *bufferedNode, childIndex byte) {
 	tr.nodeStore.unDelete(key)
 	ret := nextNode.Clone()
 	ret.setNewKey(key)
-	ret.setNewPathFragment(Concat(n.PathFragment(), childIndex, nextNode.PathFragment()))
+	ret.setNewPathFragment(common.Concat(n.PathFragment(), childIndex, nextNode.PathFragment()))
 	tr.nodeStore.replaceNode(ret)
 	tr.nodeStore.removeKey(nextKey)
 }
@@ -417,14 +419,14 @@ func (tr *Trie) DeleteStr(key interface{}) {
 	tr.Delete(k)
 }
 
-func (tr *Trie) VectorCommitmentFromBytes(data []byte) (VCommitment, error) {
+func (tr *Trie) VectorCommitmentFromBytes(data []byte) (common.VCommitment, error) {
 	ret := tr.nodeStore.reader.m.NewVectorCommitment()
 	rdr := bytes.NewReader(data)
 	if err := ret.Read(rdr); err != nil {
 		return nil, err
 	}
 	if rdr.Len() != 0 {
-		return nil, ErrNotAllBytesConsumed
+		return nil, common.ErrNotAllBytesConsumed
 	}
 	return ret, nil
 }
@@ -432,10 +434,10 @@ func (tr *Trie) VectorCommitmentFromBytes(data []byte) (VCommitment, error) {
 // Reconcile returns a list of keys in the store which cannot be proven in the trie
 // Trie is consistent if empty slice is returned
 // May be an expensive operation
-func (tr *Trie) Reconcile(store KVIterator) [][]byte {
+func (tr *Trie) Reconcile(store common.KVIterator) [][]byte {
 	ret := make([][]byte, 0)
 	store.Iterate(func(k, v []byte) bool {
-		p, _, ending := proofPath(tr, UnpackBytes(k, tr.PathArity()))
+		p, _, ending := proofPath(tr, common.UnpackBytes(k, tr.PathArity()))
 		if ending == EndingTerminal {
 			lastKey := p[len(p)-1]
 			n, ok := tr.GetNode(lastKey)
@@ -456,7 +458,7 @@ func (tr *Trie) Reconcile(store KVIterator) [][]byte {
 
 // UpdateAll mass-updates trie from the unpackedKey/value store.
 // To be used to build trie for arbitrary unpackedKey/value data sets
-func (tr *Trie) UpdateAll(store KVIterator) {
+func (tr *Trie) UpdateAll(store common.KVIterator) {
 	store.Iterate(func(k, v []byte) bool {
 		tr.Update(k, v)
 		return true
@@ -470,7 +472,7 @@ func (tr *Trie) DangerouslyDumpCacheToString() string {
 // TrieReader implements NodeStore
 var _ NodeStore = &TrieReader{}
 
-func NewTrieReader(model CommitmentModel, trieStore, valueStore KVReader) *TrieReader {
+func NewTrieReader(model common.CommitmentModel, trieStore, valueStore common.KVReader) *TrieReader {
 	return &TrieReader{
 		reader: newNodeStore(trieStore, valueStore, model, model.PathArity()),
 	}
@@ -480,16 +482,16 @@ func (tr *TrieReader) GetNode(unpackedKey []byte) (Node, bool) {
 	return tr.reader.getNode(unpackedKey)
 }
 
-func (tr *TrieReader) Model() CommitmentModel {
+func (tr *TrieReader) Model() common.CommitmentModel {
 	return tr.reader.m
 }
 
-func (tr *TrieReader) PathArity() PathArity {
+func (tr *TrieReader) PathArity() common.PathArity {
 	return tr.reader.arity
 }
 
 func (tr *TrieReader) Info() string {
-	return fmt.Sprintf("TrieReader ( model: %s, path arity: %s )",
+	return fmt.Sprintf("TrieReader ( common: %s, path arity: %s )",
 		tr.reader.m.Description(), tr.reader.arity,
 	)
 }

@@ -1,4 +1,4 @@
-package trie
+package common
 
 import (
 	"fmt"
@@ -34,6 +34,14 @@ type CommitmentModel interface {
 	// ShortName short name
 	ShortName() string
 }
+
+// NodeData contains all data trie node needs to compute commitment
+type NodeData struct {
+	PathFragment     []byte
+	ChildCommitments map[byte]VCommitment
+	Terminal         TCommitment
+}
+
 type PathArity byte
 
 const (

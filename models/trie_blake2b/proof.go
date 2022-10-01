@@ -6,12 +6,13 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/iotaledger/trie.go/trie"
+	"github.com/iotaledger/trie.go/common"
+	"github.com/iotaledger/trie.go/mutable"
 )
 
-// Proof blake2b 20 byte model-specific proof of inclusion
+// Proof blake2b 20 byte common-specific proof of inclusion
 type Proof struct {
-	PathArity trie.PathArity
+	PathArity common.PathArity
 	HashSize  HashSize
 	Key       []byte
 	Path      []*ProofElement
@@ -31,15 +32,15 @@ func ProofFromBytes(data []byte) (*Proof, error) {
 		return nil, err
 	}
 	if rdr.Len() != 0 {
-		return nil, trie.ErrNotAllBytesConsumed
+		return nil, common.ErrNotAllBytesConsumed
 	}
 	return ret, nil
 }
 
 // Proof converts generic proof path to the Merkle proof path
-func (m *CommitmentModel) Proof(key []byte, tr trie.NodeStore) *Proof {
-	unpackedKey := trie.UnpackBytes(key, tr.PathArity())
-	proofGeneric := trie.GetProofGeneric(tr, unpackedKey)
+func (m *CommitmentModel) Proof(key []byte, tr mutable.NodeStore) *Proof {
+	unpackedKey := common.UnpackBytes(key, tr.PathArity())
+	proofGeneric := mutable.GetProofGeneric(tr, unpackedKey)
 	if proofGeneric == nil {
 		return nil
 	}
@@ -65,9 +66,9 @@ func (m *CommitmentModel) Proof(key []byte, tr trie.NodeStore) *Proof {
 			elemKeyPosition++
 		} else {
 			switch proofGeneric.Ending {
-			case trie.EndingTerminal:
+			case mutable.EndingTerminal:
 				childIndex = m.arity.TerminalCommitmentIndex()
-			case trie.EndingExtend, trie.EndingSplit:
+			case mutable.EndingExtend, mutable.EndingSplit:
 				childIndex = m.arity.PathFragmentCommitmentIndex()
 			default:
 				panic("wrong ending code")
@@ -95,25 +96,25 @@ func (m *CommitmentModel) Proof(key []byte, tr trie.NodeStore) *Proof {
 }
 
 func (p *Proof) Bytes() []byte {
-	return trie.MustBytes(p)
+	return common.MustBytes(p)
 }
 
 func (p *Proof) Write(w io.Writer) error {
 	var err error
-	if err = trie.WriteByte(w, byte(p.PathArity)); err != nil {
+	if err = common.WriteByte(w, byte(p.PathArity)); err != nil {
 		return err
 	}
-	if err = trie.WriteByte(w, byte(p.HashSize)); err != nil {
+	if err = common.WriteByte(w, byte(p.HashSize)); err != nil {
 		return err
 	}
-	encodedKey, err := trie.EncodeUnpackedBytes(p.Key, p.PathArity)
+	encodedKey, err := common.EncodeUnpackedBytes(p.Key, p.PathArity)
 	if err != nil {
 		return err
 	}
-	if err = trie.WriteBytes16(w, encodedKey); err != nil {
+	if err = common.WriteBytes16(w, encodedKey); err != nil {
 		return err
 	}
-	if err = trie.WriteUint16(w, uint16(len(p.Path))); err != nil {
+	if err = common.WriteUint16(w, uint16(len(p.Path))); err != nil {
 		return err
 	}
 	for _, e := range p.Path {
@@ -125,13 +126,13 @@ func (p *Proof) Write(w io.Writer) error {
 }
 
 func (p *Proof) Read(r io.Reader) error {
-	b, err := trie.ReadByte(r)
+	b, err := common.ReadByte(r)
 	if err != nil {
 		return err
 	}
-	p.PathArity = trie.PathArity(b)
+	p.PathArity = common.PathArity(b)
 
-	b, err = trie.ReadByte(r)
+	b, err = common.ReadByte(r)
 	if err != nil {
 		return err
 	}
@@ -141,14 +142,14 @@ func (p *Proof) Read(r io.Reader) error {
 	}
 
 	var encodedKey []byte
-	if encodedKey, err = trie.ReadBytes16(r); err != nil {
+	if encodedKey, err = common.ReadBytes16(r); err != nil {
 		return err
 	}
-	if p.Key, err = trie.DecodeToUnpackedBytes(encodedKey, p.PathArity); err != nil {
+	if p.Key, err = common.DecodeToUnpackedBytes(encodedKey, p.PathArity); err != nil {
 		return err
 	}
 	var size uint16
-	if err = trie.ReadUint16(r, &size); err != nil {
+	if err = common.ReadUint16(r, &size); err != nil {
 		return err
 	}
 	p.Path = make([]*ProofElement, size)
@@ -166,15 +167,15 @@ const (
 	hasChildrenFlag      = 0x02
 )
 
-func (e *ProofElement) Write(w io.Writer, arity trie.PathArity, sz HashSize) error {
-	encodedPathFragment, err := trie.EncodeUnpackedBytes(e.PathFragment, arity)
+func (e *ProofElement) Write(w io.Writer, arity common.PathArity, sz HashSize) error {
+	encodedPathFragment, err := common.EncodeUnpackedBytes(e.PathFragment, arity)
 	if err != nil {
 		return err
 	}
-	if err = trie.WriteBytes16(w, encodedPathFragment); err != nil {
+	if err = common.WriteBytes16(w, encodedPathFragment); err != nil {
 		return err
 	}
-	if err = trie.WriteUint16(w, uint16(e.ChildIndex)); err != nil {
+	if err = common.WriteUint16(w, uint16(e.ChildIndex)); err != nil {
 		return err
 	}
 	var smallFlags byte
@@ -187,12 +188,12 @@ func (e *ProofElement) Write(w io.Writer, arity trie.PathArity, sz HashSize) err
 		flags[i/8] |= 0x1 << (i % 8)
 		smallFlags |= hasChildrenFlag
 	}
-	if err := trie.WriteByte(w, smallFlags); err != nil {
+	if err := common.WriteByte(w, smallFlags); err != nil {
 		return err
 	}
 	// write terminal commitment if any
 	if smallFlags&hasTerminalValueFlag != 0 {
-		if err = trie.WriteBytes8(w, e.Terminal); err != nil {
+		if err = common.WriteBytes8(w, e.Terminal); err != nil {
 			return err
 		}
 	}
@@ -217,26 +218,26 @@ func (e *ProofElement) Write(w io.Writer, arity trie.PathArity, sz HashSize) err
 	return nil
 }
 
-func (e *ProofElement) Read(r io.Reader, arity trie.PathArity, sz HashSize) error {
+func (e *ProofElement) Read(r io.Reader, arity common.PathArity, sz HashSize) error {
 	var err error
 	var encodedPathFragment []byte
-	if encodedPathFragment, err = trie.ReadBytes16(r); err != nil {
+	if encodedPathFragment, err = common.ReadBytes16(r); err != nil {
 		return err
 	}
-	if e.PathFragment, err = trie.DecodeToUnpackedBytes(encodedPathFragment, arity); err != nil {
+	if e.PathFragment, err = common.DecodeToUnpackedBytes(encodedPathFragment, arity); err != nil {
 		return err
 	}
 	var idx uint16
-	if err := trie.ReadUint16(r, &idx); err != nil {
+	if err := common.ReadUint16(r, &idx); err != nil {
 		return err
 	}
 	e.ChildIndex = int(idx)
 	var smallFlags byte
-	if smallFlags, err = trie.ReadByte(r); err != nil {
+	if smallFlags, err = common.ReadByte(r); err != nil {
 		return err
 	}
 	if smallFlags&hasTerminalValueFlag != 0 {
-		if e.Terminal, err = trie.ReadBytes8(r); err != nil {
+		if e.Terminal, err = common.ReadBytes8(r); err != nil {
 			return err
 		}
 	} else {
