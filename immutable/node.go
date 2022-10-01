@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"encoding/hex"
 	"fmt"
+
+	"github.com/iotaledger/trie.go/common"
 )
 
 // Node is a read-only interface to the 256+ trie node
@@ -11,26 +13,26 @@ type Node interface {
 	// PathFragment of the node (trieBuffer)
 	PathFragment() []byte
 	// Terminal of the node (trieBuffer)
-	Terminal() TCommitment
+	Terminal() common.TCommitment
 	// ChildCommitments can return old commitments if node is not trieBuffer
-	ChildCommitments() map[byte]VCommitment
+	ChildCommitments() map[byte]common.VCommitment
 	// Commitment is the commitment to the node
-	Commitment() VCommitment
+	Commitment() common.VCommitment
 }
 
 // bufferedNode is a modified node
 type bufferedNode struct {
 	// persistent
-	nodeFetched  *NodeData
-	nodeModified *NodeData
+	nodeFetched  *common.NodeData
+	nodeModified *common.NodeData
 	// non-persistent
 	uncommittedChildren map[byte]*bufferedNode // children which has been modified
 	triePath            []byte
 }
 
-func newBufferedNode(n *NodeData, triePath []byte) *bufferedNode {
+func newBufferedNode(n *common.NodeData, triePath []byte) *bufferedNode {
 	if n == nil {
-		n = NewNodeData(nil)
+		n = common.NewNodeData(nil)
 	}
 	ret := &bufferedNode{
 		nodeFetched:         n,

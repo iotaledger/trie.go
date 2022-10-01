@@ -25,3 +25,10 @@ type TCommitment interface {
 	Clone() TCommitment
 	Serializable
 }
+
+func AsKey(c Serializable) []byte {
+	if !IsNil(c) {
+		return c.Bytes()
+	}
+	return nil
+}
