@@ -70,10 +70,7 @@ func (tr *Trie) commitNode(node *bufferedNode) {
 			childUpdates[idx] = child.nodeData.Commitment
 		}
 	}
-	mutate := node.nodeData.Clone()
-	c := node.nodeData.Commitment.Clone()
-	tr.Model().UpdateNodeCommitment(mutate, childUpdates, !common.IsNil(c), node.nodeModified.Terminal, &c)
-	node.nodeModified.Commitment = c
+	tr.Model().UpdateNodeCommitment(node.nodeData, childUpdates, node.terminal, node.pathFragment, !common.IsNil(node.nodeData.Commitment))
 	node.uncommittedChildren = make(map[byte]*bufferedNode)
 }
 
