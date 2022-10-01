@@ -21,7 +21,7 @@ import (
 )
 
 const usage = "USAGE: trie_bench [-n=<num kv pairs>] [-blake2b=20|32]" +
-	"[-arity=2|16|26] [-optkey] [-valuethr=<terminal optimization threshold>]" +
+	"[-arity=2|16|26] [-valuethr=<terminal optimization threshold>]" +
 	"[maxkey=<max key size>] [maxvalue=<max value size>]" +
 	"<gen|mkdbbadger|mkdbmem|scandbbadger|mkdbbadgernotrie> <name>\n"
 
@@ -31,7 +31,6 @@ var (
 	arityPar = flag.Int("arity", 16, "must be 2, 16 or 256")
 	num      = flag.Int("n", 1000, "number of k/v pairs")
 	hashkv   = flag.Bool("hashkv", false, "hash keys and values")
-	optkey   = flag.Bool("optkey", false, "optimize hash commitments")
 	optterm  = flag.Int("valuethr", 0, "commitments to values longer that parameter won't be saved in the try")
 	maxKey   = flag.Int("maxkey", MaxKey, "maximum size of the generated key")
 	maxValue = flag.Int("maxvalue", MaxValue, "maximum size of the generated value")
@@ -80,7 +79,6 @@ func main() {
 		os.Exit(1)
 	}
 	fmt.Printf("Commitment common: '%s'\n", model.Description())
-	fmt.Printf("Optimize key commitments: %v\n", *optkey)
 	fmt.Printf("Terminal optimization threshold: %d\n", *optterm)
 	fname = name + ".bin"
 	dbdir = fmt.Sprintf("%s.%d.%d.%d.dbdir", name, *hashsize, *arityPar, *optterm)
@@ -292,7 +290,7 @@ func file2kvs(kvs kvstore.KVStore) {
 	tm := newTimer()
 	counterRec := 1
 	tr := mutable.NewTrieReader(model, hive_adaptor.NewHiveKVStoreAdaptor(kvs, triePrefix), nil)
-	updater, err := hive_adaptor.NewHiveBatchedUpdater(kvs, model, triePrefix, valueStorePrefix, *optkey)
+	updater, err := hive_adaptor.NewHiveBatchedUpdater(kvs, model, triePrefix, valueStorePrefix)
 	must(err)
 	var mem runtime.MemStats
 	err = streamIn.Iterate(func(k []byte, v []byte) bool {
