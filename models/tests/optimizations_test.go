@@ -11,92 +11,9 @@ import (
 	"github.com/iotaledger/trie.go/common"
 	"github.com/iotaledger/trie.go/models/trie_blake2b"
 	"github.com/iotaledger/trie.go/models/trie_blake2b/trie_blake2b_verify"
-	"github.com/iotaledger/trie.go/models/trie_kzg_bn256"
 	"github.com/iotaledger/trie.go/mutable"
 	"github.com/stretchr/testify/require"
 )
-
-func TestKeyCommitmentOptimization(t *testing.T) {
-	data := genRnd4()[:10_000]
-	runTest := func(m common.CommitmentModel) {
-		t.Run(tn(m), func(t *testing.T) {
-			store1 := common.NewInMemoryKVStore()
-			store2 := common.NewInMemoryKVStore()
-			tr1 := mutable.New(m, store1, nil, true)
-			tr2 := mutable.New(m, store2, nil, true)
-
-			for _, d := range data {
-				if len(d) > 0 {
-					tr1.InsertKeyCommitment([]byte(d))
-				}
-			}
-			tr1.Commit()
-			tr1.PersistMutations(store1)
-
-			for _, d := range data {
-				b := []byte(d)
-				if len(d) > 0 {
-					b[0] = b[0] + 1 // make different from the key but same length
-					tr2.Update([]byte(d), b)
-				}
-			}
-			tr2.Commit()
-			tr2.PersistMutations(store2)
-
-			size1 := common.ByteSize(store1)
-			size2 := common.ByteSize(store2)
-			numEntries := common.NumEntries(store1)
-			require.EqualValues(t, numEntries, common.NumEntries(store2))
-
-			require.True(t, size1 < size2)
-			t.Logf("num entries: %d", numEntries)
-			t.Logf("   with key commitments. Byte size: %d, avg: %f bytes per entry", size1, float32(size1)/float32(numEntries))
-			t.Logf("   not a key commitment. Byte size: %d, avg: %f bytes per entry", size2, float32(size2)/float32(numEntries))
-		})
-	}
-
-	runTest(trie_blake2b.New(common.PathArity256, trie_blake2b.HashSize256))
-	runTest(trie_blake2b.New(common.PathArity16, trie_blake2b.HashSize256))
-	runTest(trie_blake2b.New(common.PathArity2, trie_blake2b.HashSize256))
-	runTest(trie_blake2b.New(common.PathArity256, trie_blake2b.HashSize160))
-	runTest(trie_blake2b.New(common.PathArity16, trie_blake2b.HashSize160))
-	runTest(trie_blake2b.New(common.PathArity2, trie_blake2b.HashSize160))
-
-	runTest(trie_kzg_bn256.New())
-}
-
-func TestKeyCommitmentOptimizationOptions(t *testing.T) {
-	data := genRnd4()
-	runOptions := func(m common.CommitmentModel, optKeys bool) int {
-		store1 := common.NewInMemoryKVStore()
-		tr1 := mutable.New(m, store1, nil, optKeys)
-
-		for _, d := range data {
-			if len(d) > 0 {
-				tr1.InsertKeyCommitment([]byte(d))
-			}
-		}
-		tr1.Commit()
-		tr1.PersistMutations(store1)
-
-		return common.ByteSize(store1)
-	}
-	runTest := func(arity common.PathArity, sz trie_blake2b.HashSize) {
-		t.Run("-"+sz.String()+"-"+arity.String(), func(t *testing.T) {
-			size1 := runOptions(trie_blake2b.New(arity, sz), true)
-			size2 := runOptions(trie_blake2b.New(arity, sz), false)
-			t.Logf("   with key commitment optimization same data. Byte size: %d", size1)
-			t.Logf("without key commitment optimization same data. Byte size: %d", size2)
-			require.True(t, size1 < size2)
-		})
-	}
-	runTest(common.PathArity256, trie_blake2b.HashSize256)
-	runTest(common.PathArity256, trie_blake2b.HashSize160)
-	runTest(common.PathArity16, trie_blake2b.HashSize256)
-	runTest(common.PathArity16, trie_blake2b.HashSize160)
-	runTest(common.PathArity2, trie_blake2b.HashSize256)
-	runTest(common.PathArity2, trie_blake2b.HashSize160)
-}
 
 const letters1 = "abcdefghijklmnop"
 

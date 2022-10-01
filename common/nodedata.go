@@ -78,9 +78,8 @@ func (n *NodeData) String() string {
 const (
 	terminalExistsFlag        = 0x01
 	takeTerminalFromValueFlag = 0x02
-	takeTerminalFromKeyFlag   = 0x04
-	serializeChildrenFlag     = 0x08
-	serializePathFragmentFlag = 0x10
+	serializeChildrenFlag     = 0x04
+	serializePathFragmentFlag = 0x08
 )
 
 // cflags 256 flags, one for each child
@@ -118,16 +117,13 @@ func (fl cflags) hasFlag(i byte) bool {
 }
 
 // Write serialized node data
-func (n *NodeData) Write(w io.Writer, arity PathArity, isKeyCommitment bool, skipTerminal bool) error {
+func (n *NodeData) Write(w io.Writer, arity PathArity, skipTerminal bool) error {
 	var smallFlags byte
 	if n.Terminal != nil {
 		smallFlags |= terminalExistsFlag
 	}
 	if skipTerminal {
 		smallFlags |= takeTerminalFromValueFlag
-	}
-	if isKeyCommitment {
-		smallFlags |= takeTerminalFromKeyFlag
 	}
 	if len(n.ChildCommitments) > 0 {
 		smallFlags |= serializeChildrenFlag
@@ -154,8 +150,7 @@ func (n *NodeData) Write(w io.Writer, arity PathArity, isKeyCommitment bool, ski
 	// write Terminal commitment if not skipped for at least one of three reasons
 	if smallFlags&terminalExistsFlag != 0 {
 		// terminal exists
-		if smallFlags&takeTerminalFromKeyFlag == 0 &&
-			smallFlags&takeTerminalFromValueFlag == 0 {
+		if smallFlags&takeTerminalFromValueFlag == 0 {
 			// terminal will be stored in the node
 			if err = n.Terminal.Write(w); err != nil {
 				return err
@@ -206,13 +201,7 @@ func (n *NodeData) Read(r io.Reader, model CommitmentModel, unpackedKey []byte, 
 	n.Terminal = nil
 	if smallFlags&terminalExistsFlag != 0 {
 		// terminal exists. Should be taken from 1 or 3 locations
-		if smallFlags&takeTerminalFromKeyFlag != 0 {
-			// terminal is in key
-			if len(unpackedKey) == 0 {
-				return xerrors.New("non-empty unpackedKey expected")
-			}
-			n.Terminal = model.CommitToData(Concat(unpackedKey, n.PathFragment))
-		} else if smallFlags&takeTerminalFromValueFlag != 0 {
+		if smallFlags&takeTerminalFromValueFlag != 0 {
 			// terminal should be taken from the value store
 			if valueStore == nil {
 				return errors.New("can't read node: value store not provided")
@@ -234,7 +223,7 @@ func (n *NodeData) Read(r io.Reader, model CommitmentModel, unpackedKey []byte, 
 		}
 	} else {
 		// terminal does not exist. Enforce other flags to be 0
-		if smallFlags&(takeTerminalFromKeyFlag|takeTerminalFromValueFlag) != 0 {
+		if smallFlags&(takeTerminalFromValueFlag) != 0 {
 			return errors.New("wrong flag")
 		}
 	}

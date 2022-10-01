@@ -47,18 +47,16 @@ type nodeStoreBuffered struct {
 	// buffered part of the trie
 	nodeCache map[string]*bufferedNode
 	// cached deleted nodes
-	deleted                map[string]struct{}
-	arity                  common.PathArity
-	optimizeKeyCommitments bool
+	deleted map[string]struct{}
+	arity   common.PathArity
 }
 
-func newNodeStoreBuffered(model common.CommitmentModel, trieStore, valueStore common.KVReader, arity common.PathArity, optimizeKeyCommitments bool) *nodeStoreBuffered {
+func newNodeStoreBuffered(model common.CommitmentModel, trieStore, valueStore common.KVReader, arity common.PathArity) *nodeStoreBuffered {
 	ret := &nodeStoreBuffered{
-		reader:                 *newNodeStore(trieStore, valueStore, model, arity),
-		nodeCache:              make(map[string]*bufferedNode),
-		deleted:                make(map[string]struct{}),
-		arity:                  arity,
-		optimizeKeyCommitments: optimizeKeyCommitments,
+		reader:    *newNodeStore(trieStore, valueStore, model, arity),
+		nodeCache: make(map[string]*bufferedNode),
+		deleted:   make(map[string]struct{}),
+		arity:     arity,
 	}
 	return ret
 }
@@ -66,11 +64,10 @@ func newNodeStoreBuffered(model common.CommitmentModel, trieStore, valueStore co
 // clone is a deep copy of the trie, including its buffered data
 func (sc *nodeStoreBuffered) clone() *nodeStoreBuffered {
 	ret := &nodeStoreBuffered{
-		reader:                 sc.reader,
-		nodeCache:              make(map[string]*bufferedNode),
-		deleted:                make(map[string]struct{}),
-		arity:                  sc.arity,
-		optimizeKeyCommitments: sc.optimizeKeyCommitments,
+		reader:    sc.reader,
+		nodeCache: make(map[string]*bufferedNode),
+		deleted:   make(map[string]struct{}),
+		arity:     sc.arity,
 	}
 	for k, v := range sc.nodeCache {
 		ret.nodeCache[k] = v.Clone()
@@ -137,7 +134,7 @@ func (sc *nodeStoreBuffered) replaceNode(n *bufferedNode) {
 func (sc *nodeStoreBuffered) persistMutations(store common.KVWriter) int {
 	counter := 0
 	for _, v := range sc.nodeCache {
-		store.Set(common.MustEncodeUnpackedBytes(v.unpackedKey, sc.arity), v.Bytes(sc.reader.m, sc.arity, sc.optimizeKeyCommitments))
+		store.Set(common.MustEncodeUnpackedBytes(v.unpackedKey, sc.arity), v.Bytes(sc.reader.m, sc.arity))
 		counter++
 	}
 	for k := range sc.deleted {

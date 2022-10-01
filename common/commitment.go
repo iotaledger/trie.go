@@ -1,6 +1,7 @@
 package common
 
 import (
+	"bytes"
 	"io"
 )
 
@@ -31,4 +32,44 @@ func AsKey(c Serializable) []byte {
 		return c.Bytes()
 	}
 	return nil
+}
+
+func ReadVectorCommitment(m CommitmentModel, r io.Reader) (VCommitment, error) {
+	ret := m.NewVectorCommitment()
+	if err := ret.Read(r); err != nil {
+		return nil, err
+	}
+	return ret, nil
+}
+
+func ReadTerminalCommitment(m CommitmentModel, r io.Reader) (TCommitment, error) {
+	ret := m.NewTerminalCommitment()
+	if err := ret.Read(r); err != nil {
+		return nil, err
+	}
+	return ret, nil
+}
+
+func VectorCommitmentFromBytes(m CommitmentModel, data []byte) (VCommitment, error) {
+	rdr := bytes.NewReader(data)
+	ret, err := ReadVectorCommitment(m, rdr)
+	if err != nil {
+		return nil, err
+	}
+	if rdr.Len() > 0 {
+		return nil, ErrNotAllBytesConsumed
+	}
+	return ret, nil
+}
+
+func TerminalCommitmentFromBytes(m CommitmentModel, data []byte) (TCommitment, error) {
+	rdr := bytes.NewReader(data)
+	ret, err := ReadTerminalCommitment(m, rdr)
+	if err != nil {
+		return nil, err
+	}
+	if rdr.Len() > 0 {
+		return nil, ErrNotAllBytesConsumed
+	}
+	return ret, nil
 }

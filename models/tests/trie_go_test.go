@@ -25,7 +25,7 @@ func TestNode(t *testing.T) {
 	runTest := func(t *testing.T, m common.CommitmentModel) {
 		t.Run("base normal"+tn(m), func(t *testing.T) {
 			n := common.NewNodeData()
-			err := n.Write(io.Discard, m.PathArity(), false, false)
+			err := n.Write(io.Discard, m.PathArity(), false)
 			require.Error(t, err)
 
 			unpackedKey := common.UnpackBytes([]byte("a"), m.PathArity())
@@ -34,7 +34,7 @@ func TestNode(t *testing.T) {
 			var buf bytes.Buffer
 			n = common.NewNodeData()
 			n.Terminal = m.CommitToData(unpackedValue)
-			err = n.Write(&buf, m.PathArity(), false, false)
+			err = n.Write(&buf, m.PathArity(), false)
 			require.NoError(t, err)
 
 			nBack, err := common.NodeDataFromBytes(m, buf.Bytes(), unpackedKey, m.PathArity(), nil)
@@ -46,36 +46,13 @@ func TestNode(t *testing.T) {
 			require.EqualValues(t, h, hBack)
 			t.Logf("commitment = %s", h)
 		})
-		t.Run("base key commitment"+tn(m), func(t *testing.T) {
-			unpackedKey := common.UnpackBytes([]byte("abc"), m.PathArity())
-			unpackedPathFragment := common.UnpackBytes([]byte("d"), m.PathArity())
-			unpackedValue := common.UnpackBytes([]byte("abcd"), m.PathArity())
-			require.EqualValues(t, unpackedValue, common.Concat(unpackedKey, unpackedPathFragment))
-
-			var buf bytes.Buffer
-			n := common.NewNodeData()
-			n.PathFragment = unpackedPathFragment
-			n.Terminal = m.CommitToData(unpackedValue)
-			err := n.Write(&buf, m.PathArity(), true, false)
-			require.NoError(t, err)
-
-			nBack, err := common.NodeDataFromBytes(m, buf.Bytes(), unpackedKey, m.PathArity(), nil)
-			require.NoError(t, err)
-			require.EqualValues(t, n.PathFragment, nBack.PathFragment)
-			require.True(t, m.EqualCommitments(n.Terminal, nBack.Terminal))
-
-			h := m.CalcNodeCommitment(n)
-			hBack := m.CalcNodeCommitment(nBack)
-			require.True(t, m.EqualCommitments(h, hBack))
-			t.Logf("commitment = %s", h)
-		})
 		t.Run("base short terminal"+tn(m), func(t *testing.T) {
 			n := common.NewNodeData()
 			n.PathFragment = common.UnpackBytes([]byte("kuku"), m.PathArity())
 			n.Terminal = m.CommitToData(common.UnpackBytes([]byte("data"), m.PathArity()))
 
 			var buf bytes.Buffer
-			err := n.Write(&buf, m.PathArity(), false, false)
+			err := n.Write(&buf, m.PathArity(), false)
 			require.NoError(t, err)
 
 			nBack, err := common.NodeDataFromBytes(m, buf.Bytes(), nil, m.PathArity(), nil)
@@ -92,7 +69,7 @@ func TestNode(t *testing.T) {
 			n.Terminal = m.CommitToData(common.UnpackBytes([]byte(strings.Repeat("data", 1000)), m.PathArity()))
 
 			var buf bytes.Buffer
-			err := n.Write(&buf, m.PathArity(), false, false)
+			err := n.Write(&buf, m.PathArity(), false)
 			require.NoError(t, err)
 
 			nBack, err := common.NodeDataFromBytes(m, buf.Bytes(), nil, m.PathArity(), nil)

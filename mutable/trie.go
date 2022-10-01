@@ -51,13 +51,9 @@ func RootCommitment(tr NodeStore) common.VCommitment {
 // Trie implements NodeStore interface. It buffers (caches) all TrieReader for optimization purposes
 var _ NodeStore = &Trie{}
 
-func New(model common.CommitmentModel, trieStore, valueStore common.KVReader, optimizeKeyCommitments ...bool) *Trie {
-	o := false
-	if len(optimizeKeyCommitments) > 0 {
-		o = optimizeKeyCommitments[0]
-	}
+func New(model common.CommitmentModel, trieStore, valueStore common.KVReader) *Trie {
 	ret := &Trie{
-		nodeStore: newNodeStoreBuffered(model, trieStore, valueStore, model.PathArity(), o),
+		nodeStore: newNodeStoreBuffered(model, trieStore, valueStore, model.PathArity()),
 	}
 	return ret
 }
@@ -83,9 +79,7 @@ func (tr *Trie) GetNode(unpackedKey []byte) (Node, bool) {
 }
 
 func (tr *Trie) Info() string {
-	return fmt.Sprintf("Trie( common dscr: '%s', optimize key commitments: %v)",
-		tr.nodeStore.reader.m.Description(), tr.nodeStore.optimizeKeyCommitments,
-	)
+	return fmt.Sprintf("Trie( common dscr: '%s')", tr.nodeStore.reader.m.Description())
 }
 
 // PersistMutations persists the cache to the unpackedKey/value store
@@ -161,7 +155,7 @@ func (tr *Trie) commitNode(key []byte, update *common.VCommitment) {
 // Update updates Trie with the unpackedKey/value. Reorganizes and re-calculates trie, keeps cache consistent
 func (tr *Trie) Update(key []byte, value []byte) {
 	var c common.TCommitment
-	if tr.nodeStore.optimizeKeyCommitments && bytes.Equal(key, value) {
+	if bytes.Equal(key, value) {
 		c = tr.nodeStore.reader.m.CommitToData(common.UnpackBytes(value, tr.nodeStore.arity))
 	} else {
 		c = tr.nodeStore.reader.m.CommitToData(value)

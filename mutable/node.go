@@ -142,17 +142,13 @@ func (n *bufferedNode) markChildModified(index byte) {
 	n.modifiedChildren[index] = struct{}{}
 }
 
-func (n *bufferedNode) Bytes(m common.CommitmentModel, arity common.PathArity, optimizeKeyCommitments bool) []byte {
+func (n *bufferedNode) Bytes(m common.CommitmentModel, arity common.PathArity) []byte {
 	// Optimization: if terminal commits to unpackedKey, no need to serialize it,
 	// because all information is in the key
-	isKeyCommitment := false
-	if optimizeKeyCommitments && len(n.unpackedKey) > 0 {
-		keyCommitment := m.CommitToData(common.Concat(n.unpackedKey, n.n.PathFragment))
-		isKeyCommitment = m.EqualCommitments(n.n.Terminal, keyCommitment)
-	}
+
 	var buf bytes.Buffer
 	skipStoreTerminal := n.n.Terminal != nil && !m.ForceStoreTerminalWithNode(n.n.Terminal)
-	err := n.n.Write(&buf, arity, isKeyCommitment, skipStoreTerminal)
+	err := n.n.Write(&buf, arity, skipStoreTerminal)
 	common.Assert(err == nil, "trie::bufferedNode::Bytes: %v", err)
 	return buf.Bytes()
 }
