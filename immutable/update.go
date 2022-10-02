@@ -11,7 +11,7 @@ func (tr *Trie) update(node *bufferedNode, triePath []byte, terminal common.TCom
 	common.Assert(len(trieKey) <= len(triePath), "len(trieKey) <= len(triePath)")
 	remainingTriePath := triePath[len(trieKey):]
 
-	prefix, triePathTail, pathFragmentTail := commonPrefix(node.pathFragment(), remainingTriePath)
+	prefix, triePathTail, pathFragmentTail := commonPrefix(node.pathFragment, remainingTriePath)
 
 	if len(triePathTail) == 0 && len(pathFragmentTail) == 0 {
 		// it is a terminal node, finish
@@ -24,7 +24,7 @@ func (tr *Trie) update(node *bufferedNode, triePath []byte, terminal common.TCom
 		common.Assert(len(triePathTail) > 0, "len(triePathTail) > 0") // we are not at the end yet
 		childIndex := triePathTail[0]                                 // we will continue with this index
 
-		nextTrieKey := common.Concat(trieKey, node.pathFragment(), childIndex)
+		nextTrieKey := common.Concat(trieKey, node.pathFragment, childIndex)
 		child := node.getChild(childIndex, tr.nodeStore)
 		if child != nil {
 			child = tr.update(child, triePath, terminal)
@@ -37,7 +37,7 @@ func (tr *Trie) update(node *bufferedNode, triePath []byte, terminal common.TCom
 
 	// split the current node
 	forkPathIndex := len(prefix)
-	common.Assert(forkPathIndex < len(node.pathFragment()), "forkPathIndex<len(node.pathFragment())")
+	common.Assert(forkPathIndex < len(node.pathFragment), "forkPathIndex<len(node.pathFragment())")
 	common.Assert(forkPathIndex <= len(triePath), "forkPathIndex<=len(triePath)")
 
 	childIndexContinue := pathFragmentTail[0]
@@ -64,12 +64,12 @@ func (tr *Trie) update(node *bufferedNode, triePath []byte, terminal common.TCom
 }
 
 func (tr *Trie) delete(node *bufferedNode, triePath []byte) (*bufferedNode, bool) {
-	keyPlusPathFragment := common.Concat(node.triePath, node.pathFragment())
+	keyPlusPathFragment := common.Concat(node.triePath, node.pathFragment)
 	if len(triePath) < len(keyPlusPathFragment) {
 		return nil, false
 	}
 	if bytes.Equal(keyPlusPathFragment, triePath) {
-		if common.IsNil(node.terminal()) {
+		if common.IsNil(node.terminal) {
 			return node, false
 		}
 		node.setTerminal(nil, tr.Model())
@@ -102,7 +102,7 @@ func (tr *Trie) mergeNodeIfNeeded(node *bufferedNode) *bufferedNode {
 		return nil
 	}
 	// merge with child
-	newPathFragment := common.Concat(node.pathFragment(), theOnlyChildToMergeWith.indexAsChild(), theOnlyChildToMergeWith.pathFragment())
+	newPathFragment := common.Concat(node.pathFragment, theOnlyChildToMergeWith.indexAsChild(), theOnlyChildToMergeWith.pathFragment)
 	theOnlyChildToMergeWith.setPathFragment(newPathFragment)
 	return theOnlyChildToMergeWith
 }

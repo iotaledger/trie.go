@@ -2,6 +2,7 @@ package common
 
 import (
 	"bytes"
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"io"
@@ -17,10 +18,10 @@ func NewNodeData() *NodeData {
 	}
 }
 
-func NodeDataFromBytes(model CommitmentModel, data, unpackedKey []byte, arity PathArity, valueStore KVReader) (*NodeData, error) {
+func NodeDataFromBytes(model CommitmentModel, data []byte, arity PathArity, getValueFunc func(pathFragment []byte) ([]byte, error)) (*NodeData, error) {
 	ret := NewNodeData()
 	rdr := bytes.NewReader(data)
-	if err := ret.Read(rdr, model, unpackedKey, arity, valueStore); err != nil {
+	if err := ret.Read(rdr, model, arity, getValueFunc); err != nil {
 		return nil, err
 	}
 	if rdr.Len() != 0 {
@@ -82,6 +83,7 @@ const (
 	takeTerminalFromValueFlag = 0x02
 	serializeChildrenFlag     = 0x04
 	serializePathFragmentFlag = 0x08
+	serializeStateIndexFlag   = 0x10
 )
 
 // cflags 256 flags, one for each child
@@ -121,6 +123,9 @@ func (fl cflags) hasFlag(i byte) bool {
 // Write serialized node data
 func (n *NodeData) Write(w io.Writer, arity PathArity, skipTerminal bool) error {
 	var smallFlags byte
+	if n.StateIndex != nil {
+		smallFlags |= serializeStateIndexFlag
+	}
 	if n.Terminal != nil {
 		smallFlags |= terminalExistsFlag
 	}
@@ -143,6 +148,13 @@ func (n *NodeData) Write(w io.Writer, arity PathArity, skipTerminal bool) error 
 	}
 	if err = WriteByte(w, smallFlags); err != nil {
 		return err
+	}
+	if smallFlags&serializeStateIndexFlag != 0 {
+		var b [4]byte
+		binary.BigEndian.PutUint32(b[:], *n.StateIndex)
+		if _, err = w.Write(b[:]); err != nil {
+			return err
+		}
 	}
 	if smallFlags&serializePathFragmentFlag != 0 {
 		if err = WriteBytes16(w, pathFragmentEncoded); err != nil {
@@ -183,11 +195,19 @@ func (n *NodeData) Write(w io.Writer, arity PathArity, skipTerminal bool) error 
 }
 
 // Read deserialize node data
-func (n *NodeData) Read(r io.Reader, model CommitmentModel, unpackedKey []byte, arity PathArity, valueStore KVReader) error {
+func (n *NodeData) Read(r io.Reader, model CommitmentModel, arity PathArity, getValue func(pathFragment []byte) ([]byte, error)) error {
 	var err error
 	var smallFlags byte
 	if smallFlags, err = ReadByte(r); err != nil {
 		return err
+	}
+	if smallFlags&serializeStateIndexFlag != 0 {
+		b := make([]byte, 4)
+		if _, err = r.Read(b); err != nil {
+			return err
+		}
+		n.StateIndex = new(uint32)
+		*n.StateIndex = binary.BigEndian.Uint32(b)
 	}
 	if smallFlags&serializePathFragmentFlag != 0 {
 		encoded, err := ReadBytes16(r)
@@ -204,17 +224,9 @@ func (n *NodeData) Read(r io.Reader, model CommitmentModel, unpackedKey []byte, 
 	if smallFlags&terminalExistsFlag != 0 {
 		// terminal exists. Should be taken from 1 or 3 locations
 		if smallFlags&takeTerminalFromValueFlag != 0 {
-			// terminal should be taken from the value store
-			if valueStore == nil {
-				return errors.New("can't read node: value store not provided")
-			}
-			key, err := PackUnpackedBytes(Concat(unpackedKey, n.PathFragment), arity)
+			value, err := getValue(n.PathFragment)
 			if err != nil {
 				return err
-			}
-			value := valueStore.Get(key)
-			if value == nil {
-				return fmt.Errorf("can't find terminal value for key '%x'", key)
 			}
 			n.Terminal = model.CommitToData(value)
 		} else {

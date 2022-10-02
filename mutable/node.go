@@ -3,6 +3,7 @@ package mutable
 import (
 	"bytes"
 	"encoding/hex"
+	"errors"
 	"fmt"
 
 	"github.com/iotaledger/trie.go/common"
@@ -52,8 +53,25 @@ func (n *nodeReadOnly) IsCommitted() bool {
 	return true
 }
 
+// terminal should be taken from the value store
+
 func nodeReadOnlyFromBytes(m common.CommitmentModel, data, unpackedKey []byte, arity common.PathArity, valueStore common.KVReader) (*nodeReadOnly, error) {
-	ret, err := common.NodeDataFromBytes(m, data, unpackedKey, arity, valueStore)
+	getValueFun := func(pathFragment []byte) ([]byte, error) {
+		if valueStore == nil {
+			return nil, errors.New("nodeReadOnlyFromBytes: can't read node: value store not provided")
+		}
+		key, err := common.PackUnpackedBytes(common.Concat(unpackedKey, pathFragment), arity)
+		if err != nil {
+			return nil, fmt.Errorf("nodeReadOnlyFromBytes: %v", err)
+
+		}
+		value := valueStore.Get(key)
+		if value == nil {
+			return nil, fmt.Errorf("can't find terminal value for key '%x'", key)
+		}
+		return value, nil
+	}
+	ret, err := common.NodeDataFromBytes(m, data, arity, getValueFun)
 	if err != nil {
 		return nil, err
 	}

@@ -18,6 +18,7 @@ type Serializable interface {
 // VCommitment represents interface to the vector commitment. It can be hash, or it can be a curve element
 type VCommitment interface {
 	Clone() VCommitment
+	AsKey() []byte
 	Serializable
 }
 
@@ -25,13 +26,6 @@ type VCommitment interface {
 type TCommitment interface {
 	Clone() TCommitment
 	Serializable
-}
-
-func AsKey(c Serializable) []byte {
-	if !IsNil(c) {
-		return c.Bytes()
-	}
-	return nil
 }
 
 func ReadVectorCommitment(m CommitmentModel, r io.Reader) (VCommitment, error) {

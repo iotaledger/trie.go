@@ -25,8 +25,12 @@ func NewNodeStore(trieStore, valueStore common.KVReader, model common.Commitment
 	}
 }
 
+func noValueStore(_ []byte) ([]byte, error) {
+	panic("internal inconsistency: all terminal value must be stored in the trie node")
+}
+
 func (ns *immutableNodeStore) FetchNodeData(nodeCommitment common.VCommitment, triePath []byte) (*common.NodeData, bool) {
-	dbKey := common.AsKey(nodeCommitment)
+	dbKey := nodeCommitment.AsKey()
 	if ret, inCache := ns.cache[string(dbKey)]; inCache {
 		return ret, true
 	}
@@ -34,7 +38,7 @@ func (ns *immutableNodeStore) FetchNodeData(nodeCommitment common.VCommitment, t
 	if len(nodeBin) == 0 {
 		return nil, false
 	}
-	ret, err := common.NodeDataFromBytes(ns.m, nodeBin, triePath, ns.arity, ns.valueStore)
+	ret, err := common.NodeDataFromBytes(ns.m, nodeBin, ns.arity, noValueStore)
 	common.Assert(err == nil, "immutableNodeStore::FetchNodeData err: '%v' nodeBin: '%s', commitment: %s, triePath: '%s', arity: %s",
 		err, hex.EncodeToString(nodeBin), nodeCommitment.String(), hex.EncodeToString(triePath), ns.arity.String())
 	ret.Commitment = nodeCommitment

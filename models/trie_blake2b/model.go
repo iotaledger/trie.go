@@ -250,6 +250,10 @@ func (v vectorCommitment) Write(w io.Writer) error {
 	return err
 }
 
+func (v vectorCommitment) AsKey() []byte {
+	return v
+}
+
 func (v vectorCommitment) String() string {
 	return hex.EncodeToString(v)
 }

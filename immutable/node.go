@@ -78,7 +78,7 @@ func (n *bufferedNode) getChild(childIndex byte, db *immutableNodeStore) *buffer
 
 	nodeFetched, ok := db.FetchNodeData(childCommitment, childTriePath)
 	common.Assert(ok, "Trie::getChild: can't fetch node. triePath: '%s', dbKey: '%s",
-		hex.EncodeToString(common.AsKey(childCommitment)), hex.EncodeToString(childTriePath))
+		hex.EncodeToString(childCommitment.AsKey()), hex.EncodeToString(childTriePath))
 
 	return newBufferedNode(nodeFetched, childTriePath)
 }

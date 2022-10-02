@@ -43,6 +43,9 @@ type NodeData struct {
 	ChildCommitments map[byte]VCommitment
 	Terminal         TCommitment
 	// used for immutable only
+	// persisted if present
+	StateIndex *uint32
+	// persisted in the key
 	Commitment VCommitment
 }
 

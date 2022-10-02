@@ -22,13 +22,13 @@ func tn(m common.CommitmentModel) string {
 }
 
 func TestNode(t *testing.T) {
+	dummyFun := func(_ []byte) ([]byte, error) { return nil, nil }
 	runTest := func(t *testing.T, m common.CommitmentModel) {
 		t.Run("base normal"+tn(m), func(t *testing.T) {
 			n := common.NewNodeData()
 			err := n.Write(io.Discard, m.PathArity(), false)
 			require.Error(t, err)
 
-			unpackedKey := common.UnpackBytes([]byte("a"), m.PathArity())
 			unpackedValue := common.UnpackBytes([]byte("b"), m.PathArity())
 
 			var buf bytes.Buffer
@@ -37,7 +37,7 @@ func TestNode(t *testing.T) {
 			err = n.Write(&buf, m.PathArity(), false)
 			require.NoError(t, err)
 
-			nBack, err := common.NodeDataFromBytes(m, buf.Bytes(), unpackedKey, m.PathArity(), nil)
+			nBack, err := common.NodeDataFromBytes(m, buf.Bytes(), m.PathArity(), dummyFun)
 			require.NoError(t, err)
 			require.True(t, bytes.Equal(n.Terminal.Bytes(), nBack.Terminal.Bytes()))
 
@@ -55,7 +55,7 @@ func TestNode(t *testing.T) {
 			err := n.Write(&buf, m.PathArity(), false)
 			require.NoError(t, err)
 
-			nBack, err := common.NodeDataFromBytes(m, buf.Bytes(), nil, m.PathArity(), nil)
+			nBack, err := common.NodeDataFromBytes(m, buf.Bytes(), m.PathArity(), dummyFun)
 			require.NoError(t, err)
 
 			h := m.CalcNodeCommitment(n)
@@ -72,7 +72,7 @@ func TestNode(t *testing.T) {
 			err := n.Write(&buf, m.PathArity(), false)
 			require.NoError(t, err)
 
-			nBack, err := common.NodeDataFromBytes(m, buf.Bytes(), nil, m.PathArity(), nil)
+			nBack, err := common.NodeDataFromBytes(m, buf.Bytes(), m.PathArity(), dummyFun)
 			require.NoError(t, err)
 
 			h := m.CalcNodeCommitment(n)

@@ -35,6 +35,18 @@ func (v *vectorCommitment) Write(w io.Writer) error {
 	return err
 }
 
+func (v *vectorCommitment) AsKey() []byte {
+	if common.IsNil(v.Point) {
+		return nil
+	}
+	b, err := v.Point.MarshalBinary()
+	if err != nil {
+		panic(err)
+	}
+	ret := blake2b.Sum256(b)
+	return ret[:]
+}
+
 func (v *vectorCommitment) String() string {
 	return v.Point.String()
 }
