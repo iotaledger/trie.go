@@ -24,14 +24,16 @@ type ProofGenericElement struct {
 type ProofEndingCode byte
 
 const (
-	EndingTerminal = ProofEndingCode(iota)
+	EndingNone = ProofEndingCode(iota)
+	EndingTerminal
 	EndingSplit
 	EndingExtend
-	EndingRootNotFound
 )
 
 func (e ProofEndingCode) String() string {
 	switch e {
+	case EndingNone:
+		return "EndingNone"
 	case EndingTerminal:
 		return "EndingTerminal"
 	case EndingSplit:

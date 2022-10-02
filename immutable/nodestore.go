@@ -31,8 +31,8 @@ func MustInitRoot(store common.KVStore, m common.CommitmentModel, identity []byt
 	rootNodeData.Terminal = m.CommitToData(identity)
 	n := newBufferedNode(rootNodeData, nil)
 
-	commitNode(m, n)
-	// persist the node
+	commitNode(store, m, n)
+	// persist the node TODO
 	n.mustPersist(parts[0], m)
 	_, dataIsInCommitment := m.ExtractDataFromTCommitment(rootNodeData.Terminal)
 	// persist the value if needed

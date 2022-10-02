@@ -47,6 +47,23 @@ func TestCreateTrie(t *testing.T) {
 			require.NotNil(t, rootC1)
 			t.Logf("initial root commitment with id '%s': %s", identity, rootC1)
 		})
+		t.Run("update 1"+m.ShortName(), func(t *testing.T) {
+			data := []string{"a", "ab", "ac", "abc"}
+			store := common.NewInMemoryKVStore()
+			const identity = "abc"
+
+			rootC := MustInitRoot(store, m, []byte(identity))
+			require.NotNil(t, rootC)
+			t.Logf("initial root commitment with id '%s': %s", identity, rootC)
+
+			nodeStore := OpenNodeStore(store, m)
+			tr, err := NewTrie(nodeStore, rootC)
+			require.NoError(t, err)
+
+			tr.UpdateStr(data[0], data[0])
+			rootCnext := tr.Commit(nil)
+			t.Logf("next root commitment: %s", rootCnext)
+		})
 	}
 	runTest(trie_blake2b.New(common.PathArity256, trie_blake2b.HashSize256))
 	runTest(trie_blake2b.New(common.PathArity256, trie_blake2b.HashSize160))

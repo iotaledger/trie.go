@@ -49,8 +49,9 @@ func (tr *TrieReader) PathArity() common.PathArity {
 
 // Commit calculates a new mutatedRoot commitment value from the cache and commits all mutations in the cached TrieReader
 // It is a re-calculation of the trie. bufferedNode caches are updated accordingly.
-func (tr *Trie) Commit() {
-	commitNode(tr.Model(), tr.mutatedRoot)
+func (tr *Trie) Commit(w common.KVWriter) common.VCommitment {
+	commitNode(w, tr.Model(), tr.mutatedRoot)
+	return tr.mutatedRoot.nodeData.Commitment
 }
 
 // commitNode re-calculates node commitment and, recursively, its children commitments
@@ -61,13 +62,13 @@ func (tr *Trie) Commit() {
 // of UpdateNodeCommitment may use this parameter to optimize underlying cryptography
 //
 // commitNode does not commit to the state index
-func commitNode(m common.CommitmentModel, node *bufferedNode) {
+func commitNode(w common.KVWriter, m common.CommitmentModel, node *bufferedNode) {
 	childUpdates := make(map[byte]common.VCommitment)
 	for idx, child := range node.uncommittedChildren {
 		if child == nil {
 			childUpdates[idx] = nil
 		} else {
-			commitNode(m, child)
+			commitNode(w, m, child)
 			childUpdates[idx] = child.nodeData.Commitment
 		}
 	}
@@ -77,13 +78,11 @@ func commitNode(m common.CommitmentModel, node *bufferedNode) {
 
 // Update updates Trie with the unpackedKey/value. Reorganizes and re-calculates trie, keeps cache consistent
 func (tr *Trie) Update(triePath []byte, value []byte) {
-	var c common.TCommitment
-	c = tr.Model().CommitToData(value)
 	unpackedTriePath := common.UnpackBytes(triePath, tr.PathArity())
-	if common.IsNil(c) {
-		tr.mutatedRoot, _ = tr.delete(tr.mutatedRoot, unpackedTriePath)
+	if len(value) == 0 {
+		tr.delete(unpackedTriePath)
 	} else {
-		tr.mutatedRoot = tr.update(tr.mutatedRoot, unpackedTriePath, c)
+		tr.update(unpackedTriePath, value)
 	}
 }
 
@@ -141,10 +140,10 @@ func (tr *Trie) DeleteStr(key interface{}) {
 	tr.Delete(k)
 }
 
-func (tr *Trie) newTerminalNode(triePath, pathFragment []byte, newTerminal common.TCommitment) *bufferedNode {
+func (tr *Trie) newTerminalNode(triePath, pathFragment, value []byte) *bufferedNode {
 	ret := newBufferedNode(nil, triePath)
 	ret.setPathFragment(pathFragment)
-	ret.setTerminal(newTerminal, tr.Model())
+	ret.setValue(value, tr.Model())
 	return ret
 }
 

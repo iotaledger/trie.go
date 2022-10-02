@@ -11,6 +11,7 @@ import (
 type bufferedNode struct {
 	// persistent
 	nodeData            *common.NodeData
+	value               []byte // will be persisted in value store if not nil
 	terminal            common.TCommitment
 	pathFragment        []byte
 	uncommittedChildren map[byte]*bufferedNode // children which has been modified
@@ -83,8 +84,19 @@ func (n *bufferedNode) setPathFragment(pf []byte) {
 	n.pathFragment = pf
 }
 
-func (n *bufferedNode) setTerminal(term common.TCommitment, m common.CommitmentModel) {
-	n.terminal = term
+func (n *bufferedNode) setValue(value []byte, m common.CommitmentModel) {
+	if len(value) == 0 {
+		n.terminal = nil
+		n.value = nil
+		return
+	}
+	n.terminal = m.CommitToData(value)
+	_, valueIsInCommitment := m.ExtractDataFromTCommitment(n.terminal)
+	if valueIsInCommitment {
+		n.value = nil
+	} else {
+		n.value = value
+	}
 }
 
 func (n *bufferedNode) setTriePath(triePath []byte) {
