@@ -9,7 +9,9 @@ import (
 	"math"
 	"os"
 	"reflect"
+	"testing"
 
+	"github.com/stretchr/testify/require"
 	"golang.org/x/crypto/blake2b"
 )
 
@@ -61,13 +63,6 @@ func MustSize(o interface{ Write(w io.Writer) error }) int {
 		panic(err)
 	}
 	return ret
-}
-
-// Assert simple assertion with message formatting
-func Assert(cond bool, format string, p ...interface{}) {
-	if !cond {
-		panic(fmt.Sprintf(format, p...))
-	}
 }
 
 // Concat concatenates bytes of byte-able objects
@@ -372,4 +367,41 @@ func Blake2b160(data []byte) (ret [20]byte) {
 
 func IsNil(p interface{}) bool {
 	return p == nil || (reflect.ValueOf(p).Kind() == reflect.Ptr && reflect.ValueOf(p).IsNil())
+}
+
+func CatchPanicOrError(f func() error) error {
+	var err error
+	func() {
+		defer func() {
+			r := recover()
+			if r == nil {
+				return
+			}
+			var ok bool
+			if err, ok = r.(error); !ok {
+				err = fmt.Errorf("%v", r)
+			}
+		}()
+		err = f()
+	}()
+	return err
+}
+
+func RequireErrorWith(t *testing.T, err error, s string) {
+	require.Error(t, err)
+	require.Contains(t, err.Error(), s)
+}
+
+func RequirePanicOrErrorWith(t *testing.T, f func() error, s string) {
+	RequireErrorWith(t, CatchPanicOrError(f), s)
+}
+
+func Assert(cond bool, format string, args ...interface{}) {
+	if !cond {
+		panic(fmt.Sprintf("assertion failed:: "+format, args...))
+	}
+}
+
+func AssertNoError(err error) {
+	Assert(err == nil, "error: %v", err)
 }

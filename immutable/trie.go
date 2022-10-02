@@ -16,15 +16,14 @@ type Trie struct {
 
 // TrieReader direct read-only access to trie
 type TrieReader struct {
-	nodeStore      *immutableNodeStore
+	nodeStore      *NodeStore
 	persistentRoot common.VCommitment
 }
 
-func NewTrie(nodeStore *immutableNodeStore, root common.VCommitment) (*Trie, error) {
-	rootNodeData, ok := nodeStore.FetchNodeData(root, nil)
+func NewTrie(nodeStore *NodeStore, root common.VCommitment) (*Trie, error) {
+	rootNodeData, ok := nodeStore.FetchNodeData(root)
 	if !ok {
-		return nil, fmt.Errorf("mutatedRoot commitment '%s', dbKey '%s' does not exist",
-			root.String(), root.String())
+		return nil, fmt.Errorf("root commitment '%s' does not exist", root)
 	}
 	ret := &Trie{
 		TrieReader: TrieReader{
@@ -45,13 +44,13 @@ func (tr *TrieReader) Model() common.CommitmentModel {
 }
 
 func (tr *TrieReader) PathArity() common.PathArity {
-	return tr.nodeStore.arity
+	return tr.nodeStore.m.PathArity()
 }
 
 // Commit calculates a new mutatedRoot commitment value from the cache and commits all mutations in the cached TrieReader
 // It is a re-calculation of the trie. bufferedNode caches are updated accordingly.
 func (tr *Trie) Commit() {
-	tr.commitNode(tr.mutatedRoot)
+	commitNode(tr.Model(), tr.mutatedRoot)
 }
 
 // commitNode re-calculates node commitment and, recursively, its children commitments
@@ -60,17 +59,27 @@ func (tr *Trie) Commit() {
 // It calls implementation-specific function UpdateNodeCommitment and passes parameter
 // calcDelta = true if node's commitment can be updated incrementally. The implementation
 // of UpdateNodeCommitment may use this parameter to optimize underlying cryptography
-func (tr *Trie) commitNode(node *bufferedNode) {
+//
+// commitNode does not commit to the state index
+func commitNode(m common.CommitmentModel, node *bufferedNode) {
 	childUpdates := make(map[byte]common.VCommitment)
 	for idx, child := range node.uncommittedChildren {
 		if child == nil {
 			childUpdates[idx] = nil
 		} else {
-			tr.commitNode(child)
+			commitNode(m, child)
 			childUpdates[idx] = child.nodeData.Commitment
 		}
 	}
-	tr.Model().UpdateNodeCommitment(node.nodeData, childUpdates, node.terminal, node.pathFragment, !common.IsNil(node.nodeData.Commitment))
+	stateIndexPresent := node.nodeData.StateIndex != nil
+	nextStateIndex := new(uint32)
+	if stateIndexPresent {
+		*nextStateIndex = *node.nodeData.StateIndex + 1
+	}
+	m.UpdateNodeCommitment(node.nodeData, childUpdates, node.terminal, node.pathFragment, !common.IsNil(node.nodeData.Commitment))
+	if stateIndexPresent {
+		node.nodeData.StateIndex = nextStateIndex
+	}
 	node.uncommittedChildren = make(map[byte]*bufferedNode)
 }
 

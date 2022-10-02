@@ -67,3 +67,10 @@ func TerminalCommitmentFromBytes(m CommitmentModel, data []byte) (TCommitment, e
 	}
 	return ret, nil
 }
+
+func AsKey(c VCommitment) []byte {
+	if IsNil(c) {
+		return nil
+	}
+	return c.AsKey()
+}

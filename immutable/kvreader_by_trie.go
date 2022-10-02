@@ -1,11 +1,11 @@
 package immutable
 
 type KVReaderByTrie struct {
-	nodeStore immutableNodeStore
+	nodeStore NodeStore
 }
 
 //
-//func NewKVReaderByTrie(nodeStore *immutableNodeStore) *KVReaderByTrie {
+//func NewKVReaderByTrie(nodeStore *NodeStore) *KVReaderByTrie {
 //	common.Assert(nodeStore.valueStore != nil, "NewKVReaderTrie: value store must be provided")
 //	common.Assert(nodeStore.m.AlwaysStoreTerminalWithNode(), "NewKVReaderTrie: model must always force store terminal commitment in the node")
 //	return &KVReaderByTrie{nodeStore}

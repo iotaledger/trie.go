@@ -144,6 +144,13 @@ func (m *CommitmentModel) CommitToData(data []byte) common.TCommitment {
 	return m.commitToData(data)
 }
 
+func (m *CommitmentModel) ExtractDataFromTCommitment(c common.TCommitment) ([]byte, bool) {
+	if common.IsNil(c) {
+		return nil, true
+	}
+	return c.(*terminalCommitment).dataFromCommitment(m.hashSize)
+}
+
 func (m *CommitmentModel) Description() string {
 	return fmt.Sprintf("trie commitment common implementation based on blake2b %s, arity: %s, terminal optimization threshold: %d",
 		m.hashSize, m.arity, m.valueSizeOptimizationThreshold)
@@ -344,4 +351,11 @@ func (t *terminalCommitment) Clone() common.TCommitment {
 	}
 	ret := *t
 	return &ret
+}
+
+func (t *terminalCommitment) dataFromCommitment(sz HashSize) ([]byte, bool) {
+	if len(t.bytes) <= int(sz) {
+		return t.bytes, true
+	}
+	return nil, false
 }

@@ -29,6 +29,8 @@ type CommitmentModel interface {
 	// ForceStoreTerminalWithNode if == true, terminal commitment will always be serialized with the node,
 	// otherwise it may be skipped to optimize storage, depending on the trie setting
 	ForceStoreTerminalWithNode(c TCommitment) bool
+	// ExtractDataFromTCommitment takes data from the commitment itself, if it is there. For optimization
+	ExtractDataFromTCommitment(c TCommitment) ([]byte, bool)
 	// AlwaysStoreTerminalWithNode by returning true model signals that it does not optimize value commitments
 	AlwaysStoreTerminalWithNode() bool
 	// Description return description of the implementation

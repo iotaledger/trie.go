@@ -268,3 +268,47 @@ func (r *RandStreamIterator) Iterate(fun func(k []byte, v []byte) bool) error {
 	}
 	return nil
 }
+
+type readerPartition struct {
+	prefix byte
+	r      KVReader
+}
+
+func (p *readerPartition) Get(key []byte) []byte {
+	return p.r.Get(Concat(p.prefix, key))
+}
+
+func (p *readerPartition) Has(key []byte) bool {
+	return p.r.Has(Concat(p.prefix, key))
+}
+
+func ReaderPartitions(r KVReader, parts ...byte) []KVReader {
+	ret := make([]KVReader, len(parts))
+	for i := range ret {
+		ret[i] = &readerPartition{
+			prefix: parts[0],
+			r:      r,
+		}
+	}
+	return ret
+}
+
+type writerPartition struct {
+	prefix byte
+	w      KVWriter
+}
+
+func (w *writerPartition) Set(key, value []byte) {
+	w.w.Set(Concat(w.prefix, key), value)
+}
+
+func WriterPartitions(w KVWriter, parts ...byte) []KVWriter {
+	ret := make([]KVWriter, len(parts))
+	for i := range ret {
+		ret[i] = &writerPartition{
+			prefix: parts[0],
+			w:      w,
+		}
+	}
+	return ret
+}

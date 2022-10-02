@@ -1,6 +1,7 @@
 package immutable
 
 import (
+	"bytes"
 	"encoding/hex"
 
 	"github.com/iotaledger/trie.go/common"
@@ -28,6 +29,31 @@ func newBufferedNode(n *common.NodeData, triePath []byte) *bufferedNode {
 		triePath:            triePath,
 	}
 	return ret
+}
+
+func (n *bufferedNode) mustPersist(w common.KVWriter, m common.CommitmentModel) {
+	common.Assert(n.isCommitted(m), "persist: cannot persist uncommitted node")
+	dbKey := common.AsKey(n.nodeData.Commitment)
+	var buf bytes.Buffer
+	err := n.nodeData.Write(&buf, m.PathArity(), false)
+	common.AssertNoError(err)
+	w.Set(dbKey, buf.Bytes())
+}
+
+func (n *bufferedNode) isCommitted(m common.CommitmentModel) bool {
+	if !m.EqualCommitments(n.terminal, n.nodeData.Terminal) {
+		return false
+	}
+	if !bytes.Equal(n.pathFragment, n.nodeData.PathFragment) {
+		return false
+	}
+	if len(n.uncommittedChildren) > 0 {
+		return false
+	}
+	if common.IsNil(n.nodeData.Commitment) {
+		return false
+	}
+	return true
 }
 
 func (n *bufferedNode) isRoot() bool {
@@ -65,7 +91,7 @@ func (n *bufferedNode) setTriePath(triePath []byte) {
 	n.triePath = triePath
 }
 
-func (n *bufferedNode) getChild(childIndex byte, db *immutableNodeStore) *bufferedNode {
+func (n *bufferedNode) getChild(childIndex byte, db *NodeStore) *bufferedNode {
 	if ret, already := n.uncommittedChildren[childIndex]; already {
 		return ret
 	}
@@ -76,7 +102,7 @@ func (n *bufferedNode) getChild(childIndex byte, db *immutableNodeStore) *buffer
 	common.Assert(!common.IsNil(childCommitment), "Trie::getChild: child commitment can be nil")
 	childTriePath := common.Concat(n.triePath, n.pathFragment, childIndex)
 
-	nodeFetched, ok := db.FetchNodeData(childCommitment, childTriePath)
+	nodeFetched, ok := db.FetchNodeData(childCommitment)
 	common.Assert(ok, "Trie::getChild: can't fetch node. triePath: '%s', dbKey: '%s",
 		hex.EncodeToString(childCommitment.AsKey()), hex.EncodeToString(childTriePath))
 
@@ -88,7 +114,7 @@ func (n *bufferedNode) getChild(childIndex byte, db *immutableNodeStore) *buffer
 // - it commits to at least 2 children
 // Otherwise node has to be merged/removed
 // It can only happen during deletion
-func (n *bufferedNode) hasToBeRemoved(nodeStore *immutableNodeStore) (bool, *bufferedNode) {
+func (n *bufferedNode) hasToBeRemoved(nodeStore *NodeStore) (bool, *bufferedNode) {
 	if n.terminal != nil {
 		return false, nil
 	}

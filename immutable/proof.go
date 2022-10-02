@@ -55,7 +55,7 @@ func (p *ProofGeneric) String() string {
 // GetProofGeneric returns generic proof path. Contains references trie node cache.
 // Should be immediately converted into the specific proof model independent of the trie
 // Normally only called by the model
-func GetProofGeneric(nodeStore *immutableNodeStore, root common.VCommitment, triePath []byte) *ProofGeneric {
+func GetProofGeneric(nodeStore *NodeStore, root common.VCommitment, triePath []byte) *ProofGeneric {
 	p, ending := fetchPath(nodeStore, root, triePath)
 	return &ProofGeneric{
 		Key:    triePath,
@@ -127,7 +127,7 @@ func commonPrefix(b1, b2 []byte) ([]byte, []byte, []byte) {
 }
 
 // getLeafByKey goes along the path the same way proofPath, just does not produce the proof but instead returns last terminal, if found
-func getLeafByKey(nodeStore *immutableNodeStore, root common.VCommitment, triePath []byte) common.TCommitment {
+func getLeafByKey(nodeStore *NodeStore, root common.VCommitment, triePath []byte) common.TCommitment {
 	panic("implement me")
 	//n, found := nodeStore.FetchNodeData(AsKey(mutatedRoot), nil)
 	//if !found {
@@ -158,7 +158,7 @@ func getLeafByKey(nodeStore *immutableNodeStore, root common.VCommitment, triePa
 	//}
 }
 
-func fetchPath(nodeStore *immutableNodeStore, root common.VCommitment, triePath []byte) ([]ProofGenericElement, ProofEndingCode) {
+func fetchPath(nodeStore *NodeStore, root common.VCommitment, triePath []byte) ([]ProofGenericElement, ProofEndingCode) {
 	panic("implement me")
 	//n, found := nodeStore.FetchNodeData(AsKey(mutatedRoot), nil)
 	//if !found {
