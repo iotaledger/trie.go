@@ -71,15 +71,7 @@ func commitNode(m common.CommitmentModel, node *bufferedNode) {
 			childUpdates[idx] = child.nodeData.Commitment
 		}
 	}
-	stateIndexPresent := node.nodeData.StateIndex != nil
-	nextStateIndex := new(uint32)
-	if stateIndexPresent {
-		*nextStateIndex = *node.nodeData.StateIndex + 1
-	}
 	m.UpdateNodeCommitment(node.nodeData, childUpdates, node.terminal, node.pathFragment, !common.IsNil(node.nodeData.Commitment))
-	if stateIndexPresent {
-		node.nodeData.StateIndex = nextStateIndex
-	}
 	node.uncommittedChildren = make(map[byte]*bufferedNode)
 }
 

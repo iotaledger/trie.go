@@ -32,7 +32,6 @@ func MustInitRoot(store common.KVStore, m common.CommitmentModel, identity []byt
 	n := newBufferedNode(rootNodeData, nil)
 
 	commitNode(m, n)
-	rootNodeData.StateIndex = new(uint32)
 	// persist the node
 	n.mustPersist(parts[0], m)
 	_, dataIsInCommitment := m.ExtractDataFromTCommitment(rootNodeData.Terminal)
@@ -56,18 +55,6 @@ func OpenNodeStore(store common.KVReader, model common.CommitmentModel) *NodeSto
 func noValueStore(_ []byte) ([]byte, error) {
 	panic("internal inconsistency: all terminal value must be stored in the trie node")
 }
-
-func (ns *NodeStore) StateIndexAtNode(c common.VCommitment) (uint32, bool) {
-	nodeData, found := ns.FetchNodeData(c)
-	if !found {
-		return 0, false
-	}
-	if nodeData.StateIndex == nil {
-		return 0, false
-	}
-	return *nodeData.StateIndex, true
-}
-
 func (ns *NodeStore) FetchNodeData(nodeCommitment common.VCommitment) (*common.NodeData, bool) {
 	dbKey := common.AsKey(nodeCommitment)
 	if ret, inCache := ns.cache[string(dbKey)]; inCache {

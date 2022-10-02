@@ -2,7 +2,6 @@ package common
 
 import (
 	"bytes"
-	"encoding/binary"
 	"errors"
 	"fmt"
 	"io"
@@ -83,7 +82,6 @@ const (
 	takeTerminalFromValueFlag = 0x02
 	serializeChildrenFlag     = 0x04
 	serializePathFragmentFlag = 0x08
-	serializeStateIndexFlag   = 0x10
 )
 
 // cflags 256 flags, one for each child
@@ -123,9 +121,6 @@ func (fl cflags) hasFlag(i byte) bool {
 // Write serialized node data
 func (n *NodeData) Write(w io.Writer, arity PathArity, skipTerminal bool) error {
 	var smallFlags byte
-	if n.StateIndex != nil {
-		smallFlags |= serializeStateIndexFlag
-	}
 	if n.Terminal != nil {
 		smallFlags |= terminalExistsFlag
 	}
@@ -148,13 +143,6 @@ func (n *NodeData) Write(w io.Writer, arity PathArity, skipTerminal bool) error 
 	}
 	if err = WriteByte(w, smallFlags); err != nil {
 		return err
-	}
-	if smallFlags&serializeStateIndexFlag != 0 {
-		var b [4]byte
-		binary.BigEndian.PutUint32(b[:], *n.StateIndex)
-		if _, err = w.Write(b[:]); err != nil {
-			return err
-		}
 	}
 	if smallFlags&serializePathFragmentFlag != 0 {
 		if err = WriteBytes16(w, pathFragmentEncoded); err != nil {
@@ -200,14 +188,6 @@ func (n *NodeData) Read(r io.Reader, model CommitmentModel, arity PathArity, get
 	var smallFlags byte
 	if smallFlags, err = ReadByte(r); err != nil {
 		return err
-	}
-	if smallFlags&serializeStateIndexFlag != 0 {
-		b := make([]byte, 4)
-		if _, err = r.Read(b); err != nil {
-			return err
-		}
-		n.StateIndex = new(uint32)
-		*n.StateIndex = binary.BigEndian.Uint32(b)
 	}
 	if smallFlags&serializePathFragmentFlag != 0 {
 		encoded, err := ReadBytes16(r)
