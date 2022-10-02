@@ -87,7 +87,7 @@ type HiveBatchedUpdater struct {
 func NewHiveBatchedUpdater(kvs kvstore.KVStore, model common.CommitmentModel, triePrefix, valueStorePrefix []byte) (*HiveBatchedUpdater, error) {
 	ret := &HiveBatchedUpdater{
 		kvs: kvs,
-		trie: mutable.New(
+		trie: mutable.NewTrie(
 			model,
 			NewHiveKVStoreAdaptor(kvs, triePrefix),
 			NewHiveKVStoreAdaptor(kvs, valueStorePrefix),

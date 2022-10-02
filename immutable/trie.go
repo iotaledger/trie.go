@@ -20,7 +20,7 @@ type TrieReader struct {
 	persistentRoot common.VCommitment
 }
 
-func New(nodeStore *immutableNodeStore, root common.VCommitment) (*Trie, error) {
+func NewTrie(nodeStore *immutableNodeStore, root common.VCommitment) (*Trie, error) {
 	rootNodeData, ok := nodeStore.FetchNodeData(root, nil)
 	if !ok {
 		return nil, fmt.Errorf("mutatedRoot commitment '%s', dbKey '%s' does not exist",

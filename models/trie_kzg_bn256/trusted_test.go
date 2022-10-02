@@ -236,7 +236,7 @@ func TestStaticTrustedSetup(t *testing.T) {
 	require.EqualValues(t, 258, m.D)
 
 	store := common.NewInMemoryKVStore()
-	tr := mutable.New(m, store, nil)
+	tr := mutable.NewTrie(m, store, nil)
 
 	tr.Update(nil, []byte("kuku"))
 	tr.Commit()

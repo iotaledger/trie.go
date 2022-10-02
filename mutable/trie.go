@@ -1,9 +1,3 @@
-// Package trie implements functionality of generic verkle trie with 256 child commitment in each node
-// + terminal commitment + commitment to the path fragment: 258 commitments in total.
-// It mainly follows the definition from https://hackmd.io/@Evaldas/H13YFOVGt (except commitment to the path fragment)
-// The commitment to the path fragment is needed to provide proofs of absence of keys
-//
-// The specific implementation of the commitment common is presented as a CommitmentModel interface
 package mutable
 
 import (
@@ -51,7 +45,7 @@ func RootCommitment(tr NodeStore) common.VCommitment {
 // Trie implements NodeStore interface. It buffers (caches) all TrieReader for optimization purposes
 var _ NodeStore = &Trie{}
 
-func New(model common.CommitmentModel, trieStore, valueStore common.KVReader) *Trie {
+func NewTrie(model common.CommitmentModel, trieStore, valueStore common.KVReader) *Trie {
 	ret := &Trie{
 		nodeStore: newNodeStoreBuffered(model, trieStore, valueStore, model.PathArity()),
 	}

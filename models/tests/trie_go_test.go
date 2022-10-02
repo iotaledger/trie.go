@@ -125,7 +125,7 @@ func TestTrieBase(t *testing.T) {
 	runTest := func(t *testing.T, m common.CommitmentModel) {
 		t.Run("base1"+tn(m), func(t *testing.T) {
 			store := common.NewInMemoryKVStore()
-			tr := mutable.New(m, store, nil)
+			tr := mutable.NewTrie(m, store, nil)
 			require.EqualValues(t, nil, mutable.RootCommitment(tr))
 
 			tr.Update([]byte(""), []byte(""))
@@ -151,7 +151,7 @@ func TestTrieBase(t *testing.T) {
 		t.Run("base2"+tn(m), func(t *testing.T) {
 			data := data1
 			store1 := common.NewInMemoryKVStore()
-			tr1 := mutable.New(m, store1, nil)
+			tr1 := mutable.NewTrie(m, store1, nil)
 
 			for i := range data {
 				tr1.Update([]byte(data[i]), []byte(data[i]))
@@ -160,7 +160,7 @@ func TestTrieBase(t *testing.T) {
 			c1 := mutable.RootCommitment(tr1)
 
 			store2 := common.NewInMemoryKVStore()
-			tr2 := mutable.New(m, store2, nil)
+			tr2 := mutable.NewTrie(m, store2, nil)
 
 			for i := range data {
 				tr2.Update([]byte(data[i]), []byte(data[i]))
@@ -173,7 +173,7 @@ func TestTrieBase(t *testing.T) {
 		t.Run("base2-rev"+tn(m), func(t *testing.T) {
 			data := data1
 			store1 := common.NewInMemoryKVStore()
-			tr1 := mutable.New(m, store1, nil)
+			tr1 := mutable.NewTrie(m, store1, nil)
 
 			for i := range data {
 				tr1.Update([]byte(data[i]), []byte(data[i]))
@@ -182,7 +182,7 @@ func TestTrieBase(t *testing.T) {
 			c1 := mutable.RootCommitment(tr1)
 
 			store2 := common.NewInMemoryKVStore()
-			tr2 := mutable.New(m, store2, nil)
+			tr2 := mutable.NewTrie(m, store2, nil)
 
 			for j := range data {
 				i := len(data) - j - 1
@@ -197,7 +197,7 @@ func TestTrieBase(t *testing.T) {
 			data := []string{"a", "ab", "abc"}
 			t.Logf("%+v", data)
 			store1 := common.NewInMemoryKVStore()
-			tr1 := mutable.New(m, store1, nil)
+			tr1 := mutable.NewTrie(m, store1, nil)
 
 			for i := range data {
 				tr1.Update([]byte(data[i]), []byte(data[i]))
@@ -208,7 +208,7 @@ func TestTrieBase(t *testing.T) {
 			c1 := mutable.RootCommitment(tr1)
 
 			store2 := common.NewInMemoryKVStore()
-			tr2 := mutable.New(m, store2, nil)
+			tr2 := mutable.NewTrie(m, store2, nil)
 
 			for i := range data {
 				tr2.Update([]byte(data[i]), []byte(data[i]))
@@ -222,7 +222,7 @@ func TestTrieBase(t *testing.T) {
 		t.Run("base2-2"+tn(m), func(t *testing.T) {
 			data := data3
 			store1 := common.NewInMemoryKVStore()
-			tr1 := mutable.New(m, store1, nil)
+			tr1 := mutable.NewTrie(m, store1, nil)
 
 			for i := range data {
 				tr1.Update([]byte(data[i]), []byte(data[i]))
@@ -231,7 +231,7 @@ func TestTrieBase(t *testing.T) {
 			c1 := mutable.RootCommitment(tr1)
 
 			store2 := common.NewInMemoryKVStore()
-			tr2 := mutable.New(m, store2, nil)
+			tr2 := mutable.NewTrie(m, store2, nil)
 
 			for i := range data {
 				tr2.Update([]byte(data[i]), []byte(data[i]))
@@ -243,7 +243,7 @@ func TestTrieBase(t *testing.T) {
 		})
 		t.Run("base3"+tn(m), func(t *testing.T) {
 			store1 := common.NewInMemoryKVStore()
-			tr1 := mutable.New(m, store1, nil)
+			tr1 := mutable.NewTrie(m, store1, nil)
 
 			data := data2[:5]
 			for i := range data {
@@ -253,7 +253,7 @@ func TestTrieBase(t *testing.T) {
 			c1 := mutable.RootCommitment(tr1)
 
 			store2 := common.NewInMemoryKVStore()
-			tr2 := mutable.New(m, store2, nil)
+			tr2 := mutable.NewTrie(m, store2, nil)
 
 			for i := range data {
 				tr2.Update([]byte(data[i]), []byte(data[i]))
@@ -264,7 +264,7 @@ func TestTrieBase(t *testing.T) {
 		})
 		t.Run("base4"+tn(m), func(t *testing.T) {
 			store1 := common.NewInMemoryKVStore()
-			tr1 := mutable.New(m, store1, nil)
+			tr1 := mutable.NewTrie(m, store1, nil)
 
 			data := []string{"001", "002", "010"}
 			for i := range data {
@@ -274,7 +274,7 @@ func TestTrieBase(t *testing.T) {
 			c1 := mutable.RootCommitment(tr1)
 
 			store2 := common.NewInMemoryKVStore()
-			tr2 := mutable.New(m, store2, nil)
+			tr2 := mutable.NewTrie(m, store2, nil)
 
 			for i := range data {
 				tr2.Update([]byte(data[i]), []byte(data[i]))
@@ -285,7 +285,7 @@ func TestTrieBase(t *testing.T) {
 		})
 		t.Run("clone"+tn(m), func(t *testing.T) {
 			store1 := common.NewInMemoryKVStore()
-			tr1 := mutable.New(m, store1, nil)
+			tr1 := mutable.NewTrie(m, store1, nil)
 
 			data := []string{"001", "002", "010"}
 			for i := range data {
@@ -301,7 +301,7 @@ func TestTrieBase(t *testing.T) {
 			require.True(t, m.EqualCommitments(c1, mutable.RootCommitment(tr1Clone)))
 
 			store2 := common.NewInMemoryKVStore()
-			tr2 := mutable.New(m, store2, nil)
+			tr2 := mutable.NewTrie(m, store2, nil)
 
 			for i := range data {
 				tr2.Update([]byte(data[i]), []byte(data[i]))
@@ -319,7 +319,7 @@ func TestTrieBase(t *testing.T) {
 
 		t.Run("reverse short"+tn(m), func(t *testing.T) {
 			store1 := common.NewInMemoryKVStore()
-			tr1 := mutable.New(m, store1, nil)
+			tr1 := mutable.NewTrie(m, store1, nil)
 
 			tr1.Update([]byte("a"), []byte("k"))
 			tr1.Update([]byte("ab"), []byte("l"))
@@ -327,7 +327,7 @@ func TestTrieBase(t *testing.T) {
 			c1 := mutable.RootCommitment(tr1)
 
 			store2 := common.NewInMemoryKVStore()
-			tr2 := mutable.New(m, store2, nil)
+			tr2 := mutable.NewTrie(m, store2, nil)
 
 			tr2.Update([]byte("ab"), []byte("l"))
 			tr2.Update([]byte("a"), []byte("k"))
@@ -340,7 +340,7 @@ func TestTrieBase(t *testing.T) {
 		t.Run("reverse full"+tn(m), func(t *testing.T) {
 			data := data2
 			store1 := common.NewInMemoryKVStore()
-			tr1 := mutable.New(m, store1, nil)
+			tr1 := mutable.NewTrie(m, store1, nil)
 
 			for i := range data {
 				tr1.Update([]byte(data[i]), []byte(data[i]))
@@ -349,7 +349,7 @@ func TestTrieBase(t *testing.T) {
 			c1 := mutable.RootCommitment(tr1)
 
 			store2 := common.NewInMemoryKVStore()
-			tr2 := mutable.New(m, store2, nil)
+			tr2 := mutable.NewTrie(m, store2, nil)
 
 			for i := len(data) - 1; i >= 0; i-- {
 				tr2.Update([]byte(data[i]), []byte(data[i]))
@@ -365,7 +365,7 @@ func TestTrieBase(t *testing.T) {
 			require.EqualValues(t, 16*16*16, len(data))
 
 			store1 := common.NewInMemoryKVStore()
-			tr1 := mutable.New(m, store1, nil)
+			tr1 := mutable.NewTrie(m, store1, nil)
 
 			for i := range data {
 				tr1.Update([]byte(data[i]), []byte(data[i]))
@@ -374,7 +374,7 @@ func TestTrieBase(t *testing.T) {
 			c1 := mutable.RootCommitment(tr1)
 
 			store2 := common.NewInMemoryKVStore()
-			tr2 := mutable.New(m, store2, nil)
+			tr2 := mutable.NewTrie(m, store2, nil)
 
 			for i := len(data) - 1; i >= 0; i-- {
 				tr2.Update([]byte(data[i]), []byte(data[i]))
@@ -387,7 +387,7 @@ func TestTrieBase(t *testing.T) {
 		})
 		t.Run("deletion edge cases 1"+tn(m), func(t *testing.T) {
 			store := common.NewInMemoryKVStore()
-			tr := mutable.New(m, store, nil)
+			tr := mutable.NewTrie(m, store, nil)
 
 			tr.UpdateStr("ab1", []byte("1"))
 			tr.UpdateStr("ab2c", []byte("2"))
@@ -397,7 +397,7 @@ func TestTrieBase(t *testing.T) {
 			c1 := mutable.RootCommitment(tr)
 
 			store = common.NewInMemoryKVStore()
-			tr = mutable.New(m, store, nil)
+			tr = mutable.NewTrie(m, store, nil)
 
 			tr.UpdateStr("ab1", []byte("1"))
 			tr.UpdateStr("ab2c", []byte("2"))
@@ -409,7 +409,7 @@ func TestTrieBase(t *testing.T) {
 		})
 		t.Run("deletion edge cases 2"+tn(m), func(t *testing.T) {
 			store := common.NewInMemoryKVStore()
-			tr := mutable.New(m, store, nil)
+			tr := mutable.NewTrie(m, store, nil)
 
 			tr.UpdateStr("abc", []byte("1"))
 			tr.UpdateStr("abcd", []byte("2"))
@@ -421,7 +421,7 @@ func TestTrieBase(t *testing.T) {
 			c1 := mutable.RootCommitment(tr)
 
 			store = common.NewInMemoryKVStore()
-			tr = mutable.New(m, store, nil)
+			tr = mutable.NewTrie(m, store, nil)
 
 			tr.UpdateStr("abc", []byte("1"))
 			tr.UpdateStr("abcd", []byte("2"))
@@ -437,7 +437,7 @@ func TestTrieBase(t *testing.T) {
 		})
 		t.Run("deletion edge cases 3"+tn(m), func(t *testing.T) {
 			store := common.NewInMemoryKVStore()
-			tr := mutable.New(m, store, nil)
+			tr := mutable.NewTrie(m, store, nil)
 
 			tr.UpdateStr("abcd", []byte("1"))
 			tr.UpdateStr("ab1234", []byte("2"))
@@ -446,7 +446,7 @@ func TestTrieBase(t *testing.T) {
 			c1 := mutable.RootCommitment(tr)
 
 			store = common.NewInMemoryKVStore()
-			tr = mutable.New(m, store, nil)
+			tr = mutable.NewTrie(m, store, nil)
 
 			tr.UpdateStr("abcd", []byte("1"))
 			tr.UpdateStr("ab1234", []byte("2"))
@@ -553,7 +553,7 @@ func TestTrieRnd(t *testing.T) {
 		t.Run("determinism1"+tn(m), func(t *testing.T) {
 			data := genData1()
 			store1 := common.NewInMemoryKVStore()
-			tr1 := mutable.New(m, store1, nil)
+			tr1 := mutable.NewTrie(m, store1, nil)
 
 			for i := range data {
 				tr1.Update([]byte(data[i]), []byte(data[i]))
@@ -562,7 +562,7 @@ func TestTrieRnd(t *testing.T) {
 			c1 := mutable.RootCommitment(tr1)
 
 			store2 := common.NewInMemoryKVStore()
-			tr2 := mutable.New(m, store2, nil)
+			tr2 := mutable.NewTrie(m, store2, nil)
 
 			rnd := rand.New(rand.NewSource(time.Now().UnixNano()))
 			permutation := rnd.Perm(len(data))
@@ -578,7 +578,7 @@ func TestTrieRnd(t *testing.T) {
 		t.Run("determinism2"+tn(m), func(t *testing.T) {
 			data := genData2()
 			store1 := common.NewInMemoryKVStore()
-			tr1 := mutable.New(m, store1, nil)
+			tr1 := mutable.NewTrie(m, store1, nil)
 
 			for i := range data {
 				tr1.Update([]byte(data[i]), []byte(data[i]))
@@ -587,7 +587,7 @@ func TestTrieRnd(t *testing.T) {
 			c1 := mutable.RootCommitment(tr1)
 
 			store2 := common.NewInMemoryKVStore()
-			tr2 := mutable.New(m, store2, nil)
+			tr2 := mutable.NewTrie(m, store2, nil)
 
 			rnd := rand.New(rand.NewSource(time.Now().UnixNano()))
 			permutation := rnd.Perm(len(data))
@@ -603,7 +603,7 @@ func TestTrieRnd(t *testing.T) {
 		t.Run("determinism3"+tn(m), func(t *testing.T) {
 			data := genRnd3()
 			store1 := common.NewInMemoryKVStore()
-			tr1 := mutable.New(m, store1, nil)
+			tr1 := mutable.NewTrie(m, store1, nil)
 
 			for i := range data {
 				tr1.Update([]byte(data[i]), []byte(data[i]))
@@ -612,7 +612,7 @@ func TestTrieRnd(t *testing.T) {
 			c1 := mutable.RootCommitment(tr1)
 
 			store2 := common.NewInMemoryKVStore()
-			tr2 := mutable.New(m, store2, nil)
+			tr2 := mutable.NewTrie(m, store2, nil)
 
 			rnd := rand.New(rand.NewSource(time.Now().UnixNano()))
 			permutation := rnd.Perm(len(data))
@@ -631,7 +631,7 @@ func TestTrieRnd(t *testing.T) {
 				data = data[:1000]
 			}
 			store1 := common.NewInMemoryKVStore()
-			tr1 := mutable.New(m, store1, nil)
+			tr1 := mutable.NewTrie(m, store1, nil)
 
 			for i := range data {
 				tr1.Update([]byte(data[i]), []byte(data[i]))
@@ -640,7 +640,7 @@ func TestTrieRnd(t *testing.T) {
 			c1 := mutable.RootCommitment(tr1)
 
 			store2 := common.NewInMemoryKVStore()
-			tr2 := mutable.New(m, store2, nil)
+			tr2 := mutable.NewTrie(m, store2, nil)
 
 			rnd := rand.New(rand.NewSource(time.Now().UnixNano()))
 			permutation := rnd.Perm(len(data))
@@ -667,7 +667,7 @@ func TestTrieRnd(t *testing.T) {
 				data = data[:1000]
 			}
 			store1 := common.NewInMemoryKVStore()
-			tr1 := mutable.New(m, store1, nil)
+			tr1 := mutable.NewTrie(m, store1, nil)
 
 			for i := range data {
 				tr1.Update([]byte(data[i]), []byte(data[i]))
@@ -676,7 +676,7 @@ func TestTrieRnd(t *testing.T) {
 			c1 := mutable.RootCommitment(tr1)
 
 			store2 := common.NewInMemoryKVStore()
-			tr2 := mutable.New(m, store2, nil)
+			tr2 := mutable.NewTrie(m, store2, nil)
 			for i := range data {
 				tr2.Update([]byte(data[i]), []byte(data[i]))
 			}
@@ -704,7 +704,7 @@ func TestTrieRndKeyCommitment(t *testing.T) {
 		t.Run("determ key commitment1"+tn(m), func(t *testing.T) {
 			data := genData1()
 			store1 := common.NewInMemoryKVStore()
-			tr1 := mutable.New(m, store1, nil)
+			tr1 := mutable.NewTrie(m, store1, nil)
 
 			for _, d := range data {
 				if len(d) > 0 {
@@ -715,7 +715,7 @@ func TestTrieRndKeyCommitment(t *testing.T) {
 			c1 := mutable.RootCommitment(tr1)
 
 			store2 := common.NewInMemoryKVStore()
-			tr2 := mutable.New(m, store2, nil)
+			tr2 := mutable.NewTrie(m, store2, nil)
 			permutation := rand.Perm(len(data))
 			for _, i := range permutation {
 				if len(data[i]) > 0 {
@@ -731,7 +731,7 @@ func TestTrieRndKeyCommitment(t *testing.T) {
 		t.Run("determ key commitment2"+tn(m), func(t *testing.T) {
 			data := genData2()
 			store1 := common.NewInMemoryKVStore()
-			tr1 := mutable.New(m, store1, nil)
+			tr1 := mutable.NewTrie(m, store1, nil)
 
 			for i := range data {
 				if len(data[i]) > 0 {
@@ -742,7 +742,7 @@ func TestTrieRndKeyCommitment(t *testing.T) {
 			c1 := mutable.RootCommitment(tr1)
 
 			store2 := common.NewInMemoryKVStore()
-			tr2 := mutable.New(m, store2, nil)
+			tr2 := mutable.NewTrie(m, store2, nil)
 
 			permutation := rand.Perm(len(data))
 			for _, i := range permutation {
@@ -759,7 +759,7 @@ func TestTrieRndKeyCommitment(t *testing.T) {
 		t.Run("determ key commitment3"+tn(m), func(t *testing.T) {
 			data := genRnd3()
 			store1 := common.NewInMemoryKVStore()
-			tr1 := mutable.New(m, store1, nil)
+			tr1 := mutable.NewTrie(m, store1, nil)
 
 			for i := range data {
 				if len(data[i]) > 0 {
@@ -770,7 +770,7 @@ func TestTrieRndKeyCommitment(t *testing.T) {
 			c1 := mutable.RootCommitment(tr1)
 
 			store2 := common.NewInMemoryKVStore()
-			tr2 := mutable.New(m, store2, nil)
+			tr2 := mutable.NewTrie(m, store2, nil)
 
 			permutation := rand.Perm(len(data))
 			for _, i := range permutation {
@@ -790,7 +790,7 @@ func TestTrieRndKeyCommitment(t *testing.T) {
 				data = data[:1000]
 			}
 			store1 := common.NewInMemoryKVStore()
-			tr1 := mutable.New(m, store1, nil)
+			tr1 := mutable.NewTrie(m, store1, nil)
 
 			for i := range data {
 				if len(data[i]) > 0 {
@@ -801,7 +801,7 @@ func TestTrieRndKeyCommitment(t *testing.T) {
 			c1 := mutable.RootCommitment(tr1)
 
 			store2 := common.NewInMemoryKVStore()
-			tr2 := mutable.New(m, store2, nil)
+			tr2 := mutable.NewTrie(m, store2, nil)
 
 			permutation := rand.Perm(len(data))
 			for _, i := range permutation {
@@ -829,7 +829,7 @@ func TestTrieRndKeyCommitment(t *testing.T) {
 				data = data[:1000]
 			}
 			store1 := common.NewInMemoryKVStore()
-			tr1 := mutable.New(m, store1, nil)
+			tr1 := mutable.NewTrie(m, store1, nil)
 
 			for i := range data {
 				if len(data[i]) > 0 {
@@ -840,7 +840,7 @@ func TestTrieRndKeyCommitment(t *testing.T) {
 			c1 := mutable.RootCommitment(tr1)
 
 			store2 := common.NewInMemoryKVStore()
-			tr2 := mutable.New(m, store2, nil)
+			tr2 := mutable.NewTrie(m, store2, nil)
 			for i := range data {
 				if len(data[i]) > 0 {
 					tr2.InsertKeyCommitment([]byte(data[i]))
@@ -871,9 +871,9 @@ func TestTrieWithDeletion(t *testing.T) {
 	runTest := func(t *testing.T, m common.CommitmentModel) {
 		initTest := func() {
 			store1 := common.NewInMemoryKVStore()
-			tr1 = mutable.New(m, store1, nil)
+			tr1 = mutable.NewTrie(m, store1, nil)
 			store2 := common.NewInMemoryKVStore()
-			tr2 = mutable.New(m, store2, nil)
+			tr2 = mutable.NewTrie(m, store2, nil)
 		}
 		t.Run("del1"+tn(m), func(t *testing.T) {
 			initTest()
@@ -1014,9 +1014,9 @@ func TestTrieWithDeletionDeterm(t *testing.T) {
 	runTest := func(t *testing.T, m common.CommitmentModel, shortData bool) {
 		initTest := func() {
 			store1 := common.NewInMemoryKVStore()
-			tr1 = mutable.New(m, store1, nil)
+			tr1 = mutable.NewTrie(m, store1, nil)
 			store2 := common.NewInMemoryKVStore()
-			tr2 = mutable.New(m, store2, nil)
+			tr2 = mutable.NewTrie(m, store2, nil)
 		}
 		t.Run("del determ 1"+tn(m), func(t *testing.T) {
 			initTest()
@@ -1123,7 +1123,7 @@ func TestDeleteCommit(t *testing.T) {
 		for round := range []int{0, 1} {
 			t.Logf("------- run %d", round)
 			store := common.NewInMemoryKVStore()
-			tr := mutable.New(m, store, nil)
+			tr := mutable.NewTrie(m, store, nil)
 			for i, a := range flow {
 				if a.del {
 					t.Logf("round %d: DEL '%s'", round, a.key)
@@ -1183,7 +1183,7 @@ func TestGenTrie(t *testing.T) {
 			t.Logf("read %d bytes to '%s'", n, fname+".bin")
 
 			storeTrie := common.NewInMemoryKVStore()
-			tr := mutable.New(m, storeTrie, nil)
+			tr := mutable.NewTrie(m, storeTrie, nil)
 			tr.UpdateAll(store)
 			tr.Commit()
 			tr.PersistMutations(store)

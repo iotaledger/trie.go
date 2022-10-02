@@ -50,10 +50,10 @@ func TestTerminalOptimizationOptions(t *testing.T) {
 			valueStore := common.NewInMemoryKVStore()
 
 			m1 := trie_blake2b.New(arity, sz)
-			tr1 := mutable.New(m1, trieStore1, nil)
+			tr1 := mutable.NewTrie(m1, trieStore1, nil)
 
 			m2 := trie_blake2b.New(arity, sz, thr)
-			tr2 := mutable.New(m2, trieStore2, valueStore)
+			tr2 := mutable.NewTrie(m2, trieStore2, valueStore)
 
 			for _, d := range data {
 				if len(d) > 0 {
@@ -118,7 +118,7 @@ func TestTrieProofWithDeletesBlake2b20AndTerminalOpt(t *testing.T) {
 		}
 		storeTrie = common.NewInMemoryKVStore()
 		storeValue = common.NewInMemoryKVStore()
-		tr1 = mutable.New(m, storeTrie, storeValue)
+		tr1 = mutable.NewTrie(m, storeTrie, storeValue)
 		for _, s := range dataAdd {
 			k := []byte(s)
 			v := []byte(strings.Repeat(s, 10))

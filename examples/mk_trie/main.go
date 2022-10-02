@@ -18,7 +18,7 @@ func main() {
 	model := trie_blake2b.New(common.PathArity2, trie_blake2b.HashSize160)
 
 	// create the trie with binary keys
-	tr := mutable.New(model, store, nil)
+	tr := mutable.NewTrie(model, store, nil)
 	fmt.Printf("\nExample of trie.\n%s\n", tr.Info())
 
 	// add data key/value pairs to the trie
@@ -39,7 +39,7 @@ func main() {
 	tr.ClearCache()
 
 	// create another trie on the same store
-	tr2 := mutable.New(model, store, nil)
+	tr2 := mutable.NewTrie(model, store, nil)
 
 	// the root must be the same
 	rootCommitment2 := mutable.RootCommitment(tr2)

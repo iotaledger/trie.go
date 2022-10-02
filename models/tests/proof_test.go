@@ -17,7 +17,7 @@ func TestTrieProofBlake2b(t *testing.T) {
 		m := trie_blake2b.New(arity, trie_blake2b.HashSize160)
 		t.Run("proof empty trie"+tn(m), func(t *testing.T) {
 			store := common.NewInMemoryKVStore()
-			tr := mutable.New(m, store, nil)
+			tr := mutable.NewTrie(m, store, nil)
 			require.EqualValues(t, nil, mutable.RootCommitment(tr))
 
 			proof := m.Proof(nil, tr)
@@ -25,7 +25,7 @@ func TestTrieProofBlake2b(t *testing.T) {
 		})
 		t.Run("proof one entry 1"+tn(m), func(t *testing.T) {
 			store := common.NewInMemoryKVStore()
-			tr := mutable.New(m, store, nil)
+			tr := mutable.NewTrie(m, store, nil)
 
 			tr.Update(nil, []byte("1"))
 			tr.Commit()
@@ -57,7 +57,7 @@ func TestTrieProofBlake2b(t *testing.T) {
 		})
 		t.Run("proof one entry 2"+tn(m), func(t *testing.T) {
 			store := common.NewInMemoryKVStore()
-			tr := mutable.New(m, store, nil)
+			tr := mutable.NewTrie(m, store, nil)
 
 			tr.Update([]byte("1"), []byte("2"))
 			tr.Commit()
@@ -86,7 +86,7 @@ func TestTrieProofBlake2b(t *testing.T) {
 		m := trie_blake2b.New(arity, trie_blake2b.HashSize256)
 		t.Run("proof empty trie"+tn(m), func(t *testing.T) {
 			store := common.NewInMemoryKVStore()
-			tr := mutable.New(m, store, nil)
+			tr := mutable.NewTrie(m, store, nil)
 			require.EqualValues(t, nil, mutable.RootCommitment(tr))
 
 			proof := m.Proof(nil, tr)
@@ -94,7 +94,7 @@ func TestTrieProofBlake2b(t *testing.T) {
 		})
 		t.Run("proof one entry 1"+" "+arity.String(), func(t *testing.T) {
 			store := common.NewInMemoryKVStore()
-			tr := mutable.New(m, store, nil)
+			tr := mutable.NewTrie(m, store, nil)
 
 			tr.Update(nil, []byte("1"))
 			tr.Commit()
@@ -125,7 +125,7 @@ func TestTrieProofBlake2b(t *testing.T) {
 		})
 		t.Run("proof one entry 2"+tn(m), func(t *testing.T) {
 			store := common.NewInMemoryKVStore()
-			tr := mutable.New(m, store, nil)
+			tr := mutable.NewTrie(m, store, nil)
 
 			tr.Update([]byte("1"), []byte("2"))
 			tr.Commit()
@@ -158,7 +158,7 @@ func TestTrieProofWithDeletesBlake2b32(t *testing.T) {
 	initTrie := func(dataAdd []string, arity common.PathArity) {
 		m = trie_blake2b.New(arity, trie_blake2b.HashSize160)
 		store := common.NewInMemoryKVStore()
-		tr1 = mutable.New(m, store, nil)
+		tr1 = mutable.NewTrie(m, store, nil)
 		for _, s := range dataAdd {
 			tr1.Update([]byte(s), []byte(s+"++"))
 		}
@@ -307,7 +307,7 @@ func TestTrieProofWithDeletesBlake2b32(t *testing.T) {
 				store.Set([]byte("1"+s), []byte(s+"2"))
 			}
 			trieStore := common.NewInMemoryKVStore()
-			tr1 = mutable.New(m, trieStore, nil)
+			tr1 = mutable.NewTrie(m, trieStore, nil)
 			store.Iterate(func(k, v []byte) bool {
 				tr1.Update([]byte(k), v)
 				return true
@@ -334,7 +334,7 @@ func TestTrieProofWithDeletesBlake2b20(t *testing.T) {
 	initTrie := func(dataAdd []string, arity common.PathArity) {
 		Model = trie_blake2b.New(arity, trie_blake2b.HashSize160)
 		store := common.NewInMemoryKVStore()
-		tr1 = mutable.New(Model, store, nil)
+		tr1 = mutable.NewTrie(Model, store, nil)
 		for _, s := range dataAdd {
 			tr1.Update([]byte(s), []byte(s+"++"))
 		}
@@ -480,7 +480,7 @@ func TestTrieProofWithDeletesBlake2b20(t *testing.T) {
 				store.Set([]byte("1"+s), []byte(s+"2"))
 			}
 			trieStore := common.NewInMemoryKVStore()
-			tr1 = mutable.New(Model, trieStore, nil)
+			tr1 = mutable.NewTrie(Model, trieStore, nil)
 			store.Iterate(func(k, v []byte) bool {
 				tr1.Update(k, v)
 				return true
@@ -499,7 +499,7 @@ func TestTrieProofKZG(t *testing.T) {
 	Model := trie_kzg_bn256.New()
 	t.Run("proof empty trie"+" ", func(t *testing.T) {
 		store := common.NewInMemoryKVStore()
-		tr := mutable.New(Model, store, nil)
+		tr := mutable.NewTrie(Model, store, nil)
 		require.EqualValues(t, nil, mutable.RootCommitment(tr))
 
 		proof, ok := Model.ProofOfInclusion(nil, tr)
@@ -508,7 +508,7 @@ func TestTrieProofKZG(t *testing.T) {
 	})
 	t.Run("proof one entry 1", func(t *testing.T) {
 		store := common.NewInMemoryKVStore()
-		tr := mutable.New(Model, store, nil)
+		tr := mutable.NewTrie(Model, store, nil)
 
 		tr.Update(nil, []byte("1"))
 		tr.Commit()
@@ -525,7 +525,7 @@ func TestTrieProofKZG(t *testing.T) {
 	})
 	t.Run("proof one entry 2", func(t *testing.T) {
 		store := common.NewInMemoryKVStore()
-		tr := mutable.New(Model, store, nil)
+		tr := mutable.NewTrie(Model, store, nil)
 
 		tr.Update([]byte("100"), []byte("1"))
 		tr.Commit()
@@ -542,7 +542,7 @@ func TestTrieProofKZG(t *testing.T) {
 	})
 	t.Run("proof some entries", func(t *testing.T) {
 		store := common.NewInMemoryKVStore()
-		tr := mutable.New(Model, store, nil)
+		tr := mutable.NewTrie(Model, store, nil)
 
 		//data := genRnd4()[:1000]
 		data := []string{"a", "ab", "abc", "ac", "acb", "adb", "bcdddd"}
@@ -568,7 +568,7 @@ func TestTrieProofKZG(t *testing.T) {
 	})
 	t.Run("proof many entries", func(t *testing.T) {
 		store := common.NewInMemoryKVStore()
-		tr := mutable.New(Model, store, nil)
+		tr := mutable.NewTrie(Model, store, nil)
 
 		data := genRnd4()[:00]
 
