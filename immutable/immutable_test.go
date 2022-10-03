@@ -13,8 +13,7 @@ import (
 func TestCreateTrie(t *testing.T) {
 	runTest := func(m common.CommitmentModel) {
 		t.Run("not init-"+m.ShortName(), func(t *testing.T) {
-			store := OpenNodeStore(common.NewInMemoryKVStore(), m)
-			_, err := NewTrie(store, nil)
+			_, err := NewTrieUpdatable(m, common.NewInMemoryKVStore(), nil)
 			common.RequireErrorWith(t, err, "does not exist")
 		})
 		t.Run("wrong init-"+m.ShortName(), func(t *testing.T) {
@@ -48,21 +47,82 @@ func TestCreateTrie(t *testing.T) {
 			t.Logf("initial root commitment with id '%s': %s", identity, rootC1)
 		})
 		t.Run("update 1"+m.ShortName(), func(t *testing.T) {
-			data := []string{"a", "ab", "ac", "abc"}
 			store := common.NewInMemoryKVStore()
-			const identity = "abc"
+			const (
+				identity = "idIDidIDidID"
+				key      = "key"
+				value    = "value"
+			)
 
-			rootC := MustInitRoot(store, m, []byte(identity))
-			require.NotNil(t, rootC)
-			t.Logf("initial root commitment with id '%s': %s", identity, rootC)
+			rootInitial := MustInitRoot(store, m, []byte(identity))
+			require.NotNil(t, rootInitial)
+			t.Logf("initial root commitment with id '%s': %s", identity, rootInitial)
 
-			nodeStore := OpenNodeStore(store, m)
-			tr, err := NewTrie(nodeStore, rootC)
+			tr, err := NewTrieUpdatable(m, store, rootInitial)
 			require.NoError(t, err)
 
-			tr.UpdateStr(data[0], data[0])
-			rootCnext := tr.Commit(nil)
+			v := tr.GetStr("")
+			require.EqualValues(t, identity, v)
+
+			tr.UpdateStr(key, value)
+			rootCnext := tr.Commit(store)
+			t.Logf("initial root commitment: %s", rootInitial)
 			t.Logf("next root commitment: %s", rootCnext)
+
+			v = tr.GetStr("")
+			require.EqualValues(t, identity, v)
+
+			require.False(t, tr.HasStr(key))
+
+			err = tr.SetRoot(rootCnext)
+			require.NoError(t, err)
+
+			v = tr.GetStr("")
+			require.EqualValues(t, identity, v)
+
+			v = tr.GetStr(key)
+			require.EqualValues(t, value, v)
+
+			require.True(t, tr.HasStr(key))
+		})
+		t.Run("update 2 long value"+m.ShortName(), func(t *testing.T) {
+			store := common.NewInMemoryKVStore()
+			const (
+				identity = "idIDidIDidID"
+				key      = "key"
+				value    = "value"
+			)
+
+			rootInitial := MustInitRoot(store, m, []byte(identity))
+			require.NotNil(t, rootInitial)
+			t.Logf("initial root commitment with id '%s': %s", identity, rootInitial)
+
+			tr, err := NewTrieUpdatable(m, store, rootInitial)
+			require.NoError(t, err)
+
+			v := tr.GetStr("")
+			require.EqualValues(t, identity, v)
+
+			tr.UpdateStr(key, strings.Repeat(value, 500))
+			rootCnext := tr.Commit(store)
+			t.Logf("initial root commitment: %s", rootInitial)
+			t.Logf("next root commitment: %s", rootCnext)
+
+			v = tr.GetStr("")
+			require.EqualValues(t, identity, v)
+
+			require.False(t, tr.HasStr(key))
+
+			err = tr.SetRoot(rootCnext)
+			require.NoError(t, err)
+
+			v = tr.GetStr("")
+			require.EqualValues(t, identity, v)
+
+			v = tr.GetStr(key)
+			require.EqualValues(t, strings.Repeat(value, 500), v)
+
+			require.True(t, tr.HasStr(key))
 		})
 	}
 	runTest(trie_blake2b.New(common.PathArity256, trie_blake2b.HashSize256))

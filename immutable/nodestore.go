@@ -6,7 +6,7 @@ import (
 	"github.com/iotaledger/trie.go/common"
 )
 
-// NodeStore direct access to trie db
+// NodeStore immutable node store
 type NodeStore struct {
 	m          common.CommitmentModel
 	trieStore  common.KVReader
@@ -15,39 +15,33 @@ type NodeStore struct {
 }
 
 const (
-	TrieStorePartition = byte(iota)
-	TrieStorePartitionValue
-	TrieStorePartitionOther
+	PartitionTrieNodes = byte(iota)
+	PartitionValues
+	PartitionOther
 )
 
 // MustInitRoot initializes new empty root with the given identity
 func MustInitRoot(store common.KVStore, m common.CommitmentModel, identity []byte) common.VCommitment {
 	common.Assert(len(identity) > 0, "MustInitRoot: identity of the root cannot be empty")
-	parts := common.WriterPartitions(store, TrieStorePartition, TrieStorePartitionValue)
 	// create a node with the commitment to the identity as terminal for the root
 	// stores identity in the value store if it does not fit the commitment
 	// assigns state index 0
 	rootNodeData := common.NewNodeData()
-	rootNodeData.Terminal = m.CommitToData(identity)
 	n := newBufferedNode(rootNodeData, nil)
+	n.setValue(identity, m)
 
-	commitNode(store, m, n)
-	// persist the node TODO
-	n.mustPersist(parts[0], m)
-	_, dataIsInCommitment := m.ExtractDataFromTCommitment(rootNodeData.Terminal)
-	// persist the value if needed
-	if !dataIsInCommitment {
-		parts[1].Set(rootNodeData.Terminal.Bytes(), identity)
-	}
-	return n.nodeData.Commitment
+	trieStore := common.MakeWriterPartition(store, PartitionTrieNodes)
+	valueStore := common.MakeWriterPartition(store, PartitionValues)
+	commitNode(trieStore, valueStore, m, n)
+
+	return n.nodeData.Commitment.Clone()
 }
 
-func OpenNodeStore(store common.KVReader, model common.CommitmentModel) *NodeStore {
-	parts := common.ReaderPartitions(store, TrieStorePartition, TrieStorePartitionValue)
+func OpenImmutableNodeStore(store common.KVReader, model common.CommitmentModel) *NodeStore {
 	return &NodeStore{
 		m:          model,
-		trieStore:  parts[0],
-		valueStore: parts[1],
+		trieStore:  common.MakeReaderPartition(store, PartitionTrieNodes),
+		valueStore: common.MakeReaderPartition(store, PartitionValues),
 		cache:      make(map[string]*common.NodeData),
 	}
 }

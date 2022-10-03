@@ -17,8 +17,9 @@ import (
 // if isHash == true, len(bytes) must be 32
 // otherwise it is not hashed value, mus be len(bytes) <= 32
 type terminalCommitment struct {
-	bytes              []byte
-	isCostlyCommitment bool
+	bytes               []byte
+	isValueInCommitment bool
+	isCostlyCommitment  bool
 }
 
 // vectorCommitment is a blake2b hash of the vector elements
@@ -28,6 +29,7 @@ type HashSize byte
 
 const (
 	HashSize160 = HashSize(20)
+	HashSize192 = HashSize(24)
 	HashSize256 = HashSize(32)
 )
 
@@ -144,13 +146,6 @@ func (m *CommitmentModel) CommitToData(data []byte) common.TCommitment {
 	return m.commitToData(data)
 }
 
-func (m *CommitmentModel) ExtractDataFromTCommitment(c common.TCommitment) ([]byte, bool) {
-	if common.IsNil(c) {
-		return nil, true
-	}
-	return c.(*terminalCommitment).dataFromCommitment(m.hashSize)
-}
-
 func (m *CommitmentModel) Description() string {
 	return fmt.Sprintf("trie commitment common implementation based on blake2b %s, arity: %s, terminal optimization threshold: %d",
 		m.hashSize, m.arity, m.valueSizeOptimizationThreshold)
@@ -179,21 +174,25 @@ func (m *CommitmentModel) ForceStoreTerminalWithNode(c common.TCommitment) bool 
 }
 
 // CommitToDataRaw commits to data
-func CommitToDataRaw(data []byte, sz HashSize) []byte {
+func CommitToDataRaw(data []byte, sz HashSize) ([]byte, bool) {
 	var ret []byte
+	valueInCommitment := false
 	if len(data) <= int(sz) {
 		ret = make([]byte, len(data))
+		valueInCommitment = true
 		copy(ret, data)
 	} else {
 		ret = blakeIt(data, sz)
 	}
-	return ret
+	return ret, valueInCommitment
 }
 
 func (m *CommitmentModel) commitToData(data []byte) *terminalCommitment {
+	commitmentBytes, isValueInCommitment := CommitToDataRaw(data, m.hashSize)
 	return &terminalCommitment{
-		bytes:              CommitToDataRaw(data, m.hashSize),
-		isCostlyCommitment: len(data) > m.valueSizeOptimizationThreshold,
+		bytes:               commitmentBytes,
+		isValueInCommitment: isValueInCommitment,
+		isCostlyCommitment:  len(data) > m.valueSizeOptimizationThreshold,
 	}
 }
 
@@ -202,6 +201,8 @@ func blakeIt(data []byte, sz HashSize) []byte {
 	case HashSize160:
 		ret := common.Blake2b160(data)
 		return ret[:]
+	case HashSize192:
+		panic("24 byte hashing not implemented")
 	case HashSize256:
 		ret := blake2b.Sum256(data)
 		return ret[:]
@@ -219,7 +220,8 @@ func (m *CommitmentModel) makeHashVector(nodeData *common.NodeData) [][]byte {
 	if nodeData.Terminal != nil {
 		hashes[m.arity.TerminalCommitmentIndex()] = nodeData.Terminal.(*terminalCommitment).bytes
 	}
-	hashes[m.arity.PathFragmentCommitmentIndex()] = CommitToDataRaw(nodeData.PathFragment, m.hashSize)
+	commitmentBytes, _ := CommitToDataRaw(nodeData.PathFragment, m.hashSize)
+	hashes[m.arity.PathFragmentCommitmentIndex()] = commitmentBytes
 	return hashes
 }
 
@@ -288,14 +290,16 @@ var _ common.TCommitment = &terminalCommitment{}
 func newTerminalCommitment(sz HashSize) *terminalCommitment {
 	// all 0 non hashed value
 	return &terminalCommitment{
-		bytes:              make([]byte, 0, sz),
-		isCostlyCommitment: false,
+		bytes:               make([]byte, 0, sz),
+		isValueInCommitment: false,
+		isCostlyCommitment:  false,
 	}
 }
 
 const (
-	sizeMask             = uint8(0x3F)
-	costlyCommitmentMask = ^sizeMask
+	sizeMask              = uint8(0x3F)
+	costlyCommitmentMask  = uint8(0x40)
+	valueInCommitmentMask = uint8(0x80)
 )
 
 func (t *terminalCommitment) Write(w io.Writer) error {
@@ -303,6 +307,9 @@ func (t *terminalCommitment) Write(w io.Writer) error {
 	l := byte(len(t.bytes))
 	if t.isCostlyCommitment {
 		l |= costlyCommitmentMask
+	}
+	if t.isValueInCommitment {
+		l |= valueInCommitmentMask
 	}
 	if err := common.WriteByte(w, l); err != nil {
 		return err
@@ -318,6 +325,7 @@ func (t *terminalCommitment) Read(r io.Reader) error {
 		return err
 	}
 	t.isCostlyCommitment = (l & costlyCommitmentMask) != 0
+	t.isValueInCommitment = (l & valueInCommitmentMask) != 0
 	l &= sizeMask
 
 	if l > 32 {
@@ -353,8 +361,12 @@ func (t *terminalCommitment) Clone() common.TCommitment {
 	return &ret
 }
 
-func (t *terminalCommitment) dataFromCommitment(sz HashSize) ([]byte, bool) {
-	if len(t.bytes) <= int(sz) {
+func (t *terminalCommitment) AsKey() []byte {
+	return t.Bytes()
+}
+
+func (t *terminalCommitment) ExtractValue() ([]byte, bool) {
+	if t.isValueInCommitment {
 		return t.bytes, true
 	}
 	return nil, false

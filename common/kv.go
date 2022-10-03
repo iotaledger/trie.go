@@ -282,15 +282,11 @@ func (p *readerPartition) Has(key []byte) bool {
 	return p.r.Has(Concat(p.prefix, key))
 }
 
-func ReaderPartitions(r KVReader, parts ...byte) []KVReader {
-	ret := make([]KVReader, len(parts))
-	for i := range ret {
-		ret[i] = &readerPartition{
-			prefix: parts[0],
-			r:      r,
-		}
+func MakeReaderPartition(r KVReader, prefix byte) KVReader {
+	return &readerPartition{
+		prefix: prefix,
+		r:      r,
 	}
-	return ret
 }
 
 type writerPartition struct {
@@ -302,13 +298,9 @@ func (w *writerPartition) Set(key, value []byte) {
 	w.w.Set(Concat(w.prefix, key), value)
 }
 
-func WriterPartitions(w KVWriter, parts ...byte) []KVWriter {
-	ret := make([]KVWriter, len(parts))
-	for i := range ret {
-		ret[i] = &writerPartition{
-			prefix: parts[0],
-			w:      w,
-		}
+func MakeWriterPartition(w KVWriter, prefix byte) KVWriter {
+	return &writerPartition{
+		prefix: prefix,
+		w:      w,
 	}
-	return ret
 }

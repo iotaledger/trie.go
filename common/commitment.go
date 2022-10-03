@@ -13,18 +13,19 @@ type Serializable interface {
 	Write(w io.Writer) error
 	Bytes() []byte
 	String() string
+	AsKey() []byte
 }
 
 // VCommitment represents interface to the vector commitment. It can be hash, or it can be a curve element
 type VCommitment interface {
 	Clone() VCommitment
-	AsKey() []byte
 	Serializable
 }
 
 // TCommitment represents commitment to the terminal data. Usually it is a hash of the data of a scalar field element
 type TCommitment interface {
 	Clone() TCommitment
+	ExtractValue() ([]byte, bool)
 	Serializable
 }
 
@@ -68,9 +69,16 @@ func TerminalCommitmentFromBytes(m CommitmentModel, data []byte) (TCommitment, e
 	return ret, nil
 }
 
-func AsKey(c VCommitment) []byte {
+func AsKey(c Serializable) []byte {
 	if IsNil(c) {
 		return nil
 	}
 	return c.AsKey()
+}
+
+func ExtractValue(c TCommitment) ([]byte, bool) {
+	if IsNil(c) {
+		return nil, false
+	}
+	return c.ExtractValue()
 }

@@ -70,7 +70,8 @@ func ValidateWithValue(p *trie_blake2b.Proof, rootBytes []byte, value []byte) er
 	if len(r) == 0 {
 		return errors.New("key is not present in the state")
 	}
-	if !bytes.Equal(trie_blake2b.CommitToDataRaw(value, p.HashSize), r) {
+	rawBytes, _ := trie_blake2b.CommitToDataRaw(value, p.HashSize)
+	if !bytes.Equal(rawBytes, r) {
 		return errors.New("key does not correspond to the given value")
 	}
 	return nil
@@ -140,7 +141,8 @@ func makeHashVector(e *trie_blake2b.ProofElement, missingCommitment []byte, arit
 	if len(e.Terminal) > 0 {
 		hashes[arity.TerminalCommitmentIndex()] = e.Terminal
 	}
-	hashes[arity.PathFragmentCommitmentIndex()] = trie_blake2b.CommitToDataRaw(e.PathFragment, sz)
+	rawBytes, _ := trie_blake2b.CommitToDataRaw(e.PathFragment, sz)
+	hashes[arity.PathFragmentCommitmentIndex()] = rawBytes
 	if arity.IsChildIndex(e.ChildIndex) {
 		hashes[e.ChildIndex] = missingCommitment
 	}

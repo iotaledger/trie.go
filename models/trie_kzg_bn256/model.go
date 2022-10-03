@@ -86,6 +86,14 @@ func (t *terminalCommitment) Clone() common.TCommitment {
 	return &terminalCommitment{Scalar: t.Scalar.Clone()}
 }
 
+func (t *terminalCommitment) AsKey() []byte {
+	return t.Bytes()
+}
+
+func (t *terminalCommitment) ExtractValue() ([]byte, bool) {
+	return nil, false
+}
+
 // CommitmentModel implements 256+ trie based on blake2b hashing
 type CommitmentModel struct {
 	TrustedSetup
@@ -221,6 +229,7 @@ func (m *CommitmentModel) UpdateNodeCommitment(mutate *common.NodeData, childUpd
 		deltas[256] = delta
 	}
 	mutate.Terminal = terminal
+	mutate.PathFragment = pathFragment
 	if calcDelta {
 		var prevP kyber.Point
 

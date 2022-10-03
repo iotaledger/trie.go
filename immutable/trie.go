@@ -1,7 +1,6 @@
 package immutable
 
 import (
-	"bytes"
 	"fmt"
 
 	"github.com/iotaledger/trie.go/common"
@@ -20,22 +19,20 @@ type TrieReader struct {
 	persistentRoot common.VCommitment
 }
 
-func NewTrie(nodeStore *NodeStore, root common.VCommitment) (*Trie, error) {
-	rootNodeData, ok := nodeStore.FetchNodeData(root)
-	if !ok {
-		return nil, fmt.Errorf("root commitment '%s' does not exist", root)
-	}
+func NewTrieUpdatable(m common.CommitmentModel, store common.KVReader, root common.VCommitment) (*Trie, error) {
 	ret := &Trie{
 		TrieReader: TrieReader{
 			persistentRoot: root,
-			nodeStore:      nodeStore,
+			nodeStore:      OpenImmutableNodeStore(store, m),
 		},
-		mutatedRoot: newBufferedNode(rootNodeData, nil),
+	}
+	if err := ret.SetRoot(root); err != nil {
+		return nil, err
 	}
 	return ret, nil
 }
 
-func (tr *TrieReader) RootCommitment() common.VCommitment {
+func (tr *TrieReader) Root() common.VCommitment {
 	return tr.persistentRoot
 }
 
@@ -47,11 +44,29 @@ func (tr *TrieReader) PathArity() common.PathArity {
 	return tr.nodeStore.m.PathArity()
 }
 
-// Commit calculates a new mutatedRoot commitment value from the cache and commits all mutations in the cached TrieReader
-// It is a re-calculation of the trie. bufferedNode caches are updated accordingly.
-func (tr *Trie) Commit(w common.KVWriter) common.VCommitment {
-	commitNode(w, tr.Model(), tr.mutatedRoot)
-	return tr.mutatedRoot.nodeData.Commitment
+func (tr *TrieReader) ClearCache() {
+	tr.nodeStore.clearCache()
+}
+
+func (tr *Trie) SetRoot(c common.VCommitment) error {
+	rootNodeData, ok := tr.nodeStore.FetchNodeData(c)
+	if !ok {
+		return fmt.Errorf("root commitment '%s' does not exist", c)
+	}
+	tr.persistentRoot = c.Clone()
+	tr.mutatedRoot = newBufferedNode(rootNodeData, nil)
+	return nil
+}
+
+// Commit calculates a new mutatedRoot commitment value from the cache, commits all mutations
+// and writes it into the store.
+// The nodes and values are written into separate partitions
+// The buffered nodes are garbage collected, except the mutated ones
+func (tr *Trie) Commit(store common.KVWriter) common.VCommitment {
+	triePartition := common.MakeWriterPartition(store, PartitionTrieNodes)
+	valuePartition := common.MakeWriterPartition(store, PartitionValues)
+	commitNode(triePartition, valuePartition, tr.Model(), tr.mutatedRoot)
+	return tr.mutatedRoot.nodeData.Commitment.Clone()
 }
 
 // commitNode re-calculates node commitment and, recursively, its children commitments
@@ -62,82 +77,24 @@ func (tr *Trie) Commit(w common.KVWriter) common.VCommitment {
 // of UpdateNodeCommitment may use this parameter to optimize underlying cryptography
 //
 // commitNode does not commit to the state index
-func commitNode(w common.KVWriter, m common.CommitmentModel, node *bufferedNode) {
+func commitNode(triePartition, valuePartition common.KVWriter, m common.CommitmentModel, node *bufferedNode) {
 	childUpdates := make(map[byte]common.VCommitment)
 	for idx, child := range node.uncommittedChildren {
 		if child == nil {
 			childUpdates[idx] = nil
 		} else {
-			commitNode(w, m, child)
+			commitNode(triePartition, valuePartition, m, child)
 			childUpdates[idx] = child.nodeData.Commitment
 		}
 	}
 	m.UpdateNodeCommitment(node.nodeData, childUpdates, node.terminal, node.pathFragment, !common.IsNil(node.nodeData.Commitment))
 	node.uncommittedChildren = make(map[byte]*bufferedNode)
-}
+	common.Assert(node.isCommitted(m), "node.isCommitted(m)")
 
-// Update updates Trie with the unpackedKey/value. Reorganizes and re-calculates trie, keeps cache consistent
-func (tr *Trie) Update(triePath []byte, value []byte) {
-	unpackedTriePath := common.UnpackBytes(triePath, tr.PathArity())
-	if len(value) == 0 {
-		tr.delete(unpackedTriePath)
-	} else {
-		tr.update(unpackedTriePath, value)
+	node.mustPersist(triePartition, m)
+	if node.value != nil {
+		valuePartition.Set(common.AsKey(node.terminal), node.value)
 	}
-}
-
-// Delete deletes Key/value from the Trie, reorganizes the trie
-func (tr *Trie) Delete(key []byte) {
-	tr.Update(key, nil)
-}
-
-// PersistMutations persists/append the cache to the store.
-// Returns deleted part for possible use in the mutable state implementation
-// Does not clear cache
-func (tr *Trie) PersistMutations(store common.KVWriter) (int, map[string]struct{}) {
-	panic("implement me")
-}
-
-// UpdateStr updates unpackedKey/value pair in the trie
-func (tr *Trie) UpdateStr(key interface{}, value interface{}) {
-	var k, v []byte
-	if key != nil {
-		switch kt := key.(type) {
-		case []byte:
-			k = kt
-		case string:
-			k = []byte(kt)
-		default:
-			panic("[]byte or string expected")
-		}
-	}
-	if value != nil {
-		switch vt := value.(type) {
-		case []byte:
-			v = vt
-		case string:
-			v = []byte(vt)
-		default:
-			panic("[]byte or string expected")
-		}
-	}
-	tr.Update(k, v)
-}
-
-// DeleteStr removes node from trie
-func (tr *Trie) DeleteStr(key interface{}) {
-	var k []byte
-	if key != nil {
-		switch kt := key.(type) {
-		case []byte:
-			k = kt
-		case string:
-			k = []byte(kt)
-		default:
-			panic("[]byte or string expected")
-		}
-	}
-	tr.Delete(k)
 }
 
 func (tr *Trie) newTerminalNode(triePath, pathFragment, value []byte) *bufferedNode {
@@ -145,56 +102,4 @@ func (tr *Trie) newTerminalNode(triePath, pathFragment, value []byte) *bufferedN
 	ret.setPathFragment(pathFragment)
 	ret.setValue(value, tr.Model())
 	return ret
-}
-
-func (tr *Trie) VectorCommitmentFromBytes(data []byte) (common.VCommitment, error) {
-	ret := tr.nodeStore.m.NewVectorCommitment()
-	rdr := bytes.NewReader(data)
-	if err := ret.Read(rdr); err != nil {
-		return nil, err
-	}
-	if rdr.Len() != 0 {
-		return nil, common.ErrNotAllBytesConsumed
-	}
-	return ret, nil
-}
-
-// Reconcile returns a list of keys in the store which cannot be proven in the trie
-// Trie is consistent if empty slice is returned
-// May be an expensive operation
-func (tr *Trie) Reconcile(store common.KVIterator) [][]byte {
-	panic("implement me")
-	//ret := make([][]byte, 0)
-	//store.Iterate(func(k, v []byte) bool {
-	//	p, _, ending := proofPath(tr, UnpackBytes(k, tr.PathArity()))
-	//	if ending == EndingTerminal {
-	//		lastKey := p[len(p)-1]
-	//		n, ok := tr.GetNode(lastKey)
-	//		if !ok {
-	//			ret = append(ret, k)
-	//		} else {
-	//			if !tr.Model().EqualCommitments(tr.trieBuffer.nodeStore.m.CommitToData(v), n.terminal()) {
-	//				ret = append(ret, k)
-	//			}
-	//		}
-	//	} else {
-	//		ret = append(ret, k)
-	//	}
-	//	return true
-	//})
-	//return ret
-}
-
-// UpdateAll mass-updates trie from the unpackedKey/value store.
-// To be used to build trie for arbitrary unpackedKey/value data sets
-func (tr *Trie) UpdateAll(store common.KVIterator) {
-	store.Iterate(func(k, v []byte) bool {
-		tr.Update(k, v)
-		return true
-	})
-}
-
-func (tr *Trie) DangerouslyDumpCacheToString() string {
-	panic("implement me")
-	//return tr.trieBuffer.dangerouslyDumpCacheToString()
 }

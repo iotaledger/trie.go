@@ -6,35 +6,7 @@ import (
 	"github.com/iotaledger/trie.go/common"
 )
 
-func (tr *Trie) traversePath(triePath []byte, fun func(n *bufferedNode, ending ProofEndingCode)) {
-	n := tr.mutatedRoot
-	for {
-		keyPlusPathFragment := common.Concat(n.triePath, n.pathFragment)
-		switch {
-		case len(triePath) < len(keyPlusPathFragment):
-			fun(n, EndingSplit)
-			return
-		case len(triePath) == len(keyPlusPathFragment):
-			if bytes.Equal(keyPlusPathFragment, triePath) {
-				fun(n, EndingTerminal)
-			} else {
-				fun(n, EndingSplit)
-			}
-			return
-		default:
-			common.Assert(len(triePath) > len(keyPlusPathFragment), "len(triePath) > len(keyPlusPathFragment)")
-			childIndex := triePath[len(keyPlusPathFragment)]
-			child := n.getChild(childIndex, tr.nodeStore)
-			if child == nil {
-				fun(n, EndingExtend)
-				return
-			}
-			n = child
-		}
-	}
-}
-
-func (tr *TrieReader) traversePath(triePath []byte, fun func(n *common.NodeData, trieKey []byte, ending ProofEndingCode)) {
+func (tr *TrieReader) traverseImmutablePath(triePath []byte, fun func(n *common.NodeData, trieKey []byte, ending ProofEndingCode)) {
 	n, found := tr.nodeStore.FetchNodeData(tr.persistentRoot)
 	if !found {
 		return
@@ -68,12 +40,40 @@ func (tr *TrieReader) traversePath(triePath []byte, fun func(n *common.NodeData,
 	}
 }
 
+func (tr *Trie) traverseMutatedPath(triePath []byte, fun func(n *bufferedNode, ending ProofEndingCode)) {
+	n := tr.mutatedRoot
+	for {
+		keyPlusPathFragment := common.Concat(n.triePath, n.pathFragment)
+		switch {
+		case len(triePath) < len(keyPlusPathFragment):
+			fun(n, EndingSplit)
+			return
+		case len(triePath) == len(keyPlusPathFragment):
+			if bytes.Equal(keyPlusPathFragment, triePath) {
+				fun(n, EndingTerminal)
+			} else {
+				fun(n, EndingSplit)
+			}
+			return
+		default:
+			common.Assert(len(triePath) > len(keyPlusPathFragment), "len(triePath) > len(keyPlusPathFragment)")
+			childIndex := triePath[len(keyPlusPathFragment)]
+			child := n.getChild(childIndex, tr.nodeStore)
+			if child == nil {
+				fun(n, EndingExtend)
+				return
+			}
+			n = child
+		}
+	}
+}
+
 func (tr *Trie) update(triePath []byte, value []byte) {
 	common.Assert(len(value) > 0, "len(value)>0")
 
 	nodes := make([]*bufferedNode, 0)
 	var ends ProofEndingCode
-	tr.traversePath(triePath, func(n *bufferedNode, ending ProofEndingCode) {
+	tr.traverseMutatedPath(triePath, func(n *bufferedNode, ending ProofEndingCode) {
 		nodes = append(nodes, n)
 		ends = ending
 	})
@@ -137,7 +137,7 @@ func (tr *Trie) update(triePath []byte, value []byte) {
 func (tr *Trie) delete(triePath []byte) {
 	nodes := make([]*bufferedNode, 0)
 	var ends ProofEndingCode
-	tr.traversePath(triePath, func(n *bufferedNode, ending ProofEndingCode) {
+	tr.traverseMutatedPath(triePath, func(n *bufferedNode, ending ProofEndingCode) {
 		nodes = append(nodes, n)
 		ends = ending
 	})

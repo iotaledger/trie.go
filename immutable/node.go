@@ -91,7 +91,7 @@ func (n *bufferedNode) setValue(value []byte, m common.CommitmentModel) {
 		return
 	}
 	n.terminal = m.CommitToData(value)
-	_, valueIsInCommitment := m.ExtractDataFromTCommitment(n.terminal)
+	_, valueIsInCommitment := common.ExtractValue(n.terminal)
 	if valueIsInCommitment {
 		n.value = nil
 	} else {
