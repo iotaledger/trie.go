@@ -155,13 +155,3 @@ func (n *bufferedNode) hasToBeRemoved(nodeStore *NodeStore) (bool, *bufferedNode
 	}
 	return true, theOnlyChildCommitted
 }
-
-//
-//func ToString(n Node) string {
-//	return fmt.Sprintf("nodeData(dbKey: '%s', pathFragment: '%s', term: '%s', numChildren: %d",
-//		hex.EncodeToString(common.AsKey(n.commitment())),
-//		hex.EncodeToString(n.pathFragment()),
-//		n.terminal().String(),
-//		len(n.ChildCommitments()),
-//	)
-//}

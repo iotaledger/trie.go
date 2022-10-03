@@ -71,6 +71,20 @@ func (ns *NodeStore) MustFetchNodeData(nodeCommitment common.VCommitment) *commo
 	return ret
 }
 
+func (ns *NodeStore) FetchChild(n *common.NodeData, childIdx byte, trieKey []byte) (*common.NodeData, []byte) {
+	c, childFound := n.ChildCommitments[childIdx]
+	if !childFound {
+		return nil, nil
+	}
+	common.Assert(!common.IsNil(c), "immutable::FetchChild: unexpected nil commitment")
+	childTriePath := common.Concat(trieKey, n.PathFragment, childIdx)
+
+	ret, ok := ns.FetchNodeData(c)
+	common.Assert(ok, "immutable::FetchChild: failed to fetch node. trieKey: '%s', childIndex: %d",
+		hex.EncodeToString(trieKey), childIdx)
+	return ret, childTriePath
+}
+
 func (ns *NodeStore) clearCache() {
 	ns.cache = make(map[string]*common.NodeData)
 }
