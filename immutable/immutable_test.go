@@ -1,6 +1,7 @@
 package immutable
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
@@ -115,6 +116,7 @@ func TestCreateTrie(t *testing.T) {
 
 			err = tr.SetRoot(rootCnext)
 			require.NoError(t, err)
+			require.True(t, m.EqualCommitments(rootCnext, tr.Root()))
 
 			v = tr.GetStr("")
 			require.EqualValues(t, identity, v)
@@ -132,4 +134,119 @@ func TestCreateTrie(t *testing.T) {
 	runTest(trie_blake2b.New(common.PathArity2, trie_blake2b.HashSize256))
 	runTest(trie_blake2b.New(common.PathArity2, trie_blake2b.HashSize160))
 	runTest(trie_kzg_bn256.New())
+}
+
+func TestBaseUpdate(t *testing.T) {
+	const identity = "idIDidIDidID"
+
+	runTest := func(m common.CommitmentModel, data []string) {
+		t.Run("update many 1", func(t *testing.T) {
+			store := common.NewInMemoryKVStore()
+			rootInitial := MustInitRoot(store, m, []byte(identity))
+			require.NotNil(t, rootInitial)
+			t.Logf("initial root commitment with id '%s': %s", identity, rootInitial)
+
+			tr, err := NewTrieUpdatable(m, store, rootInitial)
+			require.NoError(t, err)
+
+			//data = data[:2]
+			for _, key := range data {
+				value := strings.Repeat(key, 5)
+				fmt.Printf("+++ update key='%s', value='%s'\n", key, value)
+				tr.UpdateStr(key, value)
+			}
+			rootNext := tr.Commit(store)
+			t.Logf("after commit: %s", rootNext)
+
+			err = tr.SetRoot(rootNext)
+			require.NoError(t, err)
+
+			for _, key := range data {
+				v := tr.GetStr(key)
+				require.EqualValues(t, strings.Repeat(key, 5), v)
+			}
+		})
+	}
+	data := []string{"ab", "acd", "a", "dba", "abc", "abd", "abcdafgh", "aaaaaaaaaaaaaaaa", "klmnt"}
+
+	runTest(trie_blake2b.New(common.PathArity256, trie_blake2b.HashSize256), []string{"a", "ab"})
+	runTest(trie_blake2b.New(common.PathArity256, trie_blake2b.HashSize256), []string{"ab", "acb"})
+	runTest(trie_blake2b.New(common.PathArity256, trie_blake2b.HashSize256), []string{"abc", "a"})
+	runTest(trie_blake2b.New(common.PathArity256, trie_blake2b.HashSize256), data)
+	runTest(trie_blake2b.New(common.PathArity256, trie_blake2b.HashSize160), data)
+	runTest(trie_blake2b.New(common.PathArity16, trie_blake2b.HashSize256), data)
+	runTest(trie_blake2b.New(common.PathArity16, trie_blake2b.HashSize160), data)
+	runTest(trie_blake2b.New(common.PathArity2, trie_blake2b.HashSize256), data)
+	runTest(trie_blake2b.New(common.PathArity2, trie_blake2b.HashSize160), data)
+	runTest(trie_kzg_bn256.New(), data)
+}
+
+func TestBaseDelete(t *testing.T) {
+	const identity = "idIDidIDidID"
+
+	runTest := func(m common.CommitmentModel, data []string) {
+		t.Run("update many 1", func(t *testing.T) {
+			store := common.NewInMemoryKVStore()
+			rootInitial := MustInitRoot(store, m, []byte(identity))
+			require.NotNil(t, rootInitial)
+			t.Logf("initial root commitment with id '%s': %s", identity, rootInitial)
+
+			tr, err := NewTrieUpdatable(m, store, rootInitial)
+			require.NoError(t, err)
+
+			mustBePresent := make(map[string]string)
+			//data1 = data1[:2]
+			for _, key := range data {
+				if key[0] == '-' {
+					tr.DeleteStr(key[1:])
+					delete(mustBePresent, key[1:])
+				} else {
+					value := strings.Repeat(key, 5)
+					//fmt.Printf("+++ update key='%s', value='%s'\n", key, value)
+					tr.UpdateStr(key, value)
+					mustBePresent[key] = value
+				}
+			}
+			rootNext := tr.Commit(store)
+			t.Logf("after commit: %s", rootNext)
+
+			err = tr.SetRoot(rootNext)
+			require.NoError(t, err)
+
+			for _, key := range data {
+				v := tr.GetStr(key)
+				_, expected := mustBePresent[key]
+				if expected {
+					require.EqualValues(t, strings.Repeat(key, 5), v)
+				} else {
+					require.EqualValues(t, "", v)
+				}
+			}
+		})
+	}
+	data1 := []string{"ab", "acd", "-a", "-ab", "abc", "abd", "abcdafgh", "-acd", "aaaaaaaaaaaaaaaa", "klmnt"}
+
+	runTest(trie_blake2b.New(common.PathArity256, trie_blake2b.HashSize256), []string{"a", "-a"})
+	runTest(trie_blake2b.New(common.PathArity256, trie_blake2b.HashSize256), []string{"-acb"})
+	runTest(trie_blake2b.New(common.PathArity256, trie_blake2b.HashSize256), []string{"abc", "a", "-abc", "-a"})
+	runTest(trie_blake2b.New(common.PathArity256, trie_blake2b.HashSize256), []string{"abc", "a", "-a", "-abc", "klmn"})
+	runTest(trie_blake2b.New(common.PathArity256, trie_blake2b.HashSize256), data1)
+	runTest(trie_blake2b.New(common.PathArity256, trie_blake2b.HashSize160), data1)
+	runTest(trie_blake2b.New(common.PathArity16, trie_blake2b.HashSize256), data1)
+	runTest(trie_blake2b.New(common.PathArity16, trie_blake2b.HashSize160), data1)
+	runTest(trie_blake2b.New(common.PathArity2, trie_blake2b.HashSize256), data1)
+	runTest(trie_blake2b.New(common.PathArity2, trie_blake2b.HashSize160), data1)
+	runTest(trie_kzg_bn256.New(), data1)
+
+	runTest(trie_blake2b.New(common.PathArity256, trie_blake2b.HashSize256), []string{"a", "ab", "-a"})
+
+	data2 := []string{"a", "ab", "abc", "abcd", "abcde", "-abd", "-a"}
+	runTest(trie_blake2b.New(common.PathArity256, trie_blake2b.HashSize256), data2)
+	runTest(trie_blake2b.New(common.PathArity256, trie_blake2b.HashSize256), data2)
+	runTest(trie_blake2b.New(common.PathArity256, trie_blake2b.HashSize160), data2)
+	runTest(trie_blake2b.New(common.PathArity16, trie_blake2b.HashSize256), data2)
+	runTest(trie_blake2b.New(common.PathArity16, trie_blake2b.HashSize160), data2)
+	runTest(trie_blake2b.New(common.PathArity2, trie_blake2b.HashSize256), data2)
+	runTest(trie_blake2b.New(common.PathArity2, trie_blake2b.HashSize160), data2)
+	runTest(trie_kzg_bn256.New(), data2)
 }

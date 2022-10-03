@@ -53,13 +53,16 @@ func (n *NodeData) String() string {
 	if n.Terminal != nil {
 		t = n.Terminal.String()
 	}
-	ret := fmt.Sprintf("pf: '%s', term: '%s', ch: %d\n", string(n.PathFragment), t, len(n.ChildCommitments))
+	childIdx := make([]byte, 0)
 	for i := 0; i < 256; i++ {
-		if c, ok := n.ChildCommitments[byte(i)]; ok {
-			ret += fmt.Sprintf("    %d('%c'): %s\n", i, i, c)
+		_, ok := n.ChildCommitments[byte(i)]
+		if !ok {
+			continue
 		}
+		childIdx = append(childIdx, byte(i))
 	}
-	return ret
+	return fmt.Sprintf("c: %s, pf: '%s', childrenIdx: %v, term: '%s'",
+		n.Commitment, string(n.PathFragment), childIdx, t)
 }
 
 // Read/Write implements optimized serialization of the trie node

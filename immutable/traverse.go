@@ -2,6 +2,7 @@ package immutable
 
 import (
 	"bytes"
+	"fmt"
 
 	"github.com/iotaledger/trie.go/common"
 )
@@ -26,7 +27,12 @@ func (tr *TrieReader) traverseImmutablePath(triePath []byte, fun func(n *common.
 			}
 			return
 		default:
-			common.Assert(len(triePath) > len(keyPlusPathFragment), "len(triePath) > len(keyPlusPathFragment)")
+			common.Assert(len(keyPlusPathFragment) < len(triePath), "len(keyPlusPathFragment) < len(triePath)")
+			prefix, _, _ := commonPrefix(keyPlusPathFragment, triePath)
+			if !bytes.Equal(prefix, keyPlusPathFragment) {
+				fun(n, trieKey, EndingSplit)
+				return
+			}
 			childIndex := triePath[len(keyPlusPathFragment)]
 			child, childTrieKey := FetchChild(n, childIndex, trieKey, tr.nodeStore)
 			if child == nil {
@@ -56,13 +62,19 @@ func (tr *Trie) traverseMutatedPath(triePath []byte, fun func(n *bufferedNode, e
 			}
 			return
 		default:
-			common.Assert(len(triePath) > len(keyPlusPathFragment), "len(triePath) > len(keyPlusPathFragment)")
+			common.Assert(len(keyPlusPathFragment) < len(triePath), "len(keyPlusPathFragment) < len(triePath)")
+			prefix, _, _ := commonPrefix(keyPlusPathFragment, triePath)
+			if !bytes.Equal(prefix, keyPlusPathFragment) {
+				fun(n, EndingSplit)
+				return
+			}
 			childIndex := triePath[len(keyPlusPathFragment)]
 			child := n.getChild(childIndex, tr.nodeStore)
 			if child == nil {
 				fun(n, EndingExtend)
 				return
 			}
+			fun(n, EndingNone)
 			n = child
 		}
 	}
@@ -82,6 +94,8 @@ func (tr *Trie) update(triePath []byte, value []byte) {
 		nodes[i].setModifiedChild(nodes[i+1])
 	}
 	lastNode := nodes[len(nodes)-1]
+	fmt.Printf("+++++ lastnode trieKey: '%+v', pf: '%+v', ending '%+v'\n",
+		lastNode.triePath, lastNode.pathFragment, ends.String())
 	switch ends {
 	case EndingTerminal:
 		// reached the end just for the terminal
@@ -95,37 +109,44 @@ func (tr *Trie) update(triePath []byte, value []byte) {
 		childIndex := childTriePath[len(childTriePath)-1]
 		common.Assert(lastNode.getChild(childIndex, tr.nodeStore) == nil, "lastNode.getChild(childIndex, tr.nodeStore)==nil")
 		child := tr.newTerminalNode(childTriePath, triePath[len(keyPlusPathFragment)+1:], value)
-		lastNode.setModifiedChild(child, childIndex)
+		lastNode.setModifiedChild(child)
 
 	case EndingSplit:
-		// split the current node
+		// split the last node
+		var prevNode *bufferedNode
+		if len(nodes) >= 2 {
+			prevNode = nodes[len(nodes)-2]
+		}
 		trieKey := lastNode.triePath
 		common.Assert(len(trieKey) <= len(triePath), "len(trieKey) <= len(triePath)")
 		remainingTriePath := triePath[len(trieKey):]
 
-		prefix, triePathTail, pathFragmentTail := commonPrefix(lastNode.pathFragment, remainingTriePath)
-		forkPathIndex := len(prefix)
-		common.Assert(forkPathIndex < len(lastNode.pathFragment), "forkPathIndex < len(lastNode.pathFragment)")
-		common.Assert(forkPathIndex <= len(triePath), "forkPathIndex <= len(triePath)")
+		prefix, pathFragmentTail, triePathTail := commonPrefix(lastNode.pathFragment, remainingTriePath)
+		//forkPathIndex := len(prefix)
+		//common.Assert(forkPathIndex < len(lastNode.pathFragment), "forkPathIndex < len(lastNode.pathFragment)")
+		//common.Assert(forkPathIndex <= len(triePath), "forkPathIndex <= len(triePath)")
 
 		childIndexContinue := pathFragmentTail[0]
 		pathFragmentContinue := pathFragmentTail[1:]
 		trieKeyToContinue := common.Concat(trieKey, prefix, childIndexContinue)
 
+		prevNode.removeModifiedChild(lastNode)
 		lastNode.setPathFragment(pathFragmentContinue)
 		lastNode.setTriePath(trieKeyToContinue)
 
 		forkingNode := newBufferedNode(nil, trieKey) // will be at path of the old node
 		forkingNode.setPathFragment(prefix)
 		forkingNode.setModifiedChild(lastNode)
+		prevNode.setModifiedChild(forkingNode)
 
 		if len(triePathTail) == 0 {
 			forkingNode.setValue(value, tr.Model())
 		} else {
-			childIndexToBranch := remainingTriePath[0]
+			childIndexToBranch := triePathTail[0]
+			branchPathFragment := triePathTail[1:]
 			trieKeyToContinue = common.Concat(trieKey, prefix, childIndexToBranch)
 
-			newNodeWithTerminal := tr.newTerminalNode(trieKeyToContinue, triePath[len(trieKeyToContinue):], value)
+			newNodeWithTerminal := tr.newTerminalNode(trieKeyToContinue, branchPathFragment, value)
 			forkingNode.setModifiedChild(newNodeWithTerminal)
 		}
 
@@ -142,21 +163,25 @@ func (tr *Trie) delete(triePath []byte) {
 		ends = ending
 	})
 	common.Assert(len(nodes) > 0, "len(nodes) > 0")
-	for i := len(nodes) - 2; i >= 0; i-- {
-		nodes[i].setModifiedChild(nodes[i+1])
-	}
 	if ends != EndingTerminal {
 		// the key is not present in the trie, do nothing
 		return
 	}
+	//for i := len(nodes) - 2; i >= 0; i-- {
+	//	nodes[i].setModifiedChild(nodes[i+1])
+	//}
 
-	lastNode := nodes[len(nodes)-1]
-	lastNode.setValue(nil, tr.Model())
+	nodes[len(nodes)-1].setValue(nil, tr.Model())
 
 	for i := len(nodes) - 1; i >= 1; i-- {
 		idxAsChild := nodes[i].indexAsChild()
 		n := tr.mergeNodeIfNeeded(nodes[i])
-		nodes[i-1].setModifiedChild(n, idxAsChild)
+		if n != nil {
+			nodes[i-1].removeModifiedChild(nodes[i])
+			nodes[i-1].setModifiedChild(n)
+		} else {
+			nodes[i-1].removeModifiedChild(nil, idxAsChild)
+		}
 	}
 	common.Assert(nodes[0] != nil, "please do not delete root")
 }
@@ -173,6 +198,7 @@ func (tr *Trie) mergeNodeIfNeeded(node *bufferedNode) *bufferedNode {
 	// merge with child
 	newPathFragment := common.Concat(node.pathFragment, theOnlyChildToMergeWith.indexAsChild(), theOnlyChildToMergeWith.pathFragment)
 	theOnlyChildToMergeWith.setPathFragment(newPathFragment)
+	theOnlyChildToMergeWith.setTriePath(node.triePath)
 	return theOnlyChildToMergeWith
 }
 

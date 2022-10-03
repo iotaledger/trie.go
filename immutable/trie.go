@@ -95,6 +95,8 @@ func commitNode(triePartition, valuePartition common.KVWriter, m common.Commitme
 	if node.value != nil {
 		valuePartition.Set(common.AsKey(node.terminal), node.value)
 	}
+	fmt.Printf("commited node: trieKey: %+v('%s'): %s'\n",
+		node.triePath, string(node.triePath), node.nodeData.String())
 }
 
 func (tr *Trie) newTerminalNode(triePath, pathFragment, value []byte) *bufferedNode {

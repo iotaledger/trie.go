@@ -122,7 +122,7 @@ func commonPrefix(b1, b2 []byte) ([]byte, []byte, []byte) {
 		r1 = b1[i:]
 	}
 	if i < len(b2) {
-		r1 = b2[i:]
+		r2 = b2[i:]
 	}
 
 	return ret, r1, r2
