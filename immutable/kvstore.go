@@ -2,7 +2,6 @@ package immutable
 
 import (
 	"encoding/hex"
-	"fmt"
 
 	"github.com/iotaledger/trie.go/common"
 )
@@ -23,12 +22,12 @@ func (tr *Trie) Delete(key []byte) {
 }
 
 func (tr *TrieReader) Get(key []byte) []byte {
-	fmt.Printf("**** Get key: %s\n", string(key))
+	//fmt.Printf("**** Get key: %s\n", string(key))
 	unpackedTriePath := common.UnpackBytes(key, tr.PathArity())
 	found := false
 	var terminal common.TCommitment
 	tr.traverseImmutablePath(unpackedTriePath, func(n *common.NodeData, _ []byte, ending ProofEndingCode) {
-		fmt.Printf("          --- traverse commitment: %s\n", n.Commitment)
+		//fmt.Printf("          --- traverse commitment: %s\n", n.Commitment)
 		if ending == EndingTerminal {
 			if !common.IsNil(n.Terminal) {
 				found = true

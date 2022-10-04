@@ -195,3 +195,23 @@ func (tr *Trie) mergeNodeIfNeeded(node *bufferedNode) *bufferedNode {
 	theOnlyChildToMergeWith.setTriePath(node.triePath)
 	return theOnlyChildToMergeWith
 }
+
+func commonPrefix(b1, b2 []byte) ([]byte, []byte, []byte) {
+	ret := make([]byte, 0)
+	i := 0
+	for ; i < len(b1) && i < len(b2); i++ {
+		if b1[i] != b2[i] {
+			break
+		}
+		ret = append(ret, b1[i])
+	}
+	var r1, r2 []byte
+	if i < len(b1) {
+		r1 = b1[i:]
+	}
+	if i < len(b2) {
+		r2 = b2[i:]
+	}
+
+	return ret, r1, r2
+}
