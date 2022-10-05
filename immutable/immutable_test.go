@@ -13,6 +13,41 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestDeletedKey(t *testing.T) {
+	store := common.NewInMemoryKVStore()
+	m := trie_blake2b.New(common.PathArity16, trie_blake2b.HashSize160)
+
+	var root0 common.VCommitment
+	{
+		root0 = MustInitRoot(store, m, []byte("identity"))
+	}
+
+	var root1 common.VCommitment
+	{
+		tr, err := NewTrieUpdatable(m, store, root0)
+		require.NoError(t, err)
+		tr.Update([]byte("a"), []byte("a"))
+		tr.Update([]byte("b"), []byte("b"))
+		root1 = tr.Commit(store)
+	}
+
+	var root2 common.VCommitment
+	{
+		tr, err := NewTrieUpdatable(m, store, root1)
+		require.NoError(t, err)
+		tr.Update([]byte("a"), nil)
+		tr.Update([]byte("b"), []byte("bb"))
+		tr.Update([]byte("c"), []byte("c"))
+		root2 = tr.Commit(store)
+	}
+
+	tr, err := NewTrieUpdatable(m, store, root2)
+	require.NoError(t, err)
+
+	state := tr.TrieReader
+	require.Nil(t, state.Get([]byte("a")))
+}
+
 func TestCreateTrie(t *testing.T) {
 	runTest := func(m common.CommitmentModel) {
 		t.Run("not init-"+m.ShortName(), func(t *testing.T) {
