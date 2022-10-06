@@ -98,9 +98,9 @@ type KVStreamIterator interface {
 }
 
 // CopyAll flushes KVIterator to KVWriter
-func CopyAll(from KVIterator, to KVWriter) {
-	from.Iterate(func(k, v []byte) bool {
-		to.Set(k, v)
+func CopyAll(dst KVWriter, src KVIterator) {
+	src.Iterate(func(k, v []byte) bool {
+		dst.Set(k, v)
 		return true
 	})
 }
