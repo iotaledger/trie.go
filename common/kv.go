@@ -97,6 +97,14 @@ type KVStreamIterator interface {
 	Iterate(func(k, v []byte) bool) error
 }
 
+// CopyAll flushes KVIterator to KVWriter
+func CopyAll(from KVIterator, to KVWriter) {
+	from.Iterate(func(k, v []byte) bool {
+		to.Set(k, v)
+		return true
+	})
+}
+
 //----------------------------------------------------------------------------
 // implementations of writing/reading persistent streams of key/value pairs
 
