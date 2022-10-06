@@ -8,11 +8,14 @@ import (
 
 // NodeStore immutable node store
 type NodeStore struct {
-	m          common.CommitmentModel
-	trieStore  common.KVReader
-	valueStore common.KVReader
-	cache      map[string]*common.NodeData
+	m                common.CommitmentModel
+	trieStore        common.KVReader
+	valueStore       common.KVReader
+	cache            map[string]*common.NodeData
+	clearCacheAtSize int
 }
+
+const defaultClearCacheEveryGets = 1000
 
 const (
 	PartitionTrieNodes = byte(iota)
@@ -37,26 +40,38 @@ func MustInitRoot(store common.KVStore, m common.CommitmentModel, identity []byt
 	return n.nodeData.Commitment.Clone()
 }
 
-func OpenImmutableNodeStore(store common.KVReader, model common.CommitmentModel) *NodeStore {
-	return &NodeStore{
-		m:          model,
-		trieStore:  common.MakeReaderPartition(store, PartitionTrieNodes),
-		valueStore: common.MakeReaderPartition(store, PartitionValues),
-		cache:      make(map[string]*common.NodeData),
+func OpenImmutableNodeStore(store common.KVReader, model common.CommitmentModel, clearCacheAtSize ...int) *NodeStore {
+	ret := &NodeStore{
+		m:                model,
+		trieStore:        common.MakeReaderPartition(store, PartitionTrieNodes),
+		valueStore:       common.MakeReaderPartition(store, PartitionValues),
+		cache:            make(map[string]*common.NodeData),
+		clearCacheAtSize: defaultClearCacheEveryGets,
 	}
+	if len(clearCacheAtSize) > 0 {
+		ret.clearCacheAtSize = clearCacheAtSize[0]
+	}
+	return ret
 }
 
-func noValueStore(_ []byte) ([]byte, error) {
-	panic("internal inconsistency: all terminal value must be stored in the trie node")
-}
 func (ns *NodeStore) FetchNodeData(nodeCommitment common.VCommitment) (*common.NodeData, bool) {
 	dbKey := common.AsKey(nodeCommitment)
-	if ret, inCache := ns.cache[string(dbKey)]; inCache {
-		return ret, true
+	if ns.clearCacheAtSize > 0 {
+		// if caching is used at all
+		if ret, inCache := ns.cache[string(dbKey)]; inCache {
+			return ret, true
+		}
+		if len(ns.cache) > ns.clearCacheAtSize {
+			// GC the whole cache when cache reaches specified size
+			ns.cache = make(map[string]*common.NodeData)
+		}
 	}
 	nodeBin := ns.trieStore.Get(dbKey)
 	if len(nodeBin) == 0 {
 		return nil, false
+	}
+	noValueStore := func(_ []byte) ([]byte, error) {
+		panic("internal inconsistency: all terminal commitments must be stored in the trie node")
 	}
 	ret, err := common.NodeDataFromBytes(ns.m, nodeBin, ns.m.PathArity(), noValueStore)
 	common.Assert(err == nil, "NodeStore::FetchNodeData err: '%v' nodeBin: '%s', commitment: %s, arity: %s",

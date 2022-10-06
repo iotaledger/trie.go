@@ -19,9 +19,9 @@ type TrieReader struct {
 	persistentRoot common.VCommitment
 }
 
-func NewTrieUpdatable(m common.CommitmentModel, store common.KVReader, root common.VCommitment) (*Trie, error) {
+func NewTrieUpdatable(m common.CommitmentModel, store common.KVReader, root common.VCommitment, clearCacheAtSize ...int) (*Trie, error) {
 	ret := &Trie{
-		TrieReader: NewTrieReader(m, store, root),
+		TrieReader: NewTrieReader(m, store, root, clearCacheAtSize...),
 	}
 	if err := ret.SetRoot(root); err != nil {
 		return nil, err
@@ -29,10 +29,10 @@ func NewTrieUpdatable(m common.CommitmentModel, store common.KVReader, root comm
 	return ret, nil
 }
 
-func NewTrieReader(m common.CommitmentModel, store common.KVReader, root common.VCommitment) *TrieReader {
+func NewTrieReader(m common.CommitmentModel, store common.KVReader, root common.VCommitment, clearCacheAtSize ...int) *TrieReader {
 	return &TrieReader{
 		persistentRoot: root,
-		nodeStore:      OpenImmutableNodeStore(store, m),
+		nodeStore:      OpenImmutableNodeStore(store, m, clearCacheAtSize...),
 	}
 }
 

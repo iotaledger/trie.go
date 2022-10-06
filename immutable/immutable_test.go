@@ -356,13 +356,12 @@ func TestBaseScenarios(t *testing.T) {
 	data4 := genRnd3()
 	name := "update-many-"
 	t.Run(name+"1", tf(trie_blake2b.New(common.PathArity256, trie_blake2b.HashSize256), data4))
-	t.Run(name+"2", tf(trie_blake2b.New(common.PathArity256, trie_blake2b.HashSize256), data4))
-	t.Run(name+"3", tf(trie_blake2b.New(common.PathArity256, trie_blake2b.HashSize160), data4))
-	t.Run(name+"4", tf(trie_blake2b.New(common.PathArity16, trie_blake2b.HashSize256), data4))
-	t.Run(name+"5", tf(trie_blake2b.New(common.PathArity16, trie_blake2b.HashSize160), data4))
-	t.Run(name+"6", tf(trie_blake2b.New(common.PathArity2, trie_blake2b.HashSize256), data4))
-	t.Run(name+"7", tf(trie_blake2b.New(common.PathArity2, trie_blake2b.HashSize160), data4))
-	t.Run(name+"8", tf(trie_kzg_bn256.New(), data3))
+	t.Run(name+"2", tf(trie_blake2b.New(common.PathArity256, trie_blake2b.HashSize160), data4))
+	t.Run(name+"3", tf(trie_blake2b.New(common.PathArity16, trie_blake2b.HashSize256), data4))
+	t.Run(name+"4", tf(trie_blake2b.New(common.PathArity16, trie_blake2b.HashSize160), data4))
+	t.Run(name+"5", tf(trie_blake2b.New(common.PathArity2, trie_blake2b.HashSize256), data4))
+	t.Run(name+"6", tf(trie_blake2b.New(common.PathArity2, trie_blake2b.HashSize160), data4))
+	t.Run(name+"7", tf(trie_kzg_bn256.New(), data3))
 
 }
 
@@ -432,6 +431,57 @@ func TestDeterminism(t *testing.T) {
 
 	t.Run(name+"kzg", tf(trie_kzg_bn256.New(), s1, s2)) // failing because of KZG commitment model cryptography bug
 
+}
+
+func TestIterate(t *testing.T) {
+	iterTest := func(m common.CommitmentModel, scenario []string) func(t *testing.T) {
+		return func(t *testing.T) {
+			store := common.NewInMemoryKVStore()
+			rootInitial := MustInitRoot(store, m, []byte("identity"))
+			require.NotNil(t, rootInitial)
+			t.Logf("initial root commitment with id '%s': %s", "identity", rootInitial)
+
+			tr, err := NewTrieUpdatable(m, store, rootInitial)
+			require.NoError(t, err)
+
+			checklist, root := runUpdateScenario(tr, store, scenario)
+			checkResult(t, tr, checklist)
+
+			trr := NewTrieReader(m, store, root, 0)
+			trr.Iterate(func(k []byte, v []byte) bool {
+				if traceScenarios {
+					fmt.Printf("---- iter --- '%s': '%s'\n", string(k), string(v))
+				}
+				if len(k) != 0 {
+					vCheck := checklist[string(k)]
+					require.True(t, len(v) > 0)
+					require.EqualValues(t, []byte(vCheck), v)
+				} else {
+					require.EqualValues(t, []byte("identity"), v)
+				}
+				return true
+			})
+		}
+	}
+	name := "iterate-"
+	scenario := []string{"a", "b", "c", "*", "a/"}
+	t.Run(name+"1", iterTest(trie_blake2b.New(common.PathArity256, trie_blake2b.HashSize256), scenario))
+	t.Run(name+"2", iterTest(trie_blake2b.New(common.PathArity256, trie_blake2b.HashSize160), scenario))
+	t.Run(name+"3", iterTest(trie_blake2b.New(common.PathArity16, trie_blake2b.HashSize256), scenario))
+	t.Run(name+"4", iterTest(trie_blake2b.New(common.PathArity16, trie_blake2b.HashSize160), scenario))
+	t.Run(name+"5", iterTest(trie_blake2b.New(common.PathArity2, trie_blake2b.HashSize256), scenario))
+	t.Run(name+"6", iterTest(trie_blake2b.New(common.PathArity2, trie_blake2b.HashSize160), scenario))
+	t.Run(name+"7", iterTest(trie_kzg_bn256.New(), scenario))
+
+	name = "iterate-big-"
+	scenario = genRnd3()
+	t.Run(name+"1", iterTest(trie_blake2b.New(common.PathArity256, trie_blake2b.HashSize256), scenario))
+	t.Run(name+"2", iterTest(trie_blake2b.New(common.PathArity256, trie_blake2b.HashSize160), scenario))
+	t.Run(name+"3", iterTest(trie_blake2b.New(common.PathArity16, trie_blake2b.HashSize256), scenario))
+	t.Run(name+"4", iterTest(trie_blake2b.New(common.PathArity16, trie_blake2b.HashSize160), scenario))
+	t.Run(name+"5", iterTest(trie_blake2b.New(common.PathArity2, trie_blake2b.HashSize256), scenario))
+	t.Run(name+"6", iterTest(trie_blake2b.New(common.PathArity2, trie_blake2b.HashSize160), scenario))
+	t.Run(name+"7", iterTest(trie_kzg_bn256.New(), scenario))
 }
 
 const letters = "abcdefghijklmnop"

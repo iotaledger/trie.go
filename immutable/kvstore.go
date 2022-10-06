@@ -63,6 +63,36 @@ func (tr *TrieReader) Has(key []byte) bool {
 	return found
 }
 
+// Iterate iterates the key/value pairs in the trie for specific root.
+// The order of the iteration will be deterministic
+func (tr *TrieReader) Iterate(f func(k []byte, v []byte) bool) {
+	tr.iterate(tr.persistentRoot, nil, f)
+}
+
+func (tr *TrieReader) iterate(root common.VCommitment, triePath []byte, fun func(k []byte, v []byte) bool) bool {
+	n, found := tr.nodeStore.FetchNodeData(root)
+	common.Assert(found, "can't fetch node. triePath: '%s', node commitment: %s", hex.EncodeToString(triePath), root)
+
+	if !common.IsNil(n.Terminal) {
+		key, err := common.PackUnpackedBytes(common.Concat(triePath, n.PathFragment), tr.Model().PathArity())
+		value, inTheCommitment := n.Terminal.ExtractValue()
+		if !inTheCommitment {
+			value = tr.nodeStore.valueStore.Get(common.AsKey(n.Terminal))
+			common.Assert(len(value) > 0, "can't fetch value. triePath: '%s', data commitment: %s", hex.EncodeToString(key), n.Terminal)
+		}
+		common.AssertNoError(err)
+		if !fun(key, value) {
+			return false
+		}
+	}
+	for childIndex, childCommitment := range n.ChildCommitments {
+		if !tr.iterate(childCommitment, common.Concat(triePath, n.PathFragment, childIndex), fun) {
+			return false
+		}
+	}
+	return true
+}
+
 func (tr *TrieReader) GetStr(key string) string {
 	return string(tr.Get([]byte(key)))
 }
