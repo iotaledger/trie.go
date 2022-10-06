@@ -119,9 +119,6 @@ func (tr *Trie) update(triePath []byte, value []byte) {
 		remainingTriePath := triePath[len(trieKey):]
 
 		prefix, pathFragmentTail, triePathTail := commonPrefix(lastNode.pathFragment, remainingTriePath)
-		//forkPathIndex := len(prefix)
-		//common.Assert(forkPathIndex < len(lastNode.pathFragment), "forkPathIndex < len(lastNode.pathFragment)")
-		//common.Assert(forkPathIndex <= len(triePath), "forkPathIndex <= len(triePath)")
 
 		childIndexContinue := pathFragmentTail[0]
 		pathFragmentContinue := pathFragmentTail[1:]
