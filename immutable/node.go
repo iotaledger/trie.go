@@ -80,7 +80,7 @@ func (n *bufferedNode) setModifiedChild(child *bufferedNode, idx ...byte) {
 	n.uncommittedChildren[index] = child
 }
 
-func (n *bufferedNode) removeModifiedChild(child *bufferedNode, idx ...byte) {
+func (n *bufferedNode) removeChild(child *bufferedNode, idx ...byte) {
 	var index byte
 	if child == nil {
 		common.Assert(len(idx) > 0, "child index must be specified")
@@ -88,7 +88,7 @@ func (n *bufferedNode) removeModifiedChild(child *bufferedNode, idx ...byte) {
 	} else {
 		index = child.indexAsChild()
 	}
-	delete(n.uncommittedChildren, index)
+	n.uncommittedChildren[index] = nil
 }
 
 func (n *bufferedNode) setPathFragment(pf []byte) {

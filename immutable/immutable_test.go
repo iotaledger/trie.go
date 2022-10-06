@@ -38,13 +38,15 @@ func TestDeletedKey(t *testing.T) {
 		tr.Update([]byte("a"), nil)
 		tr.Update([]byte("b"), []byte("bb"))
 		tr.Update([]byte("c"), []byte("c"))
-		root2 = tr.Commit(store)
+		root2 = tr.Commit(store, true) // <<<< override default to set the new root and clear cache
+
+		err = tr.SetRoot(root2) // <<<<<<<<<< we need this if commit does not set the new root
+		require.NoError(t, err)
+
+		require.Nil(t, tr.Get([]byte("a")))
 	}
 
-	tr, err := NewTrieUpdatable(m, store, root2)
-	require.NoError(t, err)
-
-	state := tr.TrieReader
+	state := NewTrieReader(m, store, root2) // <<<<< We can create TrieReader independently of TrieUpdatable
 	require.Nil(t, state.Get([]byte("a")))
 }
 
@@ -103,7 +105,7 @@ func TestCreateTrie(t *testing.T) {
 			require.EqualValues(t, identity, v)
 
 			tr.UpdateStr(key, value)
-			rootCnext := tr.Commit(store)
+			rootCnext := tr.Commit(store, true)
 			t.Logf("initial root commitment: %s", rootInitial)
 			t.Logf("next root commitment: %s", rootCnext)
 
@@ -142,7 +144,7 @@ func TestCreateTrie(t *testing.T) {
 			require.EqualValues(t, identity, v)
 
 			tr.UpdateStr(key, strings.Repeat(value, 500))
-			rootCnext := tr.Commit(store)
+			rootCnext := tr.Commit(store, true)
 			t.Logf("initial root commitment: %s", rootInitial)
 			t.Logf("next root commitment: %s", rootCnext)
 
@@ -218,31 +220,48 @@ func TestBaseUpdate(t *testing.T) {
 	runTest(trie_kzg_bn256.New(), data)
 }
 
+var traceScenarios = false
+
 func runUpdateScenario(trie *Trie, store common.KVWriter, scenario []string) (map[string]string, common.VCommitment) {
 	checklist := make(map[string]string)
 	uncommitted := false
 	var ret common.VCommitment
-	for _, key := range scenario {
-		if len(key) == 0 {
+	for _, cmd := range scenario {
+		if len(cmd) == 0 {
 			continue
 		}
-		switch key[0] {
-		case '-':
-			trie.DeleteStr(key[1:])
-			//fmt.Printf("+++ delete key: '%s'\n", key[1:])
-			delete(checklist, key[1:])
-			uncommitted = true
-		case '*':
+		if cmd == "*" {
 			ret = trie.Commit(store)
 			_ = trie.SetRoot(ret)
-			//fmt.Printf("+++ commit. Root: '%s'\n", ret)
+			if traceScenarios {
+				fmt.Printf("+++ commit. Root: '%s'\n", ret)
+			}
 			uncommitted = false
-		default:
-			value := strings.Repeat(key, 5)
-			//fmt.Printf("+++ update key: '%s', value: '%s'\n", key, value)
-			trie.UpdateStr(key, value)
-			checklist[key] = value
-			uncommitted = true
+			continue
+		}
+		var key, value []byte
+		before, after, found := strings.Cut(cmd, "/")
+		if found {
+			if len(before) == 0 {
+				continue // key must not be empty
+			}
+			key = []byte(before)
+			if len(after) > 0 {
+				value = []byte(after)
+			}
+		} else {
+			key = []byte(cmd)
+			value = []byte(cmd)
+		}
+		trie.Update(key, value)
+		checklist[string(key)] = string(value)
+		uncommitted = true
+		if traceScenarios {
+			if len(value) > 0 {
+				fmt.Printf("SET '%s' -> '%s'\n", string(key), string(value))
+			} else {
+				fmt.Printf("DEL '%s'\n", string(key))
+			}
 		}
 	}
 	if uncommitted {
@@ -254,27 +273,23 @@ func runUpdateScenario(trie *Trie, store common.KVWriter, scenario []string) (ma
 	return checklist, ret
 }
 
-func checkUpdateScenario(t *testing.T, trie *Trie, scenario []string, checklist map[string]string) {
-	var k string
-	for _, key := range scenario {
-		if len(key) == 0 {
-			continue
+func checkResult(t *testing.T, trie *Trie, checklist map[string]string) {
+	for key, expectedValue := range checklist {
+		v := trie.GetStr(key)
+		if traceScenarios {
+			if len(v) > 0 {
+				fmt.Printf("FOUND '%s': '%s' (expected '%s')\n", key, v, expectedValue)
+			} else {
+				fmt.Printf("NOT FOUND '%s' (expected '%s')\n", key, func() string {
+					if len(expectedValue) > 0 {
+						return "FOUND"
+					} else {
+						return "NOT FOUND"
+					}
+				}())
+			}
 		}
-		switch key[0] {
-		case '*':
-			continue
-		case '-':
-			k = key[1:]
-		default:
-			k = key
-		}
-		v := trie.GetStr(k)
-		_, check := checklist[key]
-		if check {
-			require.EqualValues(t, strings.Repeat(key, 5), v)
-		} else {
-			require.EqualValues(t, "", v)
-		}
+		require.EqualValues(t, expectedValue, v)
 	}
 }
 
@@ -292,15 +307,22 @@ func TestBaseScenarios(t *testing.T) {
 			require.NoError(t, err)
 
 			checklist, _ := runUpdateScenario(tr, store, data)
-			checkUpdateScenario(t, tr, data, checklist)
+			checkResult(t, tr, checklist)
 		}
 	}
 	data1 := []string{"ab", "acd", "-a", "-ab", "abc", "abd", "abcdafgh", "-acd", "aaaaaaaaaaaaaaaa", "klmnt"}
 
-	t.Run("1", tf(trie_blake2b.New(common.PathArity256, trie_blake2b.HashSize256), []string{"a", "-a"}))
-	t.Run("2", tf(trie_blake2b.New(common.PathArity256, trie_blake2b.HashSize256), []string{"-acb"}))
-	t.Run("3", tf(trie_blake2b.New(common.PathArity256, trie_blake2b.HashSize256), []string{"abc", "a", "-abc", "-a"}))
-	t.Run("4", tf(trie_blake2b.New(common.PathArity256, trie_blake2b.HashSize256), []string{"abc", "a", "-a", "-abc", "klmn"}))
+	t.Run("1-1", tf(trie_blake2b.New(common.PathArity256, trie_blake2b.HashSize256), []string{"a", "a/"}))
+	t.Run("1-2", tf(trie_blake2b.New(common.PathArity256, trie_blake2b.HashSize256), []string{"a", "*", "a/"}))
+	t.Run("1-3", tf(trie_blake2b.New(common.PathArity256, trie_blake2b.HashSize256), []string{"a", "b", "*", "b/", "a/"}))
+	t.Run("1-4", tf(trie_blake2b.New(common.PathArity256, trie_blake2b.HashSize256), []string{"a", "b", "*", "a/", "b/"}))
+	t.Run("1-5", tf(trie_blake2b.New(common.PathArity256, trie_blake2b.HashSize256), []string{"a", "b", "*", "a/", "b/bb", "c"}))
+	t.Run("1-6", tf(trie_blake2b.New(common.PathArity256, trie_blake2b.HashSize256), []string{"a", "b", "*", "a/", "b/bb", "c"}))
+	t.Run("1-7", tf(trie_blake2b.New(common.PathArity256, trie_blake2b.HashSize256), []string{"a", "b", "*", "a/", "b", "c"}))
+	t.Run("1-8", tf(trie_blake2b.New(common.PathArity256, trie_blake2b.HashSize256), []string{"acb/", "*", "acb/bca", "acb/123"}))
+	t.Run("1-9", tf(trie_blake2b.New(common.PathArity256, trie_blake2b.HashSize256), []string{"abc", "a", "abc/", "a/"}))
+	t.Run("1-10", tf(trie_blake2b.New(common.PathArity256, trie_blake2b.HashSize256), []string{"abc", "a", "a/", "abc/", "klmn"}))
+
 	t.Run("5", tf(trie_blake2b.New(common.PathArity256, trie_blake2b.HashSize256), data1))
 	t.Run("6", tf(trie_blake2b.New(common.PathArity256, trie_blake2b.HashSize160), data1))
 	t.Run("7", tf(trie_blake2b.New(common.PathArity16, trie_blake2b.HashSize256), data1))
@@ -357,7 +379,7 @@ func TestDeterminism(t *testing.T) {
 			require.NoError(t, err)
 
 			checklist1, root1 := runUpdateScenario(tr1, store1, scenario1)
-			checkUpdateScenario(t, tr1, scenario1, checklist1)
+			checkResult(t, tr1, checklist1)
 
 			fmt.Printf("--------- scenario2: %v\n", scenario2)
 			store2 := common.NewInMemoryKVStore()
@@ -367,7 +389,7 @@ func TestDeterminism(t *testing.T) {
 			require.NoError(t, err)
 
 			checklist2, root2 := runUpdateScenario(tr2, store2, scenario2)
-			checkUpdateScenario(t, tr2, scenario2, checklist2)
+			checkResult(t, tr2, checklist2)
 
 			require.True(t, m.EqualCommitments(root1, root2))
 		}
@@ -408,7 +430,7 @@ func TestDeterminism(t *testing.T) {
 	t.Run(name+"6", tf(trie_blake2b.New(common.PathArity2, trie_blake2b.HashSize256), s1, s2))
 	t.Run(name+"7", tf(trie_blake2b.New(common.PathArity2, trie_blake2b.HashSize160), s1, s2))
 
-	t.Run(name+"8", tf(trie_kzg_bn256.New(), s1, s2)) // failing because of KZG commitment model cryptography bug
+	t.Run(name+"kzg", tf(trie_kzg_bn256.New(), s1, s2)) // failing because of KZG commitment model cryptography bug
 
 }
 

@@ -127,7 +127,7 @@ func (tr *Trie) update(triePath []byte, value []byte) {
 		pathFragmentContinue := pathFragmentTail[1:]
 		trieKeyToContinue := common.Concat(trieKey, prefix, childIndexContinue)
 
-		prevNode.removeModifiedChild(lastNode)
+		prevNode.removeChild(lastNode)
 		lastNode.setPathFragment(pathFragmentContinue)
 		lastNode.setTriePath(trieKeyToContinue)
 
@@ -171,10 +171,10 @@ func (tr *Trie) delete(triePath []byte) {
 		idxAsChild := nodes[i].indexAsChild()
 		n := tr.mergeNodeIfNeeded(nodes[i])
 		if n != nil {
-			nodes[i-1].removeModifiedChild(nodes[i])
+			nodes[i-1].removeChild(nodes[i])
 			nodes[i-1].setModifiedChild(n)
 		} else {
-			nodes[i-1].removeModifiedChild(nil, idxAsChild)
+			nodes[i-1].removeChild(nil, idxAsChild)
 		}
 	}
 	common.Assert(nodes[0] != nil, "please do not delete root")

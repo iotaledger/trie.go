@@ -9,7 +9,7 @@ import (
 // Trie is an updatable trie implemented on top of the unpackedKey/value store. It is virtualized and optimized by caching of the
 // trie update operation and keeping consistent trie in the cache
 type Trie struct {
-	TrieReader
+	*TrieReader
 	mutatedRoot *bufferedNode
 }
 
@@ -21,15 +21,19 @@ type TrieReader struct {
 
 func NewTrieUpdatable(m common.CommitmentModel, store common.KVReader, root common.VCommitment) (*Trie, error) {
 	ret := &Trie{
-		TrieReader: TrieReader{
-			persistentRoot: root,
-			nodeStore:      OpenImmutableNodeStore(store, m),
-		},
+		TrieReader: NewTrieReader(m, store, root),
 	}
 	if err := ret.SetRoot(root); err != nil {
 		return nil, err
 	}
 	return ret, nil
+}
+
+func NewTrieReader(m common.CommitmentModel, store common.KVReader, root common.VCommitment) *TrieReader {
+	return &TrieReader{
+		persistentRoot: root,
+		nodeStore:      OpenImmutableNodeStore(store, m),
+	}
 }
 
 func (tr *TrieReader) Root() common.VCommitment {
@@ -48,7 +52,16 @@ func (tr *TrieReader) ClearCache() {
 	tr.nodeStore.clearCache()
 }
 
-func (tr *Trie) SetRoot(c common.VCommitment) error {
+// SetRoot fetches and sets new root. By default, it clears cache before fetching the new root
+// To override, use notClearCache = true
+func (tr *Trie) SetRoot(c common.VCommitment, notClearCache ...bool) error {
+	clearCache := true
+	if len(notClearCache) > 0 {
+		clearCache = !notClearCache[0]
+	}
+	if clearCache {
+		tr.ClearCache()
+	}
 	rootNodeData, ok := tr.nodeStore.FetchNodeData(c)
 	if !ok {
 		return fmt.Errorf("root commitment '%s' does not exist", c)
@@ -62,11 +75,21 @@ func (tr *Trie) SetRoot(c common.VCommitment) error {
 // and writes it into the store.
 // The nodes and values are written into separate partitions
 // The buffered nodes are garbage collected, except the mutated ones
-func (tr *Trie) Commit(store common.KVWriter) common.VCommitment {
+// By default, it sets new root in the end and clears the trie reader cache. To override, use notSetNewRoot = true
+func (tr *Trie) Commit(store common.KVWriter, notSetNewRoot ...bool) common.VCommitment {
 	triePartition := common.MakeWriterPartition(store, PartitionTrieNodes)
 	valuePartition := common.MakeWriterPartition(store, PartitionValues)
 	commitNode(triePartition, valuePartition, tr.Model(), tr.mutatedRoot)
-	return tr.mutatedRoot.nodeData.Commitment.Clone()
+	ret := tr.mutatedRoot.nodeData.Commitment.Clone()
+	setNewRoot := true
+	if len(notSetNewRoot) > 0 && notSetNewRoot[0] {
+		setNewRoot = false
+	}
+	if setNewRoot {
+		err := tr.SetRoot(ret)
+		common.AssertNoError(err)
+	}
+	return ret
 }
 
 // commitNode re-calculates node commitment and, recursively, its children commitments
