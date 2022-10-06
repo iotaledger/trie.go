@@ -98,8 +98,8 @@ func NewHiveBatchedUpdater(kvs kvstore.KVStore, model common.CommitmentModel, tr
 	return ret, nil
 }
 
-// Update adds key values store both to the batch and to the trie
-func (a *HiveBatchedUpdater) Update(key []byte, value []byte) {
+// Set adds key values store both to the batch and to the trie
+func (a *HiveBatchedUpdater) Set(key []byte, value []byte) {
 	var err error
 	if a.batch == nil {
 		a.batch, err = a.kvs.Batched()

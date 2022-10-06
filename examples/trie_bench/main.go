@@ -294,7 +294,7 @@ func file2kvs(kvs kvstore.KVStore) {
 	must(err)
 	var mem runtime.MemStats
 	err = streamIn.Iterate(func(k []byte, v []byte) bool {
-		updater.Update(k, v)
+		updater.Set(k, v)
 		if counterRec%flushEach == 0 {
 			must(updater.Commit())
 			runtime.ReadMemStats(&mem)

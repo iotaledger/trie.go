@@ -40,9 +40,9 @@ type KVStore interface {
 	KVIterator
 }
 
-// KVBatchedUpdater collects mutations in the buffer then flushes it at once
+// KVBatchedUpdater collects mutations in the buffer then flushes it atomically to DB with Commit
 type KVBatchedUpdater interface {
-	Update(key, value []byte)
+	KVWriter
 	Commit() error
 }
 

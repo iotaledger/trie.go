@@ -63,15 +63,6 @@ func (tr *TrieReader) Has(key []byte) bool {
 	return found
 }
 
-// UpdateAll mass-updates trie from the key/value store.
-// To be used to build trie for arbitrary key/value data sets
-func (tr *Trie) UpdateAll(store common.KVIterator) {
-	store.Iterate(func(k, v []byte) bool {
-		tr.Update(k, v)
-		return true
-	})
-}
-
 func (tr *TrieReader) GetStr(key string) string {
 	return string(tr.Get([]byte(key)))
 }
