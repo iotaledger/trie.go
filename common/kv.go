@@ -46,6 +46,14 @@ type KVBatchedUpdater interface {
 	Commit() error
 }
 
+// CopyAll flushes KVIterator to KVWriter. It is up to the iterator correctly stop iterating
+func CopyAll(dst KVWriter, src KVIterator) {
+	src.Iterate(func(k, v []byte) bool {
+		dst.Set(k, v)
+		return true
+	})
+}
+
 // inMemoryKVStore is a KVStore implementation. Mostly used for testing
 var _ KVStore = inMemoryKVStore{}
 
@@ -95,14 +103,6 @@ type KVStreamWriter interface {
 // In general, order is non-deterministic
 type KVStreamIterator interface {
 	Iterate(func(k, v []byte) bool) error
-}
-
-// CopyAll flushes KVIterator to KVWriter
-func CopyAll(dst KVWriter, src KVIterator) {
-	src.Iterate(func(k, v []byte) bool {
-		dst.Set(k, v)
-		return true
-	})
 }
 
 //----------------------------------------------------------------------------
