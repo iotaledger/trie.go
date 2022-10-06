@@ -463,25 +463,113 @@ func TestIterate(t *testing.T) {
 			})
 		}
 	}
-	name := "iterate-"
-	scenario := []string{"a", "b", "c", "*", "a/"}
-	t.Run(name+"1", iterTest(trie_blake2b.New(common.PathArity256, trie_blake2b.HashSize256), scenario))
-	t.Run(name+"2", iterTest(trie_blake2b.New(common.PathArity256, trie_blake2b.HashSize160), scenario))
-	t.Run(name+"3", iterTest(trie_blake2b.New(common.PathArity16, trie_blake2b.HashSize256), scenario))
-	t.Run(name+"4", iterTest(trie_blake2b.New(common.PathArity16, trie_blake2b.HashSize160), scenario))
-	t.Run(name+"5", iterTest(trie_blake2b.New(common.PathArity2, trie_blake2b.HashSize256), scenario))
-	t.Run(name+"6", iterTest(trie_blake2b.New(common.PathArity2, trie_blake2b.HashSize160), scenario))
-	t.Run(name+"7", iterTest(trie_kzg_bn256.New(), scenario))
+	{
+		name := "iterate-"
+		scenario := []string{"a", "b", "c", "*", "a/"}
+		t.Run(name+"1", iterTest(trie_blake2b.New(common.PathArity256, trie_blake2b.HashSize256), scenario))
+		t.Run(name+"2", iterTest(trie_blake2b.New(common.PathArity256, trie_blake2b.HashSize160), scenario))
+		t.Run(name+"3", iterTest(trie_blake2b.New(common.PathArity16, trie_blake2b.HashSize256), scenario))
+		t.Run(name+"4", iterTest(trie_blake2b.New(common.PathArity16, trie_blake2b.HashSize160), scenario))
+		t.Run(name+"5", iterTest(trie_blake2b.New(common.PathArity2, trie_blake2b.HashSize256), scenario))
+		t.Run(name+"6", iterTest(trie_blake2b.New(common.PathArity2, trie_blake2b.HashSize160), scenario))
+		t.Run(name+"7", iterTest(trie_kzg_bn256.New(), scenario))
+	}
+	{
+		name := "iterate-big-"
+		scenario := genRnd3()
+		t.Run(name+"1", iterTest(trie_blake2b.New(common.PathArity256, trie_blake2b.HashSize256), scenario))
+		t.Run(name+"2", iterTest(trie_blake2b.New(common.PathArity256, trie_blake2b.HashSize160), scenario))
+		t.Run(name+"3", iterTest(trie_blake2b.New(common.PathArity16, trie_blake2b.HashSize256), scenario))
+		t.Run(name+"4", iterTest(trie_blake2b.New(common.PathArity16, trie_blake2b.HashSize160), scenario))
+		t.Run(name+"5", iterTest(trie_blake2b.New(common.PathArity2, trie_blake2b.HashSize256), scenario))
+		t.Run(name+"6", iterTest(trie_blake2b.New(common.PathArity2, trie_blake2b.HashSize160), scenario))
+		t.Run(name+"7", iterTest(trie_kzg_bn256.New(), scenario))
+	}
+}
 
-	name = "iterate-big-"
-	scenario = genRnd3()
-	t.Run(name+"1", iterTest(trie_blake2b.New(common.PathArity256, trie_blake2b.HashSize256), scenario))
-	t.Run(name+"2", iterTest(trie_blake2b.New(common.PathArity256, trie_blake2b.HashSize160), scenario))
-	t.Run(name+"3", iterTest(trie_blake2b.New(common.PathArity16, trie_blake2b.HashSize256), scenario))
-	t.Run(name+"4", iterTest(trie_blake2b.New(common.PathArity16, trie_blake2b.HashSize160), scenario))
-	t.Run(name+"5", iterTest(trie_blake2b.New(common.PathArity2, trie_blake2b.HashSize256), scenario))
-	t.Run(name+"6", iterTest(trie_blake2b.New(common.PathArity2, trie_blake2b.HashSize160), scenario))
-	t.Run(name+"7", iterTest(trie_kzg_bn256.New(), scenario))
+func TestIteratePrefix(t *testing.T) {
+	iterTest := func(m common.CommitmentModel, scenario []string, prefix string) func(t *testing.T) {
+		return func(t *testing.T) {
+			store := common.NewInMemoryKVStore()
+			rootInitial := MustInitRoot(store, m, []byte("identity"))
+			require.NotNil(t, rootInitial)
+			t.Logf("initial root commitment with id '%s': %s", "identity", rootInitial)
+
+			tr, err := NewTrieUpdatable(m, store, rootInitial)
+			require.NoError(t, err)
+
+			_, root := runUpdateScenario(tr, store, scenario)
+
+			trr := NewTrieReader(m, store, root, 0)
+
+			countIter := 0
+			trr.Iterator([]byte(prefix)).Iterate(func(k []byte, v []byte) bool {
+				if traceScenarios {
+					fmt.Printf("---- iter --- '%s': '%s'\n", string(k), string(v))
+				}
+				if string(v) != "identity" {
+					countIter++
+				}
+				require.True(t, strings.HasPrefix(string(k), prefix))
+				return true
+			})
+			countOrig := 0
+			for _, s := range scenario {
+				if strings.HasPrefix(s, prefix) {
+					countOrig++
+				}
+			}
+			require.EqualValues(t, countOrig, countIter)
+		}
+	}
+	{
+		name := "iterate-ab"
+		scenario := []string{"a", "ab", "c", "cd", "abcd", "klmn", "aaa", "abra", "111"}
+		prefix := "ab"
+		t.Run(name+"1", iterTest(trie_blake2b.New(common.PathArity256, trie_blake2b.HashSize256), scenario, prefix))
+		t.Run(name+"2", iterTest(trie_blake2b.New(common.PathArity256, trie_blake2b.HashSize160), scenario, prefix))
+		t.Run(name+"3", iterTest(trie_blake2b.New(common.PathArity16, trie_blake2b.HashSize256), scenario, prefix))
+		t.Run(name+"4", iterTest(trie_blake2b.New(common.PathArity16, trie_blake2b.HashSize160), scenario, prefix))
+		t.Run(name+"5", iterTest(trie_blake2b.New(common.PathArity2, trie_blake2b.HashSize256), scenario, prefix))
+		t.Run(name+"6", iterTest(trie_blake2b.New(common.PathArity2, trie_blake2b.HashSize160), scenario, prefix))
+		t.Run(name+"7", iterTest(trie_kzg_bn256.New(), scenario, prefix))
+	}
+	{
+		name := "iterate-a"
+		scenario := []string{"a", "ab", "c", "cd", "abcd", "klmn", "aaa", "abra", "111", "baba", "ababa"}
+		prefix := "a"
+		t.Run(name+"1", iterTest(trie_blake2b.New(common.PathArity256, trie_blake2b.HashSize256), scenario, prefix))
+		t.Run(name+"2", iterTest(trie_blake2b.New(common.PathArity256, trie_blake2b.HashSize160), scenario, prefix))
+		t.Run(name+"3", iterTest(trie_blake2b.New(common.PathArity16, trie_blake2b.HashSize256), scenario, prefix))
+		t.Run(name+"4", iterTest(trie_blake2b.New(common.PathArity16, trie_blake2b.HashSize160), scenario, prefix))
+		t.Run(name+"5", iterTest(trie_blake2b.New(common.PathArity2, trie_blake2b.HashSize256), scenario, prefix))
+		t.Run(name+"6", iterTest(trie_blake2b.New(common.PathArity2, trie_blake2b.HashSize160), scenario, prefix))
+		t.Run(name+"7", iterTest(trie_kzg_bn256.New(), scenario, prefix))
+	}
+	{
+		name := "iterate-empty"
+		scenario := []string{"a", "ab", "c", "cd", "abcd", "klmn", "aaa", "abra", "111", "baba", "ababa"}
+		prefix := ""
+		t.Run(name+"1", iterTest(trie_blake2b.New(common.PathArity256, trie_blake2b.HashSize256), scenario, prefix))
+		t.Run(name+"2", iterTest(trie_blake2b.New(common.PathArity256, trie_blake2b.HashSize160), scenario, prefix))
+		t.Run(name+"3", iterTest(trie_blake2b.New(common.PathArity16, trie_blake2b.HashSize256), scenario, prefix))
+		t.Run(name+"4", iterTest(trie_blake2b.New(common.PathArity16, trie_blake2b.HashSize160), scenario, prefix))
+		t.Run(name+"5", iterTest(trie_blake2b.New(common.PathArity2, trie_blake2b.HashSize256), scenario, prefix))
+		t.Run(name+"6", iterTest(trie_blake2b.New(common.PathArity2, trie_blake2b.HashSize160), scenario, prefix))
+		t.Run(name+"7", iterTest(trie_kzg_bn256.New(), scenario, prefix))
+	}
+	{
+		name := "iterate-none"
+		scenario := []string{"a", "ab", "c", "cd", "abcd", "klmn", "aaa", "abra", "111", "baba", "ababa"}
+		prefix := "---"
+		t.Run(name+"1", iterTest(trie_blake2b.New(common.PathArity256, trie_blake2b.HashSize256), scenario, prefix))
+		t.Run(name+"2", iterTest(trie_blake2b.New(common.PathArity256, trie_blake2b.HashSize160), scenario, prefix))
+		t.Run(name+"3", iterTest(trie_blake2b.New(common.PathArity16, trie_blake2b.HashSize256), scenario, prefix))
+		t.Run(name+"4", iterTest(trie_blake2b.New(common.PathArity16, trie_blake2b.HashSize160), scenario, prefix))
+		t.Run(name+"5", iterTest(trie_blake2b.New(common.PathArity2, trie_blake2b.HashSize256), scenario, prefix))
+		t.Run(name+"6", iterTest(trie_blake2b.New(common.PathArity2, trie_blake2b.HashSize160), scenario, prefix))
+		t.Run(name+"7", iterTest(trie_kzg_bn256.New(), scenario, prefix))
+	}
 }
 
 const letters = "abcdefghijklmnop"

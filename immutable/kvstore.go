@@ -1,6 +1,7 @@
 package immutable
 
 import (
+	"bytes"
 	"encoding/hex"
 
 	"github.com/iotaledger/trie.go/common"
@@ -63,10 +64,26 @@ func (tr *TrieReader) Has(key []byte) bool {
 	return found
 }
 
-// Iterate iterates the key/value pairs in the trie for specific root.
-// The order of the iteration will be deterministic
+// Iterate iterates whole trie
 func (tr *TrieReader) Iterate(f func(k []byte, v []byte) bool) {
-	tr.iterate(tr.persistentRoot, nil, f)
+	tr.iteratePrefix(f, nil)
+}
+
+// iteratePrefix iterates the key/value with keys with prefix.
+// The order of the iteration will be deterministic
+func (tr *TrieReader) iteratePrefix(f func(k []byte, v []byte) bool, prefix []byte) {
+	var root common.VCommitment
+	var triePath []byte
+	unpackedPrefix := common.UnpackBytes(prefix, tr.Model().PathArity())
+	tr.traverseImmutablePath(unpackedPrefix, func(n *common.NodeData, trieKey []byte, ending ProofEndingCode) {
+		if bytes.HasPrefix(common.Concat(trieKey, n.PathFragment), unpackedPrefix) {
+			root = n.Commitment
+			triePath = trieKey
+		}
+	})
+	if !common.IsNil(root) {
+		tr.iterate(root, triePath, f)
+	}
 }
 
 func (tr *TrieReader) iterate(root common.VCommitment, triePath []byte, fun func(k []byte, v []byte) bool) bool {
@@ -91,6 +108,24 @@ func (tr *TrieReader) iterate(root common.VCommitment, triePath []byte, fun func
 		}
 	}
 	return true
+}
+
+// TrieIterator implements common.KVIterator interface for keys in the trie with givem prefix
+type TrieIterator struct {
+	prefix []byte
+	tr     *TrieReader
+}
+
+func (ti *TrieIterator) Iterate(fun func(k []byte, v []byte) bool) {
+	ti.tr.iteratePrefix(fun, ti.prefix)
+}
+
+// Iterator returns iterator for a sub-trie
+func (tr *TrieReader) Iterator(prefix []byte) *TrieIterator {
+	return &TrieIterator{
+		prefix: prefix,
+		tr:     tr,
+	}
 }
 
 func (tr *TrieReader) GetStr(key string) string {
