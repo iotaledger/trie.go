@@ -24,7 +24,7 @@ const (
 )
 
 // MustInitRoot initializes new empty root with the given identity
-func MustInitRoot(store common.KVStore, m common.CommitmentModel, identity []byte) common.VCommitment {
+func MustInitRoot(store common.KVWriter, m common.CommitmentModel, identity []byte) common.VCommitment {
 	common.Assert(len(identity) > 0, "MustInitRoot: identity of the root cannot be empty")
 	// create a node with the commitment to the identity as terminal for the root
 	// stores identity in the value store if it does not fit the commitment
