@@ -92,6 +92,14 @@ func (tr *Trie) Commit(store common.KVWriter, notSetNewRoot ...bool) common.VCom
 	return ret
 }
 
+func (tr *Trie) Persist(db common.KVBatchedUpdater, notSetNewRoot ...bool) (common.VCommitment, error) {
+	ret := tr.Commit(db, notSetNewRoot...)
+	if err := db.Commit(); err != nil {
+		return nil, err
+	}
+	return ret, nil
+}
+
 // commitNode re-calculates node commitment and, recursively, its children commitments
 // Child modification marks in 'uncommittedChildren' are updated
 // Return update to the upper commitment. nil mean upper commitment is not updated
