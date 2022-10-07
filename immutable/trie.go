@@ -76,13 +76,13 @@ func (tr *Trie) SetRoot(c common.VCommitment, notClearCache ...bool) error {
 // The nodes and values are written into separate partitions
 // The buffered nodes are garbage collected, except the mutated ones
 // By default, it sets new root in the end and clears the trie reader cache. To override, use notSetNewRoot = true
-func (tr *Trie) Commit(store common.KVWriter, notSetNewRoot ...bool) common.VCommitment {
+func (tr *Trie) Commit(store common.KVWriter, doNotSetNewRoot ...bool) common.VCommitment {
 	triePartition := common.MakeWriterPartition(store, PartitionTrieNodes)
 	valuePartition := common.MakeWriterPartition(store, PartitionValues)
 	commitNode(triePartition, valuePartition, tr.Model(), tr.mutatedRoot)
 	ret := tr.mutatedRoot.nodeData.Commitment.Clone()
 	setNewRoot := true
-	if len(notSetNewRoot) > 0 && notSetNewRoot[0] {
+	if len(doNotSetNewRoot) > 0 && doNotSetNewRoot[0] {
 		setNewRoot = false
 	}
 	if setNewRoot {
