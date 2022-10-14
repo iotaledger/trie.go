@@ -108,6 +108,41 @@ func (tr *TrieReader) Iterator(prefix []byte) *TrieIterator {
 	}
 }
 
+// SnapshotData creates a snapshot of the data, committed in the specific root
+func (tr *TrieReader) SnapshotData(dest common.KVWriter) {
+	tr.Iterate(func(k []byte, v []byte) bool {
+		dest.Set(k, v)
+		return true
+	})
+}
+
+// Snapshot writes the whole trie with values from specific root to another store
+func (tr *TrieReader) Snapshot(destStore common.KVWriter) {
+	triePartition := common.MakeWriterPartition(destStore, PartitionTrieNodes)
+	valuePartition := common.MakeWriterPartition(destStore, PartitionValues)
+
+	tr.iterateNodes(tr.persistentRoot, nil, func(nodeKey []byte, n *common.NodeData) bool {
+		// write trie node
+		var buf bytes.Buffer
+		err := n.Write(&buf, tr.Model().PathArity(), false)
+		common.AssertNoError(err)
+		triePartition.Set(common.AsKey(n.Commitment), buf.Bytes())
+
+		if common.IsNil(n.Terminal) {
+			return true
+		}
+		// write value if needed
+		if _, valueInCommitment := common.ExtractValue(n.Terminal); valueInCommitment {
+			return true
+		}
+		valueKey := common.AsKey(n.Terminal)
+		value := tr.nodeStore.valueStore.Get(valueKey)
+		common.Assert(len(value) > 0, "can't find value for nodeKey '%s'", hex.EncodeToString(valueKey))
+		valuePartition.Set(valueKey, value)
+		return true
+	})
+}
+
 func (tr *Trie) update(triePath []byte, value []byte) {
 	common.Assert(len(value) > 0, "len(value)>0")
 
@@ -240,23 +275,33 @@ func (tr *TrieReader) iteratePrefix(f func(k []byte, v []byte) bool, prefix []by
 }
 
 func (tr *TrieReader) iterate(root common.VCommitment, triePath []byte, fun func(k []byte, v []byte) bool) bool {
-	n, found := tr.nodeStore.FetchNodeData(root)
-	common.Assert(found, "can't fetch node. triePath: '%s', node commitment: %s", hex.EncodeToString(triePath), root)
+	return tr.iterateNodes(root, triePath, func(nodeKey []byte, n *common.NodeData) bool {
+		if !common.IsNil(n.Terminal) {
+			key, err := common.PackUnpackedBytes(common.Concat(nodeKey, n.PathFragment), tr.Model().PathArity())
+			value, inTheCommitment := n.Terminal.ExtractValue()
+			if !inTheCommitment {
+				value = tr.nodeStore.valueStore.Get(common.AsKey(n.Terminal))
+				common.Assert(len(value) > 0, "can't fetch value. triePath: '%s', data commitment: %s", hex.EncodeToString(key), n.Terminal)
+			}
+			common.AssertNoError(err)
+			if !fun(key, value) {
+				return false
+			}
+		}
+		return true
+	})
+}
 
-	if !common.IsNil(n.Terminal) {
-		key, err := common.PackUnpackedBytes(common.Concat(triePath, n.PathFragment), tr.Model().PathArity())
-		value, inTheCommitment := n.Terminal.ExtractValue()
-		if !inTheCommitment {
-			value = tr.nodeStore.valueStore.Get(common.AsKey(n.Terminal))
-			common.Assert(len(value) > 0, "can't fetch value. triePath: '%s', data commitment: %s", hex.EncodeToString(key), n.Terminal)
-		}
-		common.AssertNoError(err)
-		if !fun(key, value) {
-			return false
-		}
+// iterateNodes iterates nodes of the trie in the lexicographical order of trie keys in "depth first" order
+func (tr *TrieReader) iterateNodes(root common.VCommitment, rootKey []byte, fun func(nodeKey []byte, n *common.NodeData) bool) bool {
+	n, found := tr.nodeStore.FetchNodeData(root)
+	common.Assert(found, "can't fetch node. triePath: '%s', node commitment: %s", hex.EncodeToString(rootKey), root)
+
+	if !fun(rootKey, n) {
+		return false
 	}
 	for childIndex, childCommitment := range n.ChildCommitments {
-		if !tr.iterate(childCommitment, common.Concat(triePath, n.PathFragment, childIndex), fun) {
+		if !tr.iterateNodes(childCommitment, common.Concat(rootKey, n.PathFragment, childIndex), fun) {
 			return false
 		}
 	}

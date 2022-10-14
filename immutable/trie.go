@@ -123,7 +123,7 @@ func commitNode(triePartition, valuePartition common.KVWriter, m common.Commitme
 	common.Assert(node.isCommitted(m), "node.isCommitted(m)")
 
 	node.mustPersist(triePartition, m)
-	if node.value != nil {
+	if len(node.value) > 0 {
 		valuePartition.Set(common.AsKey(node.terminal), node.value)
 	}
 	//fmt.Printf("commited node: trieKey: %+v('%s'): %s'\n",

@@ -464,6 +464,17 @@ func TestIterate(t *testing.T) {
 		}
 	}
 	{
+		name := "iterate-one-"
+		scenario := []string{"a"}
+		t.Run(name+"1", iterTest(trie_blake2b.New(common.PathArity256, trie_blake2b.HashSize256), scenario))
+		t.Run(name+"2", iterTest(trie_blake2b.New(common.PathArity256, trie_blake2b.HashSize160), scenario))
+		t.Run(name+"3", iterTest(trie_blake2b.New(common.PathArity16, trie_blake2b.HashSize256), scenario))
+		t.Run(name+"4", iterTest(trie_blake2b.New(common.PathArity16, trie_blake2b.HashSize160), scenario))
+		t.Run(name+"5", iterTest(trie_blake2b.New(common.PathArity2, trie_blake2b.HashSize256), scenario))
+		t.Run(name+"6", iterTest(trie_blake2b.New(common.PathArity2, trie_blake2b.HashSize160), scenario))
+		t.Run(name+"7", iterTest(trie_kzg_bn256.New(), scenario))
+	}
+	{
 		name := "iterate-"
 		scenario := []string{"a", "b", "c", "*", "a/"}
 		t.Run(name+"1", iterTest(trie_blake2b.New(common.PathArity256, trie_blake2b.HashSize256), scenario))
