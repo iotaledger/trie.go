@@ -714,3 +714,91 @@ func reverse(orig []string) []string {
 	}
 	return ret
 }
+
+func TestSnapshot1(t *testing.T) {
+	runTest := func(m common.CommitmentModel, data []string) {
+		store1 := common.NewInMemoryKVStore()
+		initRoot1 := MustInitRoot(store1, m, []byte("idididid"))
+		tr1, err := NewTrieUpdatable(m, store1, initRoot1)
+		require.NoError(t, err)
+
+		_, root1 := runUpdateScenario(tr1, store1, data)
+		storeData := common.NewInMemoryKVStore()
+		tr1.SnapshotData(storeData)
+
+		store2 := common.NewInMemoryKVStore()
+		initRoot2 := MustInitRoot(store2, m, []byte("idididid"))
+		tr2, err := NewTrieUpdatable(m, store2, initRoot2)
+		require.NoError(t, err)
+
+		storeData.Iterate(func(k, v []byte) bool {
+			tr2.Update(k, v)
+			return true
+		})
+		root2 := tr2.Commit(store2)
+
+		require.True(t, m.EqualCommitments(root1, root2))
+	}
+	{
+		data := []string{"a", "ab", "abc", "1", "2", "3", "11"}
+		runTest(trie_blake2b.New(common.PathArity256, trie_blake2b.HashSize256), data)
+		runTest(trie_blake2b.New(common.PathArity256, trie_blake2b.HashSize160), data)
+		runTest(trie_blake2b.New(common.PathArity16, trie_blake2b.HashSize256), data)
+		runTest(trie_blake2b.New(common.PathArity16, trie_blake2b.HashSize160), data)
+		runTest(trie_blake2b.New(common.PathArity2, trie_blake2b.HashSize256), data)
+		runTest(trie_blake2b.New(common.PathArity2, trie_blake2b.HashSize160), data)
+		runTest(trie_kzg_bn256.New(), data)
+	}
+	{
+		data := genRnd3()
+		runTest(trie_blake2b.New(common.PathArity256, trie_blake2b.HashSize256), data)
+		runTest(trie_blake2b.New(common.PathArity256, trie_blake2b.HashSize160), data)
+		runTest(trie_blake2b.New(common.PathArity16, trie_blake2b.HashSize256), data)
+		runTest(trie_blake2b.New(common.PathArity16, trie_blake2b.HashSize160), data)
+		runTest(trie_blake2b.New(common.PathArity2, trie_blake2b.HashSize256), data)
+		runTest(trie_blake2b.New(common.PathArity2, trie_blake2b.HashSize160), data)
+		runTest(trie_kzg_bn256.New(), data)
+	}
+}
+
+func TestSnapshot2(t *testing.T) {
+	runTest := func(m common.CommitmentModel, data []string) {
+		store1 := common.NewInMemoryKVStore()
+		initRoot1 := MustInitRoot(store1, m, []byte("idididid"))
+		tr1, err := NewTrieUpdatable(m, store1, initRoot1)
+		require.NoError(t, err)
+
+		_, root1 := runUpdateScenario(tr1, store1, data)
+		store2 := common.NewInMemoryKVStore()
+		tr1.Snapshot(store2)
+
+		tr2, err := NewTrieUpdatable(m, store2, root1)
+		require.NoError(t, err)
+
+		sc1 := []string{"@", "#$%%^", "____++++", "~~~~~"}
+		sc2 := []string{"@", "#$%%^", "*", "____++++", "~~~~~"}
+		_, r1 := runUpdateScenario(tr1, store1, sc1)
+		_, r2 := runUpdateScenario(tr2, store2, sc2)
+		require.True(t, m.EqualCommitments(r1, r2))
+	}
+	{
+		data := []string{"a", "ab", "abc", "1", "2", "3", "11"}
+		runTest(trie_blake2b.New(common.PathArity256, trie_blake2b.HashSize256), data)
+		runTest(trie_blake2b.New(common.PathArity256, trie_blake2b.HashSize160), data)
+		runTest(trie_blake2b.New(common.PathArity16, trie_blake2b.HashSize256), data)
+		runTest(trie_blake2b.New(common.PathArity16, trie_blake2b.HashSize160), data)
+		runTest(trie_blake2b.New(common.PathArity2, trie_blake2b.HashSize256), data)
+		runTest(trie_blake2b.New(common.PathArity2, trie_blake2b.HashSize160), data)
+		runTest(trie_kzg_bn256.New(), data)
+	}
+	{
+		data := genRnd3()
+		runTest(trie_blake2b.New(common.PathArity256, trie_blake2b.HashSize256), data)
+		runTest(trie_blake2b.New(common.PathArity256, trie_blake2b.HashSize160), data)
+		runTest(trie_blake2b.New(common.PathArity16, trie_blake2b.HashSize256), data)
+		runTest(trie_blake2b.New(common.PathArity16, trie_blake2b.HashSize160), data)
+		runTest(trie_blake2b.New(common.PathArity2, trie_blake2b.HashSize256), data)
+		runTest(trie_blake2b.New(common.PathArity2, trie_blake2b.HashSize160), data)
+		runTest(trie_kzg_bn256.New(), data)
+	}
+}
