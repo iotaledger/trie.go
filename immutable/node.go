@@ -33,7 +33,6 @@ func newBufferedNode(n *common.NodeData, triePath []byte) *bufferedNode {
 }
 
 func (n *bufferedNode) mustPersist(w common.KVWriter, m common.CommitmentModel) {
-	common.Assert(n.isCommitted(m), "persist: cannot persist uncommitted node")
 	dbKey := common.AsKey(n.nodeData.Commitment)
 	var buf bytes.Buffer
 	err := n.nodeData.Write(&buf, m.PathArity(), false)

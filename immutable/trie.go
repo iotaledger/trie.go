@@ -79,7 +79,11 @@ func (tr *TrieUpdatable) SetRoot(c common.VCommitment, doNotClearCache ...bool) 
 func (tr *TrieUpdatable) Commit(store common.KVWriter, doNotClearCache ...bool) common.VCommitment {
 	triePartition := common.MakeWriterPartition(store, PartitionTrieNodes)
 	valuePartition := common.MakeWriterPartition(store, PartitionValues)
+
 	commitNode(triePartition, valuePartition, tr.Model(), tr.mutatedRoot)
+	// set uncommitted children in the root to empty -> the GC will collect the whole tree of buffered nodes
+	tr.mutatedRoot.uncommittedChildren = make(map[byte]*bufferedNode)
+
 	ret := tr.mutatedRoot.nodeData.Commitment.Clone()
 	err := tr.SetRoot(ret, doNotClearCache...)
 	common.AssertNoError(err)
@@ -113,8 +117,6 @@ func commitNode(triePartition, valuePartition common.KVWriter, m common.Commitme
 		}
 	}
 	m.UpdateNodeCommitment(node.nodeData, childUpdates, node.terminal, node.pathFragment, !common.IsNil(node.nodeData.Commitment))
-	node.uncommittedChildren = make(map[byte]*bufferedNode)
-	common.Assert(node.isCommitted(m), "node.isCommitted(m)")
 
 	node.mustPersist(triePartition, m)
 	if len(node.value) > 0 {
