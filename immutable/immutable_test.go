@@ -435,7 +435,6 @@ func TestDeterminism(t *testing.T) {
 		t.Run(name+"6", tf(trie_blake2b.New(common.PathArity2, trie_blake2b.HashSize256), s1, s2))
 		t.Run(name+"7", tf(trie_blake2b.New(common.PathArity2, trie_blake2b.HashSize160), s1, s2))
 		t.Run(name+"8", tf(trie_kzg_bn256.New(), s1, s2))
-
 	}
 	{
 		s1 := []string{"a", "ab"}
@@ -448,7 +447,6 @@ func TestDeterminism(t *testing.T) {
 		t.Run(name+"5", tf(trie_blake2b.New(common.PathArity16, trie_blake2b.HashSize160), s1, s2))
 		t.Run(name+"6", tf(trie_blake2b.New(common.PathArity2, trie_blake2b.HashSize256), s1, s2))
 		t.Run(name+"7", tf(trie_blake2b.New(common.PathArity2, trie_blake2b.HashSize160), s1, s2))
-		//traceScenarios = true
 		t.Run(name+"kzg", tf(trie_kzg_bn256.New(), s1, s2)) // failing because of KZG commitment model cryptography bug
 	}
 }

@@ -239,7 +239,7 @@ func (m *CommitmentModel) UpdateNodeCommitment(mutate *common.NodeData, childUpd
 
 		// update upper commitment by adding calculated delta
 		if !common.IsNil(mutate.Commitment) {
-			prevP = mutate.Commitment.(*vectorCommitment).Point
+			prevP = mutate.Commitment.(*vectorCommitment).Point.Clone()
 		} else {
 			prevP = m.TrustedSetup.Suite.G1().Point().Null()
 		}

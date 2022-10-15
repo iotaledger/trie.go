@@ -112,9 +112,7 @@ func commitNode(triePartition, valuePartition common.KVWriter, m common.Commitme
 			childUpdates[idx] = child.nodeData.Commitment
 		}
 	}
-	//fmt.Printf("key: '%s', before: %s\n", string(node.triePath), node.nodeData.Commitment)
 	m.UpdateNodeCommitment(node.nodeData, childUpdates, node.terminal, node.pathFragment, !common.IsNil(node.nodeData.Commitment))
-	//fmt.Printf("key: '%s', after: %s\n", string(node.triePath), node.nodeData.Commitment)
 	node.uncommittedChildren = make(map[byte]*bufferedNode)
 	common.Assert(node.isCommitted(m), "node.isCommitted(m)")
 
@@ -122,8 +120,6 @@ func commitNode(triePartition, valuePartition common.KVWriter, m common.Commitme
 	if len(node.value) > 0 {
 		valuePartition.Set(common.AsKey(node.terminal), node.value)
 	}
-	//fmt.Printf("commited node: trieKey: %+v('%s'): %s'\n",
-	//	node.triePath, string(node.triePath), node.nodeData.String())
 }
 
 func (tr *TrieUpdatable) newTerminalNode(triePath, pathFragment, value []byte) *bufferedNode {
