@@ -133,7 +133,7 @@ func (m *CommitmentModel) Description() string {
 }
 
 func (m *CommitmentModel) ShortName() string {
-	return "kzg"
+	return "kzg-bn256"
 }
 
 func (m *CommitmentModel) NewVectorCommitment() common.VCommitment {
@@ -189,8 +189,12 @@ func (m *CommitmentModel) UpdateNodeCommitment(mutate *common.NodeData, childUpd
 
 	for i, childUpd := range childUpdates {
 		if calcDelta {
-			delta := m.TrustedSetup.Suite.G1().Scalar().Zero()
 			prevC, existsPrevC := mutate.ChildCommitments[i]
+			if !existsPrevC && childUpd == nil {
+				// child didn't exist, no need to delete it
+				continue
+			}
+			delta := m.TrustedSetup.Suite.G1().Scalar().Zero()
 			if childUpd == nil {
 				// deleting child
 				common.Assert(prevC != nil, "prevC != nil")

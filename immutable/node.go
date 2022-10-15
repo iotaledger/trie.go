@@ -122,11 +122,11 @@ func (n *bufferedNode) getChild(childIndex byte, db *NodeStore) *bufferedNode {
 	if !ok {
 		return nil
 	}
-	common.Assert(!common.IsNil(childCommitment), "Trie::getChild: child commitment can be nil")
+	common.Assert(!common.IsNil(childCommitment), "TrieUpdatable::getChild: child commitment can be nil")
 	childTriePath := common.Concat(n.triePath, n.pathFragment, childIndex)
 
 	nodeFetched, ok := db.FetchNodeData(childCommitment)
-	common.Assert(ok, "Trie::getChild: can't fetch node. triePath: '%s', dbKey: '%s",
+	common.Assert(ok, "TrieUpdatable::getChild: can't fetch node. triePath: '%s', dbKey: '%s",
 		hex.EncodeToString(childCommitment.AsKey()), hex.EncodeToString(childTriePath))
 
 	return newBufferedNode(nodeFetched, childTriePath)

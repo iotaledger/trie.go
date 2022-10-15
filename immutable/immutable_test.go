@@ -38,9 +38,7 @@ func TestDeletedKey(t *testing.T) {
 		tr.Update([]byte("a"), nil)
 		tr.Update([]byte("b"), []byte("bb"))
 		tr.Update([]byte("c"), []byte("c"))
-		root2 = tr.Commit(store, true) // <<<< override default to set the new root and clear cache
-
-		err = tr.SetRoot(root2) // <<<<<<<<<< we need this if commit does not set the new root
+		root2 = tr.Commit(store)
 		require.NoError(t, err)
 
 		require.Nil(t, tr.Get([]byte("a")))
@@ -105,19 +103,12 @@ func TestCreateTrie(t *testing.T) {
 			require.EqualValues(t, identity, v)
 
 			tr.UpdateStr(key, value)
-			rootCnext := tr.Commit(store, true)
+			rootCnext := tr.Commit(store)
 			t.Logf("initial root commitment: %s", rootInitial)
 			t.Logf("next root commitment: %s", rootCnext)
 
-			v = tr.GetStr("")
-			require.EqualValues(t, identity, v)
-
-			require.False(t, tr.HasStr(key))
-
-			err = tr.SetRoot(rootCnext)
-			require.NoError(t, err)
-
-			v = tr.GetStr("")
+			trInit := NewTrieReader(m, store, rootInitial)
+			v = trInit.GetStr("")
 			require.EqualValues(t, identity, v)
 
 			v = tr.GetStr(key)
@@ -144,17 +135,10 @@ func TestCreateTrie(t *testing.T) {
 			require.EqualValues(t, identity, v)
 
 			tr.UpdateStr(key, strings.Repeat(value, 500))
-			rootCnext := tr.Commit(store, true)
+			rootCnext := tr.Commit(store)
 			t.Logf("initial root commitment: %s", rootInitial)
 			t.Logf("next root commitment: %s", rootCnext)
 
-			v = tr.GetStr("")
-			require.EqualValues(t, identity, v)
-
-			require.False(t, tr.HasStr(key))
-
-			err = tr.SetRoot(rootCnext)
-			require.NoError(t, err)
 			require.True(t, m.EqualCommitments(rootCnext, tr.Root()))
 
 			v = tr.GetStr("")
@@ -222,7 +206,7 @@ func TestBaseUpdate(t *testing.T) {
 
 var traceScenarios = false
 
-func runUpdateScenario(trie *Trie, store common.KVWriter, scenario []string) (map[string]string, common.VCommitment) {
+func runUpdateScenario(trie *TrieUpdatable, store common.KVWriter, scenario []string) (map[string]string, common.VCommitment) {
 	checklist := make(map[string]string)
 	uncommitted := false
 	var ret common.VCommitment
@@ -232,7 +216,6 @@ func runUpdateScenario(trie *Trie, store common.KVWriter, scenario []string) (ma
 		}
 		if cmd == "*" {
 			ret = trie.Commit(store)
-			_ = trie.SetRoot(ret)
 			if traceScenarios {
 				fmt.Printf("+++ commit. Root: '%s'\n", ret)
 			}
@@ -266,14 +249,17 @@ func runUpdateScenario(trie *Trie, store common.KVWriter, scenario []string) (ma
 	}
 	if uncommitted {
 		ret = trie.Commit(store)
-		fmt.Printf("+++ commit. Root: '%s'\n", ret)
-		_ = trie.SetRoot(ret)
+		if traceScenarios {
+			fmt.Printf("+++ commit. Root: '%s'\n", ret)
+		}
 	}
-	fmt.Printf("+++ return root: '%s'\n", ret)
-	return checklist, ret
+	if traceScenarios {
+		fmt.Printf("+++ return root: '%s'\n", ret)
+	}
+	return checklist, trie.Root()
 }
 
-func checkResult(t *testing.T, trie *Trie, checklist map[string]string) {
+func checkResult(t *testing.T, trie *TrieUpdatable, checklist map[string]string) {
 	for key, expectedValue := range checklist {
 		v := trie.GetStr(key)
 		if traceScenarios {
@@ -362,7 +348,38 @@ func TestBaseScenarios(t *testing.T) {
 	t.Run(name+"5", tf(trie_blake2b.New(common.PathArity2, trie_blake2b.HashSize256), data4))
 	t.Run(name+"6", tf(trie_blake2b.New(common.PathArity2, trie_blake2b.HashSize160), data4))
 	t.Run(name+"7", tf(trie_kzg_bn256.New(), data3))
+}
 
+func TestDeletionLoop(t *testing.T) {
+	runTest := func(m common.CommitmentModel, initScenario, scenario []string) {
+		store := common.NewInMemoryKVStore()
+		beginRoot := MustInitRoot(store, m, []byte("ididididid"))
+		tr, err := NewTrieUpdatable(m, store, beginRoot)
+		require.NoError(t, err)
+		t.Logf("TestDeletionLoop: model: '%s', init='%s', scenario='%s'", m.ShortName(), initScenario, scenario)
+		_, beginRoot = runUpdateScenario(tr, store, initScenario)
+		_, endRoot := runUpdateScenario(tr, store, scenario)
+		require.True(t, tr.Model().EqualCommitments(beginRoot, endRoot))
+	}
+	runAll := func(init, sc []string) {
+		runTest(trie_blake2b.New(common.PathArity256, trie_blake2b.HashSize256), init, sc)
+		runTest(trie_blake2b.New(common.PathArity256, trie_blake2b.HashSize160), init, sc)
+		runTest(trie_blake2b.New(common.PathArity16, trie_blake2b.HashSize256), init, sc)
+		runTest(trie_blake2b.New(common.PathArity16, trie_blake2b.HashSize160), init, sc)
+		runTest(trie_blake2b.New(common.PathArity2, trie_blake2b.HashSize256), init, sc)
+		runTest(trie_blake2b.New(common.PathArity2, trie_blake2b.HashSize160), init, sc)
+		runTest(trie_kzg_bn256.New(), init, sc)
+	}
+	runAll([]string{"a", "b"}, []string{"1", "*", "1/"})
+	runAll([]string{"a", "ab", "abc"}, []string{"ac", "*", "ac/"})
+	runAll([]string{"a", "ab", "abc"}, []string{"ac", "ac/"})
+	runAll([]string{}, []string{"a", "a/"})
+	runAll([]string{"a", "ab", "abc"}, []string{"a/", "a"})
+	runAll([]string{}, []string{"a", "a/"})
+	runAll([]string{"a"}, []string{"a/", "a"})
+	runAll([]string{"a"}, []string{"b", "b/"})
+	runAll([]string{"a"}, []string{"b", "*", "b/"})
+	runAll([]string{"a", "bc"}, []string{"1", "*", "2", "*", "3", "1/", "2/", "3/"})
 }
 
 func TestDeterminism(t *testing.T) {
@@ -393,44 +410,47 @@ func TestDeterminism(t *testing.T) {
 			require.True(t, m.EqualCommitments(root1, root2))
 		}
 	}
+	{
+		s1 := []string{"a", "ab"}
+		s2 := []string{"ab", "a"}
+		name := "order-simple-"
+		t.Run(name+"1", tf(trie_blake2b.New(common.PathArity256, trie_blake2b.HashSize256), s1, s2))
+		t.Run(name+"2", tf(trie_blake2b.New(common.PathArity256, trie_blake2b.HashSize256), s1, s2))
+		t.Run(name+"3", tf(trie_blake2b.New(common.PathArity256, trie_blake2b.HashSize160), s1, s2))
+		t.Run(name+"4", tf(trie_blake2b.New(common.PathArity16, trie_blake2b.HashSize256), s1, s2))
+		t.Run(name+"5", tf(trie_blake2b.New(common.PathArity16, trie_blake2b.HashSize160), s1, s2))
+		t.Run(name+"6", tf(trie_blake2b.New(common.PathArity2, trie_blake2b.HashSize256), s1, s2))
+		t.Run(name+"7", tf(trie_blake2b.New(common.PathArity2, trie_blake2b.HashSize160), s1, s2))
+		t.Run(name+"8", tf(trie_kzg_bn256.New(), s1, s2))
+	}
+	{
+		s1 := genRnd3()
+		s2 := reverse(s1)
+		name := "order-reverse-many-"
+		t.Run(name+"1", tf(trie_blake2b.New(common.PathArity256, trie_blake2b.HashSize256), s1, s2))
+		t.Run(name+"2", tf(trie_blake2b.New(common.PathArity256, trie_blake2b.HashSize256), s1, s2))
+		t.Run(name+"3", tf(trie_blake2b.New(common.PathArity256, trie_blake2b.HashSize160), s1, s2))
+		t.Run(name+"4", tf(trie_blake2b.New(common.PathArity16, trie_blake2b.HashSize256), s1, s2))
+		t.Run(name+"5", tf(trie_blake2b.New(common.PathArity16, trie_blake2b.HashSize160), s1, s2))
+		t.Run(name+"6", tf(trie_blake2b.New(common.PathArity2, trie_blake2b.HashSize256), s1, s2))
+		t.Run(name+"7", tf(trie_blake2b.New(common.PathArity2, trie_blake2b.HashSize160), s1, s2))
+		t.Run(name+"8", tf(trie_kzg_bn256.New(), s1, s2))
 
-	s1 := []string{"a", "ab"}
-	s2 := []string{"ab", "a"}
-	name := "order-simple-"
-	t.Run(name+"1", tf(trie_blake2b.New(common.PathArity256, trie_blake2b.HashSize256), s1, s2))
-	t.Run(name+"2", tf(trie_blake2b.New(common.PathArity256, trie_blake2b.HashSize256), s1, s2))
-	t.Run(name+"3", tf(trie_blake2b.New(common.PathArity256, trie_blake2b.HashSize160), s1, s2))
-	t.Run(name+"4", tf(trie_blake2b.New(common.PathArity16, trie_blake2b.HashSize256), s1, s2))
-	t.Run(name+"5", tf(trie_blake2b.New(common.PathArity16, trie_blake2b.HashSize160), s1, s2))
-	t.Run(name+"6", tf(trie_blake2b.New(common.PathArity2, trie_blake2b.HashSize256), s1, s2))
-	t.Run(name+"7", tf(trie_blake2b.New(common.PathArity2, trie_blake2b.HashSize160), s1, s2))
-	t.Run(name+"8", tf(trie_kzg_bn256.New(), s1, s2))
-
-	s1 = genRnd3()
-	s2 = reverse(s1)
-	name = "order-reverse-many-"
-	t.Run(name+"1", tf(trie_blake2b.New(common.PathArity256, trie_blake2b.HashSize256), s1, s2))
-	t.Run(name+"2", tf(trie_blake2b.New(common.PathArity256, trie_blake2b.HashSize256), s1, s2))
-	t.Run(name+"3", tf(trie_blake2b.New(common.PathArity256, trie_blake2b.HashSize160), s1, s2))
-	t.Run(name+"4", tf(trie_blake2b.New(common.PathArity16, trie_blake2b.HashSize256), s1, s2))
-	t.Run(name+"5", tf(trie_blake2b.New(common.PathArity16, trie_blake2b.HashSize160), s1, s2))
-	t.Run(name+"6", tf(trie_blake2b.New(common.PathArity2, trie_blake2b.HashSize256), s1, s2))
-	t.Run(name+"7", tf(trie_blake2b.New(common.PathArity2, trie_blake2b.HashSize160), s1, s2))
-	t.Run(name+"8", tf(trie_kzg_bn256.New(), s1, s2))
-
-	s1 = []string{"a", "ab"}
-	s2 = []string{"a", "*", "ab"}
-	name = "commit-simple-"
-	t.Run(name+"1", tf(trie_blake2b.New(common.PathArity256, trie_blake2b.HashSize256), s1, s2))
-	t.Run(name+"2", tf(trie_blake2b.New(common.PathArity256, trie_blake2b.HashSize256), s1, s2))
-	t.Run(name+"3", tf(trie_blake2b.New(common.PathArity256, trie_blake2b.HashSize160), s1, s2))
-	t.Run(name+"4", tf(trie_blake2b.New(common.PathArity16, trie_blake2b.HashSize256), s1, s2))
-	t.Run(name+"5", tf(trie_blake2b.New(common.PathArity16, trie_blake2b.HashSize160), s1, s2))
-	t.Run(name+"6", tf(trie_blake2b.New(common.PathArity2, trie_blake2b.HashSize256), s1, s2))
-	t.Run(name+"7", tf(trie_blake2b.New(common.PathArity2, trie_blake2b.HashSize160), s1, s2))
-
-	t.Run(name+"kzg", tf(trie_kzg_bn256.New(), s1, s2)) // failing because of KZG commitment model cryptography bug
-
+	}
+	{
+		s1 := []string{"a", "ab"}
+		s2 := []string{"a", "*", "ab"}
+		name := "commit-simple-"
+		t.Run(name+"1", tf(trie_blake2b.New(common.PathArity256, trie_blake2b.HashSize256), s1, s2))
+		t.Run(name+"2", tf(trie_blake2b.New(common.PathArity256, trie_blake2b.HashSize256), s1, s2))
+		t.Run(name+"3", tf(trie_blake2b.New(common.PathArity256, trie_blake2b.HashSize160), s1, s2))
+		t.Run(name+"4", tf(trie_blake2b.New(common.PathArity16, trie_blake2b.HashSize256), s1, s2))
+		t.Run(name+"5", tf(trie_blake2b.New(common.PathArity16, trie_blake2b.HashSize160), s1, s2))
+		t.Run(name+"6", tf(trie_blake2b.New(common.PathArity2, trie_blake2b.HashSize256), s1, s2))
+		t.Run(name+"7", tf(trie_blake2b.New(common.PathArity2, trie_blake2b.HashSize160), s1, s2))
+		//traceScenarios = true
+		t.Run(name+"kzg", tf(trie_kzg_bn256.New(), s1, s2)) // failing because of KZG commitment model cryptography bug
+	}
 }
 
 func TestIterate(t *testing.T) {

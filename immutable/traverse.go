@@ -45,7 +45,7 @@ func (tr *TrieReader) traverseImmutablePath(triePath []byte, fun func(n *common.
 	}
 }
 
-func (tr *Trie) traverseMutatedPath(triePath []byte, fun func(n *bufferedNode, ending ProofEndingCode)) {
+func (tr *TrieUpdatable) traverseMutatedPath(triePath []byte, fun func(n *bufferedNode, ending ProofEndingCode)) {
 	n := tr.mutatedRoot
 	for {
 		keyPlusPathFragment := common.Concat(n.triePath, n.pathFragment)

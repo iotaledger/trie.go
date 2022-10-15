@@ -6,9 +6,9 @@ import (
 	"github.com/iotaledger/trie.go/common"
 )
 
-// Trie is an updatable trie implemented on top of the unpackedKey/value store. It is virtualized and optimized by caching of the
+// TrieUpdatable is an updatable trie implemented on top of the unpackedKey/value store. It is virtualized and optimized by caching of the
 // trie update operation and keeping consistent trie in the cache
-type Trie struct {
+type TrieUpdatable struct {
 	*TrieReader
 	mutatedRoot *bufferedNode
 }
@@ -19,8 +19,8 @@ type TrieReader struct {
 	persistentRoot common.VCommitment
 }
 
-func NewTrieUpdatable(m common.CommitmentModel, store common.KVReader, root common.VCommitment, clearCacheAtSize ...int) (*Trie, error) {
-	ret := &Trie{
+func NewTrieUpdatable(m common.CommitmentModel, store common.KVReader, root common.VCommitment, clearCacheAtSize ...int) (*TrieUpdatable, error) {
+	ret := &TrieUpdatable{
 		TrieReader: NewTrieReader(m, store, root, clearCacheAtSize...),
 	}
 	if err := ret.SetRoot(root); err != nil {
@@ -54,10 +54,10 @@ func (tr *TrieReader) ClearCache() {
 
 // SetRoot fetches and sets new root. By default, it clears cache before fetching the new root
 // To override, use notClearCache = true
-func (tr *Trie) SetRoot(c common.VCommitment, notClearCache ...bool) error {
+func (tr *TrieUpdatable) SetRoot(c common.VCommitment, doNotClearCache ...bool) error {
 	clearCache := true
-	if len(notClearCache) > 0 {
-		clearCache = !notClearCache[0]
+	if len(doNotClearCache) > 0 {
+		clearCache = !doNotClearCache[0]
 	}
 	if clearCache {
 		tr.ClearCache()
@@ -76,23 +76,17 @@ func (tr *Trie) SetRoot(c common.VCommitment, notClearCache ...bool) error {
 // The nodes and values are written into separate partitions
 // The buffered nodes are garbage collected, except the mutated ones
 // By default, it sets new root in the end and clears the trie reader cache. To override, use notSetNewRoot = true
-func (tr *Trie) Commit(store common.KVWriter, doNotSetNewRoot ...bool) common.VCommitment {
+func (tr *TrieUpdatable) Commit(store common.KVWriter, doNotClearCache ...bool) common.VCommitment {
 	triePartition := common.MakeWriterPartition(store, PartitionTrieNodes)
 	valuePartition := common.MakeWriterPartition(store, PartitionValues)
 	commitNode(triePartition, valuePartition, tr.Model(), tr.mutatedRoot)
 	ret := tr.mutatedRoot.nodeData.Commitment.Clone()
-	setNewRoot := true
-	if len(doNotSetNewRoot) > 0 && doNotSetNewRoot[0] {
-		setNewRoot = false
-	}
-	if setNewRoot {
-		err := tr.SetRoot(ret)
-		common.AssertNoError(err)
-	}
+	err := tr.SetRoot(ret, doNotClearCache...)
+	common.AssertNoError(err)
 	return ret
 }
 
-func (tr *Trie) Persist(db common.KVBatchedUpdater, notSetNewRoot ...bool) (common.VCommitment, error) {
+func (tr *TrieUpdatable) Persist(db common.KVBatchedUpdater, notSetNewRoot ...bool) (common.VCommitment, error) {
 	ret := tr.Commit(db, notSetNewRoot...)
 	if err := db.Commit(); err != nil {
 		return nil, err
@@ -118,7 +112,9 @@ func commitNode(triePartition, valuePartition common.KVWriter, m common.Commitme
 			childUpdates[idx] = child.nodeData.Commitment
 		}
 	}
+	//fmt.Printf("key: '%s', before: %s\n", string(node.triePath), node.nodeData.Commitment)
 	m.UpdateNodeCommitment(node.nodeData, childUpdates, node.terminal, node.pathFragment, !common.IsNil(node.nodeData.Commitment))
+	//fmt.Printf("key: '%s', after: %s\n", string(node.triePath), node.nodeData.Commitment)
 	node.uncommittedChildren = make(map[byte]*bufferedNode)
 	common.Assert(node.isCommitted(m), "node.isCommitted(m)")
 
@@ -130,7 +126,7 @@ func commitNode(triePartition, valuePartition common.KVWriter, m common.Commitme
 	//	node.triePath, string(node.triePath), node.nodeData.String())
 }
 
-func (tr *Trie) newTerminalNode(triePath, pathFragment, value []byte) *bufferedNode {
+func (tr *TrieUpdatable) newTerminalNode(triePath, pathFragment, value []byte) *bufferedNode {
 	ret := newBufferedNode(nil, triePath)
 	ret.setPathFragment(pathFragment)
 	ret.setValue(value, tr.Model())

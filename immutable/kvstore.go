@@ -7,8 +7,8 @@ import (
 	"github.com/iotaledger/trie.go/common"
 )
 
-// Update updates Trie with the unpackedKey/value. Reorganizes and re-calculates trie, keeps cache consistent
-func (tr *Trie) Update(key []byte, value []byte) {
+// Update updates TrieUpdatable with the unpackedKey/value. Reorganizes and re-calculates trie, keeps cache consistent
+func (tr *TrieUpdatable) Update(key []byte, value []byte) {
 	if len(key) == 0 {
 		// we never update root identity
 		return
@@ -21,8 +21,8 @@ func (tr *Trie) Update(key []byte, value []byte) {
 	}
 }
 
-// Delete deletes Key/value from the Trie
-func (tr *Trie) Delete(key []byte) {
+// Delete deletes Key/value from the TrieUpdatable
+func (tr *TrieUpdatable) Delete(key []byte) {
 	if len(key) == 0 {
 		// we do not want to delete root
 		return
@@ -32,7 +32,7 @@ func (tr *Trie) Delete(key []byte) {
 
 // DeletePrefix deletes all kv pairs with the prefix. It is a very fast operation, it modifies only one node
 // and all children (any number) disappears from the next root
-func (tr *Trie) DeletePrefix(pathPrefix []byte) bool {
+func (tr *TrieUpdatable) DeletePrefix(pathPrefix []byte) bool {
 	if len(pathPrefix) == 0 {
 		// we do not want to delete root, or do we?
 		return false
@@ -108,7 +108,7 @@ func (tr *TrieReader) Iterator(prefix []byte) *TrieIterator {
 	}
 }
 
-// SnapshotData creates a snapshot of the data, committed in the specific root
+// SnapshotData writes all key/value pairs, committed in the specific root, to a store
 func (tr *TrieReader) SnapshotData(dest common.KVWriter) {
 	tr.Iterate(func(k []byte, v []byte) bool {
 		dest.Set(k, v)
@@ -116,7 +116,7 @@ func (tr *TrieReader) SnapshotData(dest common.KVWriter) {
 	})
 }
 
-// Snapshot writes the whole trie with values from specific root to another store
+// Snapshot writes the whole trie (including values) from specific root to another store
 func (tr *TrieReader) Snapshot(destStore common.KVWriter) {
 	triePartition := common.MakeWriterPartition(destStore, PartitionTrieNodes)
 	valuePartition := common.MakeWriterPartition(destStore, PartitionValues)
@@ -143,7 +143,7 @@ func (tr *TrieReader) Snapshot(destStore common.KVWriter) {
 	})
 }
 
-func (tr *Trie) update(triePath []byte, value []byte) {
+func (tr *TrieUpdatable) update(triePath []byte, value []byte) {
 	common.Assert(len(value) > 0, "len(value)>0")
 
 	nodes := make([]*bufferedNode, 0)
@@ -213,7 +213,7 @@ func (tr *Trie) update(triePath []byte, value []byte) {
 	}
 }
 
-func (tr *Trie) delete(triePath []byte) {
+func (tr *TrieUpdatable) delete(triePath []byte) {
 	nodes := make([]*bufferedNode, 0)
 	var ends ProofEndingCode
 	tr.traverseMutatedPath(triePath, func(n *bufferedNode, ending ProofEndingCode) {
@@ -241,7 +241,7 @@ func (tr *Trie) delete(triePath []byte) {
 	common.Assert(nodes[0] != nil, "please do not delete root")
 }
 
-func (tr *Trie) mergeNodeIfNeeded(node *bufferedNode) *bufferedNode {
+func (tr *TrieUpdatable) mergeNodeIfNeeded(node *bufferedNode) *bufferedNode {
 	toRemove, theOnlyChildToMergeWith := node.hasToBeRemoved(tr.nodeStore)
 	if !toRemove {
 		return node
@@ -311,7 +311,7 @@ func (tr *TrieReader) iterateNodes(root common.VCommitment, rootKey []byte, fun 
 // deletePrefix deletes all k/v pairs from the trie with the specified prefix
 // It does nothing if prefix is nil, i.e. you can't delete the root
 // return if deleted something
-func (tr *Trie) deletePrefix(pathPrefix []byte) bool {
+func (tr *TrieUpdatable) deletePrefix(pathPrefix []byte) bool {
 	nodes := make([]*bufferedNode, 0)
 
 	prefixExists := false
@@ -363,7 +363,7 @@ func (tr *TrieReader) HasStr(key string) bool {
 }
 
 // UpdateStr updates key/value pair in the trie
-func (tr *Trie) UpdateStr(key interface{}, value interface{}) {
+func (tr *TrieUpdatable) UpdateStr(key interface{}, value interface{}) {
 	var k, v []byte
 	if key != nil {
 		switch kt := key.(type) {
@@ -389,7 +389,7 @@ func (tr *Trie) UpdateStr(key interface{}, value interface{}) {
 }
 
 // DeleteStr removes key from trie
-func (tr *Trie) DeleteStr(key interface{}) {
+func (tr *TrieUpdatable) DeleteStr(key interface{}) {
 	var k []byte
 	if key != nil {
 		switch kt := key.(type) {

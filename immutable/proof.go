@@ -76,7 +76,7 @@ func GetProofGeneric(nodeStore *NodeStore, root common.VCommitment, triePath []b
 //    prefix of the 'finalKey'. The trie must be reorged to include the new unpackedKey
 // -- EndingExtend the path is a prefix of the 'finalKey', so trie must be extended to the same direction with new node
 // - terminal of the last node
-//func (tr *Trie) proofPath(unpackedKey []byte) ([]*bufferedNode, []byte, ProofEndingCode) {
+//func (tr *TrieUpdatable) proofPath(unpackedKey []byte) ([]*bufferedNode, []byte, ProofEndingCode) {
 //	n := tr.mutatedRoot
 //
 //	proof := make([]*bufferedNode, 0)
