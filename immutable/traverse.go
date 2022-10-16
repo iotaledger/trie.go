@@ -6,7 +6,58 @@ import (
 	"github.com/iotaledger/trie.go/common"
 )
 
-func (tr *TrieReader) traverseImmutablePath(triePath []byte, fun func(n *common.NodeData, trieKey []byte, ending ProofEndingCode)) {
+// PathElement proof element is common.NodeData together with the index of
+// the next child in the path (except the last one in the proof path)
+// Sequence of PathElement is used to generate proof
+type PathElement struct {
+	NodeData   *common.NodeData
+	ChildIndex byte
+}
+
+type PathEndingCode byte
+
+const (
+	EndingNone = PathEndingCode(iota)
+	EndingTerminal
+	EndingSplit
+	EndingExtend
+)
+
+func (e PathEndingCode) String() string {
+	switch e {
+	case EndingNone:
+		return "EndingNone"
+	case EndingTerminal:
+		return "EndingTerminal"
+	case EndingSplit:
+		return "EndingSplit"
+	case EndingExtend:
+		return "EndingExtend"
+	default:
+		panic("wrong ending code")
+	}
+}
+
+// NodePath returns path PathElement-s along the triePath (the key) with the ending code
+// to determine is it is proof of inclusion or absence
+func (tr *TrieReader) NodePath(triePath []byte) ([]*PathElement, PathEndingCode) {
+	ret := make([]*PathElement, 0)
+	var endingCode PathEndingCode
+	tr.traverseImmutablePath(triePath, func(n *common.NodeData, trieKey []byte, ending PathEndingCode) {
+		elem := &PathElement{
+			NodeData: n,
+		}
+		nextChildIdx := len(trieKey) + len(n.PathFragment)
+		if nextChildIdx < len(triePath) {
+			elem.ChildIndex = triePath[nextChildIdx]
+		}
+		endingCode = ending
+		ret = append(ret, elem)
+	})
+	return ret, endingCode
+}
+
+func (tr *TrieReader) traverseImmutablePath(triePath []byte, fun func(n *common.NodeData, trieKey []byte, ending PathEndingCode)) {
 	n, found := tr.nodeStore.FetchNodeData(tr.persistentRoot)
 	if !found {
 		return
@@ -45,7 +96,7 @@ func (tr *TrieReader) traverseImmutablePath(triePath []byte, fun func(n *common.
 	}
 }
 
-func (tr *TrieUpdatable) traverseMutatedPath(triePath []byte, fun func(n *bufferedNode, ending ProofEndingCode)) {
+func (tr *TrieUpdatable) traverseMutatedPath(triePath []byte, fun func(n *bufferedNode, ending PathEndingCode)) {
 	n := tr.mutatedRoot
 	for {
 		keyPlusPathFragment := common.Concat(n.triePath, n.pathFragment)

@@ -52,22 +52,15 @@ func (tr *TrieReader) ClearCache() {
 	tr.nodeStore.clearCache()
 }
 
-// SetRoot fetches and sets new root. By default, it clears cache before fetching the new root
-// To override, use notClearCache = true
-func (tr *TrieUpdatable) SetRoot(c common.VCommitment, doNotClearCache ...bool) error {
-	clearCache := true
-	if len(doNotClearCache) > 0 {
-		clearCache = !doNotClearCache[0]
-	}
-	if clearCache {
-		tr.ClearCache()
-	}
+// SetRoot fetches and sets new root. It clears cache before fetching the new root
+func (tr *TrieUpdatable) SetRoot(c common.VCommitment) error {
+	tr.ClearCache()
 	rootNodeData, ok := tr.nodeStore.FetchNodeData(c)
 	if !ok {
 		return fmt.Errorf("root commitment '%s' does not exist", c)
 	}
 	tr.persistentRoot = c.Clone()
-	tr.mutatedRoot = newBufferedNode(rootNodeData, nil)
+	tr.mutatedRoot = newBufferedNode(rootNodeData, nil) // the previous mutated tree will be GC-ed
 	return nil
 }
 
@@ -76,7 +69,7 @@ func (tr *TrieUpdatable) SetRoot(c common.VCommitment, doNotClearCache ...bool) 
 // The nodes and values are written into separate partitions
 // The buffered nodes are garbage collected, except the mutated ones
 // By default, it sets new root in the end and clears the trie reader cache. To override, use notSetNewRoot = true
-func (tr *TrieUpdatable) Commit(store common.KVWriter, doNotClearCache ...bool) common.VCommitment {
+func (tr *TrieUpdatable) Commit(store common.KVWriter) common.VCommitment {
 	triePartition := common.MakeWriterPartition(store, PartitionTrieNodes)
 	valuePartition := common.MakeWriterPartition(store, PartitionValues)
 
@@ -85,13 +78,13 @@ func (tr *TrieUpdatable) Commit(store common.KVWriter, doNotClearCache ...bool) 
 	tr.mutatedRoot.uncommittedChildren = make(map[byte]*bufferedNode)
 
 	ret := tr.mutatedRoot.nodeData.Commitment.Clone()
-	err := tr.SetRoot(ret, doNotClearCache...)
+	err := tr.SetRoot(ret) // always clear cache because NodeData-s are mutated and not valid anymore
 	common.AssertNoError(err)
 	return ret
 }
 
-func (tr *TrieUpdatable) Persist(db common.KVBatchedUpdater, notSetNewRoot ...bool) (common.VCommitment, error) {
-	ret := tr.Commit(db, notSetNewRoot...)
+func (tr *TrieUpdatable) Persist(db common.KVBatchedUpdater) (common.VCommitment, error) {
+	ret := tr.Commit(db)
 	if err := db.Commit(); err != nil {
 		return nil, err
 	}

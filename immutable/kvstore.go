@@ -43,12 +43,10 @@ func (tr *TrieUpdatable) DeletePrefix(pathPrefix []byte) bool {
 
 // Get reads the trie with the key
 func (tr *TrieReader) Get(key []byte) []byte {
-	//fmt.Printf("**** Get key: %s\n", string(key))
 	unpackedTriePath := common.UnpackBytes(key, tr.PathArity())
 	found := false
 	var terminal common.TCommitment
-	tr.traverseImmutablePath(unpackedTriePath, func(n *common.NodeData, _ []byte, ending ProofEndingCode) {
-		//fmt.Printf("          --- traverse commitment: %s\n", n.Commitment)
+	tr.traverseImmutablePath(unpackedTriePath, func(n *common.NodeData, _ []byte, ending PathEndingCode) {
 		if ending == EndingTerminal {
 			if !common.IsNil(n.Terminal) {
 				found = true
@@ -75,7 +73,7 @@ func (tr *TrieReader) Get(key []byte) []byte {
 func (tr *TrieReader) Has(key []byte) bool {
 	unpackedTriePath := common.UnpackBytes(key, tr.PathArity())
 	found := false
-	tr.traverseImmutablePath(unpackedTriePath, func(n *common.NodeData, _ []byte, ending ProofEndingCode) {
+	tr.traverseImmutablePath(unpackedTriePath, func(n *common.NodeData, _ []byte, ending PathEndingCode) {
 		if ending == EndingTerminal {
 			if !common.IsNil(n.Terminal) {
 				found = true
@@ -147,8 +145,8 @@ func (tr *TrieUpdatable) update(triePath []byte, value []byte) {
 	common.Assert(len(value) > 0, "len(value)>0")
 
 	nodes := make([]*bufferedNode, 0)
-	var ends ProofEndingCode
-	tr.traverseMutatedPath(triePath, func(n *bufferedNode, ending ProofEndingCode) {
+	var ends PathEndingCode
+	tr.traverseMutatedPath(triePath, func(n *bufferedNode, ending PathEndingCode) {
 		nodes = append(nodes, n)
 		ends = ending
 	})
@@ -215,8 +213,8 @@ func (tr *TrieUpdatable) update(triePath []byte, value []byte) {
 
 func (tr *TrieUpdatable) delete(triePath []byte) {
 	nodes := make([]*bufferedNode, 0)
-	var ends ProofEndingCode
-	tr.traverseMutatedPath(triePath, func(n *bufferedNode, ending ProofEndingCode) {
+	var ends PathEndingCode
+	tr.traverseMutatedPath(triePath, func(n *bufferedNode, ending PathEndingCode) {
 		nodes = append(nodes, n)
 		ends = ending
 	})
@@ -263,7 +261,7 @@ func (tr *TrieReader) iteratePrefix(f func(k []byte, v []byte) bool, prefix []by
 	var root common.VCommitment
 	var triePath []byte
 	unpackedPrefix := common.UnpackBytes(prefix, tr.Model().PathArity())
-	tr.traverseImmutablePath(unpackedPrefix, func(n *common.NodeData, trieKey []byte, ending ProofEndingCode) {
+	tr.traverseImmutablePath(unpackedPrefix, func(n *common.NodeData, trieKey []byte, ending PathEndingCode) {
 		if bytes.HasPrefix(common.Concat(trieKey, n.PathFragment), unpackedPrefix) {
 			root = n.Commitment
 			triePath = trieKey
@@ -315,7 +313,7 @@ func (tr *TrieUpdatable) deletePrefix(pathPrefix []byte) bool {
 	nodes := make([]*bufferedNode, 0)
 
 	prefixExists := false
-	tr.traverseMutatedPath(pathPrefix, func(n *bufferedNode, ending ProofEndingCode) {
+	tr.traverseMutatedPath(pathPrefix, func(n *bufferedNode, ending PathEndingCode) {
 		nodes = append(nodes, n)
 		if bytes.HasPrefix(common.Concat(n.triePath, n.nodeData.PathFragment), pathPrefix) {
 			prefixExists = true
