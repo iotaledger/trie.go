@@ -51,7 +51,8 @@ func (m *CommitmentModel) ProofMut(key []byte, tr mutable.NodeStore) *Proof {
 			ChildIndex:   childIndex,
 		}
 		if node.Terminal() != nil {
-			em.Terminal = node.Terminal().(*terminalCommitment).bytes
+			em.Terminal = node.Terminal().Bytes()
+			// (*terminalCommitment).bytes
 		}
 		for idx, v := range node.ChildCommitments() {
 			if int(idx) == childIndex {

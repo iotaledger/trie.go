@@ -12,7 +12,7 @@ import (
 
 // MustKeyWithTerminal returns key and terminal commitment the proof is about. It returns:
 // - key
-// - commitment slice of up to hashSize bytes long. If it is nil, the proof is a proof of absence
+// - terminal commitment. If it is nil, the proof is a proof of absence
 // It does not verify the proof, so this function should be used only after Validate()
 func MustKeyWithTerminal(p *trie_blake2b.Proof) ([]byte, []byte) {
 	if len(p.Path) == 0 {
@@ -61,31 +61,17 @@ func Validate(p *trie_blake2b.Proof, rootBytes []byte) error {
 	return nil
 }
 
-// ValidateWithValue checks the proof and checks if the proof commits to the specific value
-func ValidateWithValue(p *trie_blake2b.Proof, rootBytes []byte, value []byte) error {
+// ValidateWithTerminal checks the proof and checks if the proof commits to the specific value
+// The check is dependent on the commitment model because of valueOptimisationThreshold
+func ValidateWithTerminal(p *trie_blake2b.Proof, rootBytes, terminalBytes []byte) error {
 	if err := Validate(p, rootBytes); err != nil {
 		return err
 	}
-	_, r := MustKeyWithTerminal(p)
-	if len(r) == 0 {
-		return errors.New("key is not present in the state")
-	}
-	rawBytes, _ := trie_blake2b.CommitToDataRaw(value, p.HashSize)
-	if !bytes.Equal(rawBytes, r) {
-		return errors.New("key does not correspond to the given value")
+	_, terminalBytesInProof := MustKeyWithTerminal(p)
+	if !bytes.Equal(terminalBytes, terminalBytesInProof) {
+		return errors.New("key does not correspond to the given value commitment")
 	}
 	return nil
-}
-
-//CommitmentToTheTerminalNode returns hash of the last node in the proof
-//If it is a valid proof, it s always contains terminal commitment
-//It is useful to get commitment to the sub-state. It must contain some value
-//at its nil postfix
-func CommitmentToTheTerminalNode(p *trie_blake2b.Proof) []byte {
-	if len(p.Path) == 0 {
-		return nil
-	}
-	return hashIt(p.Path[len(p.Path)-1], nil, p.PathArity, p.HashSize)
 }
 
 func verify(p *trie_blake2b.Proof, pathIdx, keyIdx int) ([]byte, error) {

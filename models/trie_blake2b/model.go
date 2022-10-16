@@ -217,11 +217,12 @@ func (m *CommitmentModel) makeHashVector(nodeData *common.NodeData) [][]byte {
 		common.Assert(int(i) < m.arity.VectorLength(), "int(i)<m.arity.VectorLength()")
 		hashes[i] = c.Bytes()
 	}
-	if nodeData.Terminal != nil {
-		hashes[m.arity.TerminalCommitmentIndex()] = nodeData.Terminal.(*terminalCommitment).bytes
+	if !common.IsNil(nodeData.Terminal) {
+		hashes[m.arity.TerminalCommitmentIndex()] = nodeData.Terminal.Bytes()
+		//nodeData.Terminal.(*terminalCommitment).bytes
 	}
-	commitmentBytes, _ := CommitToDataRaw(nodeData.PathFragment, m.hashSize)
-	hashes[m.arity.PathFragmentCommitmentIndex()] = commitmentBytes
+	pathFragmentCommitmentBytes, _ := CommitToDataRaw(nodeData.PathFragment, m.hashSize)
+	hashes[m.arity.PathFragmentCommitmentIndex()] = pathFragmentCommitmentBytes
 	return hashes
 }
 
