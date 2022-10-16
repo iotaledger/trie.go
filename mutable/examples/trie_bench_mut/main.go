@@ -20,7 +20,7 @@ import (
 	"golang.org/x/xerrors"
 )
 
-const usage = "USAGE: trie_bench [-n=<num kv pairs>] [-blake2b=20|32]" +
+const usage = "USAGE: trie_bench_mut [-n=<num kv pairs>] [-blake2b=20|32]" +
 	"[-arity=2|16|26] [-valuethr=<terminal optimization threshold>]" +
 	"[maxkey=<max key size>] [maxvalue=<max value size>]" +
 	"<gen|mkdbbadger|mkdbmem|scandbbadger|mkdbbadgernotrie> <name>\n"
