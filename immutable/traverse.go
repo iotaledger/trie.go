@@ -14,36 +14,13 @@ type PathElement struct {
 	ChildIndex byte
 }
 
-type PathEndingCode byte
-
-const (
-	EndingNone = PathEndingCode(iota)
-	EndingTerminal
-	EndingSplit
-	EndingExtend
-)
-
-func (e PathEndingCode) String() string {
-	switch e {
-	case EndingNone:
-		return "EndingNone"
-	case EndingTerminal:
-		return "EndingTerminal"
-	case EndingSplit:
-		return "EndingSplit"
-	case EndingExtend:
-		return "EndingExtend"
-	default:
-		panic("wrong ending code")
-	}
-}
-
 // NodePath returns path PathElement-s along the triePath (the key) with the ending code
-// to determine is it is proof of inclusion or absence
-func (tr *TrieReader) NodePath(triePath []byte) ([]*PathElement, PathEndingCode) {
+// to determine is it a proof of inclusion or absence
+// Each path element contains index of the subsequent child, except the last one is set to 0
+func (tr *TrieReader) NodePath(triePath []byte) ([]*PathElement, common.PathEndingCode) {
 	ret := make([]*PathElement, 0)
-	var endingCode PathEndingCode
-	tr.traverseImmutablePath(triePath, func(n *common.NodeData, trieKey []byte, ending PathEndingCode) {
+	var endingCode common.PathEndingCode
+	tr.traverseImmutablePath(triePath, func(n *common.NodeData, trieKey []byte, ending common.PathEndingCode) {
 		elem := &PathElement{
 			NodeData: n,
 		}
@@ -54,10 +31,12 @@ func (tr *TrieReader) NodePath(triePath []byte) ([]*PathElement, PathEndingCode)
 		endingCode = ending
 		ret = append(ret, elem)
 	})
+	common.Assert(len(ret) > 0, "len(ret)>0")
+	ret[len(ret)-1].ChildIndex = 0
 	return ret, endingCode
 }
 
-func (tr *TrieReader) traverseImmutablePath(triePath []byte, fun func(n *common.NodeData, trieKey []byte, ending PathEndingCode)) {
+func (tr *TrieReader) traverseImmutablePath(triePath []byte, fun func(n *common.NodeData, trieKey []byte, ending common.PathEndingCode)) {
 	n, found := tr.nodeStore.FetchNodeData(tr.persistentRoot)
 	if !found {
 		return
@@ -67,64 +46,64 @@ func (tr *TrieReader) traverseImmutablePath(triePath []byte, fun func(n *common.
 		keyPlusPathFragment := common.Concat(trieKey, n.PathFragment)
 		switch {
 		case len(triePath) < len(keyPlusPathFragment):
-			fun(n, trieKey, EndingSplit)
+			fun(n, trieKey, common.EndingSplit)
 			return
 		case len(triePath) == len(keyPlusPathFragment):
 			if bytes.Equal(keyPlusPathFragment, triePath) {
-				fun(n, trieKey, EndingTerminal)
+				fun(n, trieKey, common.EndingTerminal)
 			} else {
-				fun(n, trieKey, EndingSplit)
+				fun(n, trieKey, common.EndingSplit)
 			}
 			return
 		default:
 			common.Assert(len(keyPlusPathFragment) < len(triePath), "len(keyPlusPathFragment) < len(triePath)")
 			prefix, _, _ := commonPrefix(keyPlusPathFragment, triePath)
 			if !bytes.Equal(prefix, keyPlusPathFragment) {
-				fun(n, trieKey, EndingSplit)
+				fun(n, trieKey, common.EndingSplit)
 				return
 			}
 			childIndex := triePath[len(keyPlusPathFragment)]
 			child, childTrieKey := tr.nodeStore.FetchChild(n, childIndex, trieKey)
 			if child == nil {
-				fun(n, childTrieKey, EndingExtend)
+				fun(n, childTrieKey, common.EndingExtend)
 				return
 			}
-			fun(n, trieKey, EndingNone)
+			fun(n, trieKey, common.EndingNone)
 			trieKey = childTrieKey
 			n = child
 		}
 	}
 }
 
-func (tr *TrieUpdatable) traverseMutatedPath(triePath []byte, fun func(n *bufferedNode, ending PathEndingCode)) {
+func (tr *TrieUpdatable) traverseMutatedPath(triePath []byte, fun func(n *bufferedNode, ending common.PathEndingCode)) {
 	n := tr.mutatedRoot
 	for {
 		keyPlusPathFragment := common.Concat(n.triePath, n.pathFragment)
 		switch {
 		case len(triePath) < len(keyPlusPathFragment):
-			fun(n, EndingSplit)
+			fun(n, common.EndingSplit)
 			return
 		case len(triePath) == len(keyPlusPathFragment):
 			if bytes.Equal(keyPlusPathFragment, triePath) {
-				fun(n, EndingTerminal)
+				fun(n, common.EndingTerminal)
 			} else {
-				fun(n, EndingSplit)
+				fun(n, common.EndingSplit)
 			}
 			return
 		default:
 			common.Assert(len(keyPlusPathFragment) < len(triePath), "len(keyPlusPathFragment) < len(triePath)")
 			prefix, _, _ := commonPrefix(keyPlusPathFragment, triePath)
 			if !bytes.Equal(prefix, keyPlusPathFragment) {
-				fun(n, EndingSplit)
+				fun(n, common.EndingSplit)
 				return
 			}
 			childIndex := triePath[len(keyPlusPathFragment)]
 			child := n.getChild(childIndex, tr.nodeStore)
 			if child == nil {
-				fun(n, EndingExtend)
+				fun(n, common.EndingExtend)
 				return
 			}
-			fun(n, EndingNone)
+			fun(n, common.EndingNone)
 			n = child
 		}
 	}

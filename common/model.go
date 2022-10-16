@@ -93,3 +93,28 @@ func (a PathArity) IsChildIndex(i int) bool {
 func (a PathArity) NumChildren() int {
 	return int(a) + 1
 }
+
+// PathEndingCode is a tag how trie path ends wrt the trieKey
+type PathEndingCode byte
+
+const (
+	EndingNone = PathEndingCode(iota)
+	EndingTerminal
+	EndingSplit
+	EndingExtend
+)
+
+func (e PathEndingCode) String() string {
+	switch e {
+	case EndingNone:
+		return "EndingNone"
+	case EndingTerminal:
+		return "EndingTerminal"
+	case EndingSplit:
+		return "EndingSplit"
+	case EndingExtend:
+		return "EndingExtend"
+	default:
+		panic("wrong ending code")
+	}
+}

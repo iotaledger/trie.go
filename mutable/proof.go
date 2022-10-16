@@ -14,28 +14,7 @@ import (
 type ProofGeneric struct {
 	Key    []byte
 	Path   [][]byte
-	Ending ProofEndingCode
-}
-
-type ProofEndingCode byte
-
-const (
-	EndingTerminal = iota
-	EndingSplit
-	EndingExtend
-)
-
-func (e ProofEndingCode) String() string {
-	switch e {
-	case EndingTerminal:
-		return "EndingTerminal"
-	case EndingSplit:
-		return "EndingSplit"
-	case EndingExtend:
-		return "EndingExtend"
-	default:
-		panic("wrong ending code")
-	}
+	Ending common.PathEndingCode
 }
 
 func (p *ProofGeneric) String() string {
@@ -67,7 +46,7 @@ func GetProofGeneric(tr NodeStore, unpackedKey []byte) *ProofGeneric {
 // -- EndingSplit means the 'finalKey' is a new unpackedKey, it does not point to any node and none of existing TrieReader are
 //    prefix of the 'finalKey'. The trie must be reorged to include the new unpackedKey
 // -- EndingExtend the path is a prefix of the 'finalKey', so trie must be extended to the same direction with new node
-func proofPath(trieAccess NodeStore, unpackedKey []byte) ([][]byte, []byte, ProofEndingCode) {
+func proofPath(trieAccess NodeStore, unpackedKey []byte) ([][]byte, []byte, common.PathEndingCode) {
 	n, ok := trieAccess.GetNode(nil)
 	if !ok {
 		return nil, nil, 0
@@ -81,12 +60,12 @@ func proofPath(trieAccess NodeStore, unpackedKey []byte) ([][]byte, []byte, Proo
 		common.Assert(len(key) <= len(unpackedKey), "trie::proofPath assert: len(unpackedKey) <= len(unpackedKey), key: '%s', unpackedKey: '%s'",
 			hex.EncodeToString(key), hex.EncodeToString(unpackedKey))
 		if bytes.Equal(unpackedKey[len(key):], n.PathFragment()) {
-			return proof, nil, EndingTerminal
+			return proof, nil, common.EndingTerminal
 		}
 		prefix := commonPrefix(unpackedKey[len(key):], n.PathFragment())
 
 		if len(prefix) < len(n.PathFragment()) {
-			return proof, prefix, EndingSplit
+			return proof, prefix, common.EndingSplit
 		}
 		common.Assert(len(prefix) == len(n.PathFragment()), "trie::proofPath assert: len(prefix)==len(n.pathFragment), prefix: '%s', pathFragment: '%s'",
 			hex.EncodeToString(prefix), hex.EncodeToString(n.PathFragment()))
@@ -98,7 +77,7 @@ func proofPath(trieAccess NodeStore, unpackedKey []byte) ([][]byte, []byte, Proo
 		n, ok = trieAccess.GetNode(key)
 		if !ok {
 			// if there are no commitment to the child at the position, it means trie must be extended at this point
-			return proof, prefix, EndingExtend
+			return proof, prefix, common.EndingExtend
 		}
 	}
 }

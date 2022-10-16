@@ -40,7 +40,7 @@ func MustInitRoot(store common.KVWriter, m common.CommitmentModel, identity []by
 	return n.nodeData.Commitment.Clone()
 }
 
-func OpenImmutableNodeStore(store common.KVReader, model common.CommitmentModel, clearCacheAtSize ...int) *NodeStore {
+func openImmutableNodeStore(store common.KVReader, model common.CommitmentModel, clearCacheAtSize ...int) *NodeStore {
 	ret := &NodeStore{
 		m:                model,
 		trieStore:        common.MakeReaderPartition(store, PartitionTrieNodes),

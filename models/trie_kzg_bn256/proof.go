@@ -57,7 +57,7 @@ func (m *CommitmentModel) ProofOfInclusion(key []byte, tr mutable.NodeStore) (*P
 	common.Assert(tr.PathArity() == common.PathArity256, "for KZG commitment common only 256-ary trie is supported")
 
 	proofGeneric := mutable.GetProofGeneric(tr, key)
-	if proofGeneric == nil || len(proofGeneric.Path) == 0 || proofGeneric.Ending != mutable.EndingTerminal {
+	if proofGeneric == nil || len(proofGeneric.Path) == 0 || proofGeneric.Ending != common.EndingTerminal {
 		// key is not present in the state
 		return nil, false
 	}

@@ -166,10 +166,10 @@ func (tr *Trie) Update(key []byte, value []byte) {
 	}
 	lastKey := proof[len(proof)-1]
 	switch ending {
-	case EndingTerminal:
+	case common.EndingTerminal:
 		tr.nodeStore.mustGetNode(lastKey).setNewTerminal(c)
 
-	case EndingExtend:
+	case common.EndingExtend:
 		childIndexPosition := len(lastKey) + len(lastCommonPrefix)
 		common.Assert(childIndexPosition < len(unpackedKey), "childPosition < len(unpackedKey)")
 		childIndex := unpackedKey[childIndexPosition]
@@ -177,7 +177,7 @@ func (tr *Trie) Update(key []byte, value []byte) {
 		tr.newTerminalNode(unpackedKey[:childIndexPosition+1], unpackedKey[childIndexPosition+1:], c)
 		tr.nodeStore.mustGetNode(lastKey).markChildModified(childIndex)
 
-	case EndingSplit:
+	case common.EndingSplit:
 		// splitting the node into two path fragments
 		tr.splitNode(unpackedKey, lastKey, lastCommonPrefix, c)
 
@@ -246,7 +246,7 @@ func (tr *Trie) splitNode(fullKey, lastKey, commonPrefix []byte, newTerminal com
 func (tr *Trie) Delete(key []byte) {
 	unpackedKey := common.UnpackBytes(key, tr.nodeStore.arity)
 	proof, _, ending := proofPath(tr, unpackedKey)
-	if len(proof) == 0 || ending != EndingTerminal {
+	if len(proof) == 0 || ending != common.EndingTerminal {
 		return
 	}
 	lastKey := proof[len(proof)-1]
@@ -424,7 +424,7 @@ func (tr *Trie) Reconcile(store common.KVIterator) [][]byte {
 	ret := make([][]byte, 0)
 	store.Iterate(func(k, v []byte) bool {
 		p, _, ending := proofPath(tr, common.UnpackBytes(k, tr.PathArity()))
-		if ending == EndingTerminal {
+		if ending == common.EndingTerminal {
 			lastKey := p[len(p)-1]
 			n, ok := tr.GetNode(lastKey)
 			if !ok {

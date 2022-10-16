@@ -46,8 +46,8 @@ func (tr *TrieReader) Get(key []byte) []byte {
 	unpackedTriePath := common.UnpackBytes(key, tr.PathArity())
 	found := false
 	var terminal common.TCommitment
-	tr.traverseImmutablePath(unpackedTriePath, func(n *common.NodeData, _ []byte, ending PathEndingCode) {
-		if ending == EndingTerminal {
+	tr.traverseImmutablePath(unpackedTriePath, func(n *common.NodeData, _ []byte, ending common.PathEndingCode) {
+		if ending == common.EndingTerminal {
 			if !common.IsNil(n.Terminal) {
 				found = true
 				terminal = n.Terminal
@@ -73,8 +73,8 @@ func (tr *TrieReader) Get(key []byte) []byte {
 func (tr *TrieReader) Has(key []byte) bool {
 	unpackedTriePath := common.UnpackBytes(key, tr.PathArity())
 	found := false
-	tr.traverseImmutablePath(unpackedTriePath, func(n *common.NodeData, _ []byte, ending PathEndingCode) {
-		if ending == EndingTerminal {
+	tr.traverseImmutablePath(unpackedTriePath, func(n *common.NodeData, _ []byte, ending common.PathEndingCode) {
+		if ending == common.EndingTerminal {
 			if !common.IsNil(n.Terminal) {
 				found = true
 			}
@@ -145,8 +145,8 @@ func (tr *TrieUpdatable) update(triePath []byte, value []byte) {
 	common.Assert(len(value) > 0, "len(value)>0")
 
 	nodes := make([]*bufferedNode, 0)
-	var ends PathEndingCode
-	tr.traverseMutatedPath(triePath, func(n *bufferedNode, ending PathEndingCode) {
+	var ends common.PathEndingCode
+	tr.traverseMutatedPath(triePath, func(n *bufferedNode, ending common.PathEndingCode) {
 		nodes = append(nodes, n)
 		ends = ending
 	})
@@ -156,11 +156,11 @@ func (tr *TrieUpdatable) update(triePath []byte, value []byte) {
 	}
 	lastNode := nodes[len(nodes)-1]
 	switch ends {
-	case EndingTerminal:
+	case common.EndingTerminal:
 		// reached the end just for the terminal
 		lastNode.setValue(value, tr.Model())
 
-	case EndingExtend:
+	case common.EndingExtend:
 		// extend the current node with the new terminal node
 		keyPlusPathFragment := common.Concat(lastNode.triePath, lastNode.pathFragment)
 		common.Assert(len(keyPlusPathFragment) < len(triePath), "len(keyPlusPathFragment) < len(triePath)")
@@ -170,7 +170,7 @@ func (tr *TrieUpdatable) update(triePath []byte, value []byte) {
 		child := tr.newTerminalNode(childTriePath, triePath[len(keyPlusPathFragment)+1:], value)
 		lastNode.setModifiedChild(child)
 
-	case EndingSplit:
+	case common.EndingSplit:
 		// split the last node
 		var prevNode *bufferedNode
 		if len(nodes) >= 2 {
@@ -213,13 +213,13 @@ func (tr *TrieUpdatable) update(triePath []byte, value []byte) {
 
 func (tr *TrieUpdatable) delete(triePath []byte) {
 	nodes := make([]*bufferedNode, 0)
-	var ends PathEndingCode
-	tr.traverseMutatedPath(triePath, func(n *bufferedNode, ending PathEndingCode) {
+	var ends common.PathEndingCode
+	tr.traverseMutatedPath(triePath, func(n *bufferedNode, ending common.PathEndingCode) {
 		nodes = append(nodes, n)
 		ends = ending
 	})
 	common.Assert(len(nodes) > 0, "len(nodes) > 0")
-	if ends != EndingTerminal {
+	if ends != common.EndingTerminal {
 		// the key is not present in the trie, do nothing
 		return
 	}
@@ -261,7 +261,7 @@ func (tr *TrieReader) iteratePrefix(f func(k []byte, v []byte) bool, prefix []by
 	var root common.VCommitment
 	var triePath []byte
 	unpackedPrefix := common.UnpackBytes(prefix, tr.Model().PathArity())
-	tr.traverseImmutablePath(unpackedPrefix, func(n *common.NodeData, trieKey []byte, ending PathEndingCode) {
+	tr.traverseImmutablePath(unpackedPrefix, func(n *common.NodeData, trieKey []byte, ending common.PathEndingCode) {
 		if bytes.HasPrefix(common.Concat(trieKey, n.PathFragment), unpackedPrefix) {
 			root = n.Commitment
 			triePath = trieKey
@@ -313,7 +313,7 @@ func (tr *TrieUpdatable) deletePrefix(pathPrefix []byte) bool {
 	nodes := make([]*bufferedNode, 0)
 
 	prefixExists := false
-	tr.traverseMutatedPath(pathPrefix, func(n *bufferedNode, ending PathEndingCode) {
+	tr.traverseMutatedPath(pathPrefix, func(n *bufferedNode, ending common.PathEndingCode) {
 		nodes = append(nodes, n)
 		if bytes.HasPrefix(common.Concat(n.triePath, n.nodeData.PathFragment), pathPrefix) {
 			prefixExists = true
