@@ -252,7 +252,7 @@ func scandbbadger() {
 	proofLen := 0
 	tm := newTimer()
 	valueKVS.Iterate(func(k []byte, v []byte) bool {
-		proof := model.Proof(k, tr)
+		proof := model.ProofMut(k, tr)
 		proofBytes += len(proof.Bytes())
 		proofLen += len(proof.Path)
 		err = trie_blake2b_verify.Validate(proof, root.Bytes())

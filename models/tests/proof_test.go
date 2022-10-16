@@ -20,7 +20,7 @@ func TestTrieProofBlake2b(t *testing.T) {
 			tr := mutable.NewTrie(m, store, nil)
 			require.EqualValues(t, nil, mutable.RootCommitment(tr))
 
-			proof := m.Proof(nil, tr)
+			proof := m.ProofMut(nil, tr)
 			require.EqualValues(t, 0, len(proof.Path))
 		})
 		t.Run("proof one entry 1"+tn(m), func(t *testing.T) {
@@ -30,7 +30,7 @@ func TestTrieProofBlake2b(t *testing.T) {
 			tr.Update(nil, []byte("1"))
 			tr.Commit()
 
-			proof := m.Proof(nil, tr)
+			proof := m.ProofMut(nil, tr)
 			require.EqualValues(t, 1, len(proof.Path))
 
 			rootC := mutable.RootCommitment(tr)
@@ -46,7 +46,7 @@ func TestTrieProofBlake2b(t *testing.T) {
 			require.True(t, m.EqualCommitments(c1, c))
 
 			unpackedKey := common.UnpackBytes([]byte("a"), arity)
-			proof = m.Proof(unpackedKey, tr)
+			proof = m.ProofMut(unpackedKey, tr)
 			require.EqualValues(t, 1, len(proof.Path))
 
 			rootC = mutable.RootCommitment(tr)
@@ -61,7 +61,7 @@ func TestTrieProofBlake2b(t *testing.T) {
 
 			tr.Update([]byte("1"), []byte("2"))
 			tr.Commit()
-			proof := m.Proof(nil, tr)
+			proof := m.ProofMut(nil, tr)
 			require.EqualValues(t, 1, len(proof.Path))
 
 			rootC := mutable.RootCommitment(tr)
@@ -69,7 +69,7 @@ func TestTrieProofBlake2b(t *testing.T) {
 			require.NoError(t, err)
 			require.True(t, trie_blake2b_verify.IsProofOfAbsence(proof))
 
-			proof = m.Proof([]byte("1"), tr)
+			proof = m.ProofMut([]byte("1"), tr)
 			require.EqualValues(t, 1, len(proof.Path))
 
 			err = trie_blake2b_verify.Validate(proof, rootC.Bytes())
@@ -89,7 +89,7 @@ func TestTrieProofBlake2b(t *testing.T) {
 			tr := mutable.NewTrie(m, store, nil)
 			require.EqualValues(t, nil, mutable.RootCommitment(tr))
 
-			proof := m.Proof(nil, tr)
+			proof := m.ProofMut(nil, tr)
 			require.EqualValues(t, 0, len(proof.Path))
 		})
 		t.Run("proof one entry 1"+" "+arity.String(), func(t *testing.T) {
@@ -99,7 +99,7 @@ func TestTrieProofBlake2b(t *testing.T) {
 			tr.Update(nil, []byte("1"))
 			tr.Commit()
 
-			proof := m.Proof(nil, tr)
+			proof := m.ProofMut(nil, tr)
 			require.EqualValues(t, 1, len(proof.Path))
 
 			rootC := mutable.RootCommitment(tr)
@@ -114,7 +114,7 @@ func TestTrieProofBlake2b(t *testing.T) {
 			require.EqualValues(t, 0, len(key))
 			require.True(t, m.EqualCommitments(c1, c))
 
-			proof = m.Proof([]byte("a"), tr)
+			proof = m.ProofMut([]byte("a"), tr)
 			require.EqualValues(t, 1, len(proof.Path))
 
 			rootC = mutable.RootCommitment(tr)
@@ -129,7 +129,7 @@ func TestTrieProofBlake2b(t *testing.T) {
 
 			tr.Update([]byte("1"), []byte("2"))
 			tr.Commit()
-			proof := m.Proof(nil, tr)
+			proof := m.ProofMut(nil, tr)
 			require.EqualValues(t, 1, len(proof.Path))
 
 			rootC := mutable.RootCommitment(tr)
@@ -137,7 +137,7 @@ func TestTrieProofBlake2b(t *testing.T) {
 			require.NoError(t, err)
 			require.True(t, trie_blake2b_verify.IsProofOfAbsence(proof))
 
-			proof = m.Proof([]byte("1"), tr)
+			proof = m.ProofMut([]byte("1"), tr)
 			require.EqualValues(t, 1, len(proof.Path))
 
 			err = trie_blake2b_verify.ValidateWithValue(proof, rootC.Bytes(), []byte("2"))
@@ -178,7 +178,7 @@ func TestTrieProofWithDeletesBlake2b32(t *testing.T) {
 			initTrie(data, arity)
 			rootC = commitTrie()
 			for _, s := range data {
-				proof := m.Proof([]byte(s), tr1)
+				proof := m.ProofMut([]byte(s), tr1)
 				require.False(t, trie_blake2b_verify.IsProofOfAbsence(proof))
 				err := trie_blake2b_verify.Validate(proof, rootC.Bytes())
 				require.NoError(t, err)
@@ -193,7 +193,7 @@ func TestTrieProofWithDeletesBlake2b32(t *testing.T) {
 			rootC = commitTrie()
 
 			for _, s := range data {
-				proof := m.Proof([]byte(s), tr1)
+				proof := m.ProofMut([]byte(s), tr1)
 				err := trie_blake2b_verify.Validate(proof, rootC.Bytes())
 				require.NoError(t, err)
 				require.False(t, trie_blake2b_verify.IsProofOfAbsence(proof))
@@ -201,7 +201,7 @@ func TestTrieProofWithDeletesBlake2b32(t *testing.T) {
 				//t.Logf("proof presence size = %d bytes", trie_go.MustSize(proof))
 			}
 			for _, s := range delKeys {
-				proof := m.Proof([]byte(s), tr1)
+				proof := m.ProofMut([]byte(s), tr1)
 				err := trie_blake2b_verify.Validate(proof, rootC.Bytes())
 				require.NoError(t, err)
 				require.True(t, trie_blake2b_verify.IsProofOfAbsence(proof))
@@ -219,7 +219,7 @@ func TestTrieProofWithDeletesBlake2b32(t *testing.T) {
 			rootC = commitTrie()
 
 			for _, s := range data {
-				proof := m.Proof([]byte(s), tr1)
+				proof := m.ProofMut([]byte(s), tr1)
 				err := trie_blake2b_verify.Validate(proof, rootC.Bytes())
 				require.NoError(t, err)
 				require.False(t, trie_blake2b_verify.IsProofOfAbsence(proof))
@@ -237,7 +237,7 @@ func TestTrieProofWithDeletesBlake2b32(t *testing.T) {
 				require.False(t, trie_blake2b_verify.IsProofOfAbsence(proofBack))
 			}
 			for _, s := range delKeys {
-				proof := m.Proof([]byte(s), tr1)
+				proof := m.ProofMut([]byte(s), tr1)
 				err := trie_blake2b_verify.Validate(proof, rootC.Bytes())
 				require.NoError(t, err)
 				require.True(t, trie_blake2b_verify.IsProofOfAbsence(proof))
@@ -268,7 +268,7 @@ func TestTrieProofWithDeletesBlake2b32(t *testing.T) {
 			lenStats := make(map[int]int)
 			size100Stats := make(map[int]int)
 			for _, s := range addKeys {
-				proof := m.Proof([]byte(s), tr1)
+				proof := m.ProofMut([]byte(s), tr1)
 				err := trie_blake2b_verify.Validate(proof, rootC.Bytes())
 				require.NoError(t, err)
 				require.False(t, trie_blake2b_verify.IsProofOfAbsence(proof))
@@ -283,7 +283,7 @@ func TestTrieProofWithDeletesBlake2b32(t *testing.T) {
 				size100Stats[sizeP100] = sz + 1
 			}
 			for _, s := range delKeys {
-				proof := m.Proof([]byte(s), tr1)
+				proof := m.ProofMut([]byte(s), tr1)
 				err := trie_blake2b_verify.Validate(proof, rootC.Bytes())
 				require.NoError(t, err)
 				require.True(t, trie_blake2b_verify.IsProofOfAbsence(proof))
@@ -354,7 +354,7 @@ func TestTrieProofWithDeletesBlake2b20(t *testing.T) {
 			initTrie(data, arity)
 			rootC = commitTrie()
 			for _, s := range data {
-				proof := Model.Proof([]byte(s), tr1)
+				proof := Model.ProofMut([]byte(s), tr1)
 				require.False(t, trie_blake2b_verify.IsProofOfAbsence(proof))
 				err := trie_blake2b_verify.Validate(proof, rootC.Bytes())
 				require.NoError(t, err)
@@ -369,14 +369,14 @@ func TestTrieProofWithDeletesBlake2b20(t *testing.T) {
 			rootC = commitTrie()
 
 			for _, s := range data {
-				proof := Model.Proof([]byte(s), tr1)
+				proof := Model.ProofMut([]byte(s), tr1)
 				err := trie_blake2b_verify.ValidateWithValue(proof, rootC.Bytes(), []byte(s+"++"))
 				require.NoError(t, err)
 				//t.Logf("key: '%s', proof presence lenPlus1: %d", s, len(proof.Path))
 				//t.Logf("proof presence size = %d bytes", trie_go.MustSize(proof))
 			}
 			for _, s := range delKeys {
-				proof := Model.Proof([]byte(s), tr1)
+				proof := Model.ProofMut([]byte(s), tr1)
 				err := trie_blake2b_verify.Validate(proof, rootC.Bytes())
 				require.NoError(t, err)
 				require.True(t, trie_blake2b_verify.IsProofOfAbsence(proof))
@@ -394,7 +394,7 @@ func TestTrieProofWithDeletesBlake2b20(t *testing.T) {
 			rootC = commitTrie()
 
 			for _, s := range data {
-				proof := Model.Proof([]byte(s), tr1)
+				proof := Model.ProofMut([]byte(s), tr1)
 				err := trie_blake2b_verify.ValidateWithValue(proof, rootC.Bytes(), []byte(s+"++"))
 				require.NoError(t, err)
 				//t.Logf("key: '%s', proof presence lenPlus1: %d", s, len(proof.Path))
@@ -411,7 +411,7 @@ func TestTrieProofWithDeletesBlake2b20(t *testing.T) {
 				require.False(t, trie_blake2b_verify.IsProofOfAbsence(proofBack))
 			}
 			for _, s := range delKeys {
-				proof := Model.Proof([]byte(s), tr1)
+				proof := Model.ProofMut([]byte(s), tr1)
 				err := trie_blake2b_verify.Validate(proof, rootC.Bytes())
 				require.NoError(t, err)
 				require.True(t, trie_blake2b_verify.IsProofOfAbsence(proof))
@@ -442,7 +442,7 @@ func TestTrieProofWithDeletesBlake2b20(t *testing.T) {
 			lenStats := make(map[int]int)
 			size100Stats := make(map[int]int)
 			for _, s := range addKeys {
-				proof := Model.Proof([]byte(s), tr1)
+				proof := Model.ProofMut([]byte(s), tr1)
 				err := trie_blake2b_verify.ValidateWithValue(proof, rootC.Bytes(), []byte(s+"++"))
 				require.NoError(t, err)
 				lenP := len(proof.Path)
@@ -456,7 +456,7 @@ func TestTrieProofWithDeletesBlake2b20(t *testing.T) {
 				size100Stats[sizeP100] = sz + 1
 			}
 			for _, s := range delKeys {
-				proof := Model.Proof([]byte(s), tr1)
+				proof := Model.ProofMut([]byte(s), tr1)
 				err := trie_blake2b_verify.Validate(proof, rootC.Bytes())
 				require.NoError(t, err)
 				require.True(t, trie_blake2b_verify.IsProofOfAbsence(proof))

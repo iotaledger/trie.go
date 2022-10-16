@@ -145,7 +145,7 @@ func TestTrieProofWithDeletesBlake2b20AndTerminalOpt(t *testing.T) {
 			initRun(data, arity, thr)
 			rootC = commitTrie()
 			for _, s := range data {
-				proof := m.Proof([]byte(s), tr1)
+				proof := m.ProofMut([]byte(s), tr1)
 				require.False(t, trie_blake2b_verify.IsProofOfAbsence(proof))
 				err := trie_blake2b_verify.Validate(proof, rootC.Bytes())
 				require.NoError(t, err)
@@ -160,7 +160,7 @@ func TestTrieProofWithDeletesBlake2b20AndTerminalOpt(t *testing.T) {
 			rootC = commitTrie()
 
 			for _, s := range data {
-				proof := m.Proof([]byte(s), tr1)
+				proof := m.ProofMut([]byte(s), tr1)
 				err := trie_blake2b_verify.Validate(proof, rootC.Bytes())
 				require.NoError(t, err)
 				require.False(t, trie_blake2b_verify.IsProofOfAbsence(proof))
@@ -168,7 +168,7 @@ func TestTrieProofWithDeletesBlake2b20AndTerminalOpt(t *testing.T) {
 				//t.Logf("proof presence size = %d bytes", trie_go.MustSize(proof))
 			}
 			for _, s := range delKeys {
-				proof := m.Proof([]byte(s), tr1)
+				proof := m.ProofMut([]byte(s), tr1)
 				err := trie_blake2b_verify.Validate(proof, rootC.Bytes())
 				require.NoError(t, err)
 				require.True(t, trie_blake2b_verify.IsProofOfAbsence(proof))
@@ -186,7 +186,7 @@ func TestTrieProofWithDeletesBlake2b20AndTerminalOpt(t *testing.T) {
 			rootC = commitTrie()
 
 			for _, s := range data {
-				proof := m.Proof([]byte(s), tr1)
+				proof := m.ProofMut([]byte(s), tr1)
 				err := trie_blake2b_verify.Validate(proof, rootC.Bytes())
 				require.NoError(t, err)
 				require.False(t, trie_blake2b_verify.IsProofOfAbsence(proof))
@@ -204,7 +204,7 @@ func TestTrieProofWithDeletesBlake2b20AndTerminalOpt(t *testing.T) {
 				require.False(t, trie_blake2b_verify.IsProofOfAbsence(proofBack))
 			}
 			for _, s := range delKeys {
-				proof := m.Proof([]byte(s), tr1)
+				proof := m.ProofMut([]byte(s), tr1)
 				err := trie_blake2b_verify.Validate(proof, rootC.Bytes())
 				require.NoError(t, err)
 				require.True(t, trie_blake2b_verify.IsProofOfAbsence(proof))
@@ -235,7 +235,7 @@ func TestTrieProofWithDeletesBlake2b20AndTerminalOpt(t *testing.T) {
 			lenStats := make(map[int]int)
 			size100Stats := make(map[int]int)
 			for _, s := range addKeys {
-				proof := m.Proof([]byte(s), tr1)
+				proof := m.ProofMut([]byte(s), tr1)
 				err := trie_blake2b_verify.Validate(proof, rootC.Bytes())
 				require.NoError(t, err)
 				require.False(t, trie_blake2b_verify.IsProofOfAbsence(proof))
@@ -250,7 +250,7 @@ func TestTrieProofWithDeletesBlake2b20AndTerminalOpt(t *testing.T) {
 				size100Stats[sizeP100] = sz + 1
 			}
 			for _, s := range delKeys {
-				proof := m.Proof([]byte(s), tr1)
+				proof := m.ProofMut([]byte(s), tr1)
 				err := trie_blake2b_verify.Validate(proof, rootC.Bytes())
 				require.NoError(t, err)
 				require.True(t, trie_blake2b_verify.IsProofOfAbsence(proof))

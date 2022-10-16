@@ -37,8 +37,8 @@ func ProofFromBytes(data []byte) (*Proof, error) {
 	return ret, nil
 }
 
-// Proof converts generic proof path to the Merkle proof path
-func (m *CommitmentModel) Proof(key []byte, tr mutable.NodeStore) *Proof {
+// ProofMut converts generic proof path of the mutable trie implementation to the Merkle proof path
+func (m *CommitmentModel) ProofMut(key []byte, tr mutable.NodeStore) *Proof {
 	unpackedKey := common.UnpackBytes(key, tr.PathArity())
 	proofGeneric := mutable.GetProofGeneric(tr, unpackedKey)
 	if proofGeneric == nil {

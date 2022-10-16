@@ -44,7 +44,7 @@ func main() {
 	// check PoI for all data
 	for _, s := range data {
 		// retrieve proof
-		proof := m.Proof([]byte(s), tr)
+		proof := m.ProofMut([]byte(s), tr)
 		fmt.Printf("PoI of the key '%s': length %d, serialized size %d bytes\n",
 			s, len(proof.Path), common.MustSize(proof))
 		// validate proof
