@@ -6,17 +6,17 @@ import (
 )
 
 // ProofImmutable converts generic proof path of the immutable trie implementation to the Merkle proof path
-func (m *CommitmentModel) ProofImmutable(key []byte, tr *immutable.TrieReader) *Proof {
+func (m *CommitmentModel) ProofImmutable(key []byte, tr *immutable.TrieReader) *MerkleProof {
 	unpackedKey := common.UnpackBytes(key, tr.PathArity())
 	nodePath, ending := tr.NodePath(unpackedKey)
-	ret := &Proof{
+	ret := &MerkleProof{
 		PathArity: tr.PathArity(),
 		HashSize:  m.hashSize,
-		Key:       key,
-		Path:      make([]*ProofElement, len(nodePath)),
+		Key:       unpackedKey,
+		Path:      make([]*MerkleProofElement, len(nodePath)),
 	}
 	for i, e := range nodePath {
-		elem := &ProofElement{
+		elem := &MerkleProofElement{
 			PathFragment: e.NodeData.PathFragment,
 			Children:     make(map[byte][]byte),
 			Terminal:     nil,
@@ -25,8 +25,9 @@ func (m *CommitmentModel) ProofImmutable(key []byte, tr *immutable.TrieReader) *
 		if !common.IsNil(e.NodeData.Terminal) {
 			elem.Terminal = e.NodeData.Terminal.Bytes()
 		}
+		isLast := i == len(nodePath)-1
 		for childIndex, childCommitment := range e.NodeData.ChildCommitments {
-			if childIndex == e.ChildIndex {
+			if !isLast && childIndex == e.ChildIndex {
 				// commitment to the next child is not included, it must be calculated by the verifier
 				continue
 			}

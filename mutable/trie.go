@@ -146,13 +146,8 @@ func (tr *Trie) commitNode(key []byte) *bufferedNode {
 
 // Update updates Trie with the unpackedKey/value. Reorganizes and re-calculates trie, keeps cache consistent
 func (tr *Trie) Update(key []byte, value []byte) {
-	var c common.TCommitment
-	if bytes.Equal(key, value) {
-		c = tr.nodeStore.reader.m.CommitToData(common.UnpackBytes(value, tr.nodeStore.arity))
-	} else {
-		c = tr.nodeStore.reader.m.CommitToData(value)
-	}
-	if c == nil {
+	term := tr.nodeStore.reader.m.CommitToData(value)
+	if common.IsNil(term) {
 		// nil value means deletion
 		tr.Delete(key)
 		return
@@ -161,25 +156,25 @@ func (tr *Trie) Update(key []byte, value []byte) {
 	unpackedKey := common.UnpackBytes(key, tr.nodeStore.arity)
 	proof, lastCommonPrefix, ending := proofPath(tr, unpackedKey)
 	if len(proof) == 0 {
-		tr.newTerminalNode(nil, unpackedKey, c)
+		tr.newTerminalNode(nil, unpackedKey, term)
 		return
 	}
 	lastKey := proof[len(proof)-1]
 	switch ending {
 	case common.EndingTerminal:
-		tr.nodeStore.mustGetNode(lastKey).setNewTerminal(c)
+		tr.nodeStore.mustGetNode(lastKey).setNewTerminal(term)
 
 	case common.EndingExtend:
 		childIndexPosition := len(lastKey) + len(lastCommonPrefix)
 		common.Assert(childIndexPosition < len(unpackedKey), "childPosition < len(unpackedKey)")
 		childIndex := unpackedKey[childIndexPosition]
 		tr.nodeStore.removeKey(unpackedKey[:childIndexPosition+1])
-		tr.newTerminalNode(unpackedKey[:childIndexPosition+1], unpackedKey[childIndexPosition+1:], c)
+		tr.newTerminalNode(unpackedKey[:childIndexPosition+1], unpackedKey[childIndexPosition+1:], term)
 		tr.nodeStore.mustGetNode(lastKey).markChildModified(childIndex)
 
 	case common.EndingSplit:
 		// splitting the node into two path fragments
-		tr.splitNode(unpackedKey, lastKey, lastCommonPrefix, c)
+		tr.splitNode(unpackedKey, lastKey, lastCommonPrefix, term)
 
 	default:
 		panic("inconsistency: unknown path ending code")

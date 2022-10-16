@@ -9,23 +9,23 @@ import (
 	"github.com/iotaledger/trie.go/common"
 )
 
-// Proof blake2b common-specific proof of inclusion
-type Proof struct {
+// MerkleProof blake2b model specific proof of inclusion
+type MerkleProof struct {
 	PathArity common.PathArity
 	HashSize  HashSize
 	Key       []byte
-	Path      []*ProofElement
+	Path      []*MerkleProofElement
 }
 
-type ProofElement struct {
+type MerkleProofElement struct {
 	PathFragment []byte
 	Children     map[byte][]byte
 	Terminal     []byte
 	ChildIndex   int
 }
 
-func ProofFromBytes(data []byte) (*Proof, error) {
-	ret := &Proof{}
+func ProofFromBytes(data []byte) (*MerkleProof, error) {
+	ret := &MerkleProof{}
 	rdr := bytes.NewReader(data)
 	if err := ret.Read(rdr); err != nil {
 		return nil, err
@@ -36,11 +36,11 @@ func ProofFromBytes(data []byte) (*Proof, error) {
 	return ret, nil
 }
 
-func (p *Proof) Bytes() []byte {
+func (p *MerkleProof) Bytes() []byte {
 	return common.MustBytes(p)
 }
 
-func (p *Proof) Write(w io.Writer) error {
+func (p *MerkleProof) Write(w io.Writer) error {
 	var err error
 	if err = common.WriteByte(w, byte(p.PathArity)); err != nil {
 		return err
@@ -66,7 +66,7 @@ func (p *Proof) Write(w io.Writer) error {
 	return nil
 }
 
-func (p *Proof) Read(r io.Reader) error {
+func (p *MerkleProof) Read(r io.Reader) error {
 	b, err := common.ReadByte(r)
 	if err != nil {
 		return err
@@ -93,9 +93,9 @@ func (p *Proof) Read(r io.Reader) error {
 	if err = common.ReadUint16(r, &size); err != nil {
 		return err
 	}
-	p.Path = make([]*ProofElement, size)
+	p.Path = make([]*MerkleProofElement, size)
 	for i := range p.Path {
-		p.Path[i] = &ProofElement{}
+		p.Path[i] = &MerkleProofElement{}
 		if err = p.Path[i].Read(r, p.PathArity, p.HashSize); err != nil {
 			return err
 		}
@@ -108,7 +108,7 @@ const (
 	hasChildrenFlag      = 0x02
 )
 
-func (e *ProofElement) Write(w io.Writer, arity common.PathArity, sz HashSize) error {
+func (e *MerkleProofElement) Write(w io.Writer, arity common.PathArity, sz HashSize) error {
 	encodedPathFragment, err := common.EncodeUnpackedBytes(e.PathFragment, arity)
 	if err != nil {
 		return err
@@ -159,7 +159,7 @@ func (e *ProofElement) Write(w io.Writer, arity common.PathArity, sz HashSize) e
 	return nil
 }
 
-func (e *ProofElement) Read(r io.Reader, arity common.PathArity, sz HashSize) error {
+func (e *MerkleProofElement) Read(r io.Reader, arity common.PathArity, sz HashSize) error {
 	var err error
 	var encodedPathFragment []byte
 	if encodedPathFragment, err = common.ReadBytes16(r); err != nil {

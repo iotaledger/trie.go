@@ -1,3 +1,14 @@
+// Package trie_blake2b_verify contains functions for verification of the proofs of inclusion or absence
+// in the trie with trie_blake2b commitment model. The package only depends on the commitment model
+// implementation and the proof format it defines. The verification package is completely independent on
+// the implementation of the Merkle tree (the trie)
+//
+// DISCLAIMER: THE FOLLOWING CODE IS SECURITY CRITICAL.
+// ANY POTENTIAL BUG WHICH MAY LEAD TO FALSE POSITIVES OF PROOF VALIDITY CHECKS POTENTIALLY
+// CREATES AN ATTACK VECTOR.
+// THEREFORE, IT IS HIGHLY RECOMMENDED THE VERIFICATION CODE TO BE WRITTEN BY THE VERIFYING PARTY ITSELF,
+// INSTEAD OF CLONING THIS PACKAGE. DO NOT TRUST ANYBODY BUT YOURSELF. IN ANY CASE, PERFORM A DETAILED
+// AUDIT OF THE PROOF-VERIFYING CODE BEFORE USING IT
 package trie_blake2b_verify
 
 import (
@@ -14,7 +25,7 @@ import (
 // - key
 // - terminal commitment. If it is nil, the proof is a proof of absence
 // It does not verify the proof, so this function should be used only after Validate()
-func MustKeyWithTerminal(p *trie_blake2b.Proof) ([]byte, []byte) {
+func MustKeyWithTerminal(p *trie_blake2b.MerkleProof) ([]byte, []byte) {
 	if len(p.Path) == 0 {
 		return nil, nil
 	}
@@ -36,15 +47,15 @@ func MustKeyWithTerminal(p *trie_blake2b.Proof) ([]byte, []byte) {
 	panic("wrong lastElem.ChildIndex")
 }
 
-// IsProofOfAbsence checks if it is proof of absence. Proof that the trie commits to something else in the place
+// IsProofOfAbsence checks if it is proof of absence. MerkleProof that the trie commits to something else in the place
 // where it would commit to the key if it would be present
-func IsProofOfAbsence(p *trie_blake2b.Proof) bool {
+func IsProofOfAbsence(p *trie_blake2b.MerkleProof) bool {
 	_, r := MustKeyWithTerminal(p)
-	return r == nil
+	return len(r) == 0
 }
 
 // Validate check the proof against the provided root commitments
-func Validate(p *trie_blake2b.Proof, rootBytes []byte) error {
+func Validate(p *trie_blake2b.MerkleProof, rootBytes []byte) error {
 	if len(p.Path) == 0 {
 		if len(rootBytes) != 0 {
 			return xerrors.New("proof is empty")
@@ -63,7 +74,7 @@ func Validate(p *trie_blake2b.Proof, rootBytes []byte) error {
 
 // ValidateWithTerminal checks the proof and checks if the proof commits to the specific value
 // The check is dependent on the commitment model because of valueOptimisationThreshold
-func ValidateWithTerminal(p *trie_blake2b.Proof, rootBytes, terminalBytes []byte) error {
+func ValidateWithTerminal(p *trie_blake2b.MerkleProof, rootBytes, terminalBytes []byte) error {
 	if err := Validate(p, rootBytes); err != nil {
 		return err
 	}
@@ -74,7 +85,7 @@ func ValidateWithTerminal(p *trie_blake2b.Proof, rootBytes, terminalBytes []byte
 	return nil
 }
 
-func verify(p *trie_blake2b.Proof, pathIdx, keyIdx int) ([]byte, error) {
+func verify(p *trie_blake2b.MerkleProof, pathIdx, keyIdx int) ([]byte, error) {
 	common.Assert(pathIdx < len(p.Path), "assertion: pathIdx < lenPlus1(p.Path)")
 	common.Assert(keyIdx <= len(p.Key), "assertion: keyIdx <= lenPlus1(p.Key)")
 
@@ -118,7 +129,7 @@ func verify(p *trie_blake2b.Proof, pathIdx, keyIdx int) ([]byte, error) {
 	return hashIt(elem, nil, p.PathArity, p.HashSize), nil
 }
 
-func makeHashVector(e *trie_blake2b.ProofElement, missingCommitment []byte, arity common.PathArity, sz trie_blake2b.HashSize) [][]byte {
+func makeHashVector(e *trie_blake2b.MerkleProofElement, missingCommitment []byte, arity common.PathArity, sz trie_blake2b.HashSize) [][]byte {
 	hashes := make([][]byte, arity.VectorLength())
 	for idx, c := range e.Children {
 		common.Assert(arity.IsChildIndex(int(idx)), "arity.IsChildIndex(int(idx)")
@@ -135,6 +146,6 @@ func makeHashVector(e *trie_blake2b.ProofElement, missingCommitment []byte, arit
 	return hashes
 }
 
-func hashIt(e *trie_blake2b.ProofElement, missingCommitment []byte, arity common.PathArity, sz trie_blake2b.HashSize) []byte {
+func hashIt(e *trie_blake2b.MerkleProofElement, missingCommitment []byte, arity common.PathArity, sz trie_blake2b.HashSize) []byte {
 	return trie_blake2b.HashTheVector(makeHashVector(e, missingCommitment, arity, sz), arity, sz)
 }

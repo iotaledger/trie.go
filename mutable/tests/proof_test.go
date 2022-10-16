@@ -154,6 +154,64 @@ func TestTrieProofBlake2b(t *testing.T) {
 	runTest32(common.PathArity256)
 }
 
+func TestProofInterimTerminal(t *testing.T) {
+	runTest := func(arity common.PathArity, hashSize trie_blake2b.HashSize) {
+		m := trie_blake2b.New(arity, hashSize)
+		store := common.NewInMemoryKVStore()
+		tr := mutable.NewTrie(m, store, nil)
+
+		tr.Update([]byte("a"), []byte("a"))
+		v := []byte("a-")
+		for i := 0; i < 256; i++ {
+			if byte(i) != 'b' {
+				v[1] = byte(i)
+				tr.Update(v, v)
+			}
+		}
+		tr.Update([]byte("abc"), []byte("abc"))
+
+		tr.Commit()
+		root := mutable.RootCommitment(tr)
+
+		proof := m.ProofMut([]byte("a"), tr)
+		err := trie_blake2b_verify.Validate(proof, root.Bytes())
+		require.NoError(t, err)
+
+		term := m.CommitToData([]byte("a")).Bytes()
+		err = trie_blake2b_verify.ValidateWithTerminal(proof, root.Bytes(), term)
+		require.NoError(t, err)
+
+		proof = m.ProofMut([]byte("abc"), tr)
+		err = trie_blake2b_verify.Validate(proof, root.Bytes())
+		require.NoError(t, err)
+
+		term = m.CommitToData([]byte("abc")).Bytes()
+		err = trie_blake2b_verify.ValidateWithTerminal(proof, root.Bytes(), term)
+		require.NoError(t, err)
+
+		for i := 0; i < 256; i++ {
+			v[1] = byte(i)
+			proof = m.ProofMut(v, tr)
+			err = trie_blake2b_verify.Validate(proof, root.Bytes())
+			require.NoError(t, err)
+
+			if byte(i) == 'b' {
+				require.True(t, trie_blake2b_verify.IsProofOfAbsence(proof))
+			} else {
+				term = m.CommitToData(v).Bytes()
+				err = trie_blake2b_verify.ValidateWithTerminal(proof, root.Bytes(), term)
+				require.NoError(t, err)
+			}
+		}
+	}
+	runTest(common.PathArity256, trie_blake2b.HashSize256)
+	runTest(common.PathArity256, trie_blake2b.HashSize160)
+	runTest(common.PathArity16, trie_blake2b.HashSize256)
+	runTest(common.PathArity16, trie_blake2b.HashSize160)
+	runTest(common.PathArity2, trie_blake2b.HashSize256)
+	runTest(common.PathArity2, trie_blake2b.HashSize160)
+}
+
 func TestTrieProofWithDeletesBlake2b32(t *testing.T) {
 	var tr1 *mutable.Trie
 	var rootC common.VCommitment
