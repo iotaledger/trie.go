@@ -39,12 +39,15 @@ type KVStore interface {
 	KVIterator
 }
 
-// KVStoreWithBatchedWriter is a KVStore equipped with the batched update capability. You can only update
-// KVStoreWithBatchedWriter in atomic batches
-type KVStoreWithBatchedWriter interface {
-	KVReader
-	KVIterator
+// BatchedUpdatable is a KVStore equipped with the batched update capability. You can only update
+// BatchedUpdatable in atomic batches
+type BatchedUpdatable interface {
 	BatchedWriter() KVBatchedWriter
+}
+
+// Traversable is an interface which provides with partial iterators
+type Traversable interface {
+	Iterator(prefix []byte) KVIterator
 }
 
 // CopyAll flushes KVIterator to KVWriter. It is up to the iterator correctly stop iterating

@@ -99,7 +99,7 @@ func (ti *TrieIterator) Iterate(fun func(k []byte, v []byte) bool) {
 }
 
 // Iterator returns iterator for the sub-trie
-func (tr *TrieReader) Iterator(prefix []byte) *TrieIterator {
+func (tr *TrieReader) Iterator(prefix []byte) common.KVIterator {
 	return &TrieIterator{
 		prefix: prefix,
 		tr:     tr,

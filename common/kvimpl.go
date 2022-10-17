@@ -1,6 +1,7 @@
 package common
 
 import (
+	"bytes"
 	"errors"
 	"io"
 	"math"
@@ -12,9 +13,10 @@ import (
 //----------------------------------------------------------------------------
 // inMemoryKVStore is a KVStore implementation. Mostly used for testing
 var (
-	_ KVStore                  = inMemoryKVStore{}
-	_ KVStoreWithBatchedWriter = &inMemoryKVStore{}
-	_ KVBatchedWriter          = &simpleBatchedMemoryWriter{}
+	_ KVStore          = inMemoryKVStore{}
+	_ BatchedUpdatable = &inMemoryKVStore{}
+	_ KVBatchedWriter  = &simpleBatchedMemoryWriter{}
+	_ KVIterator       = &simpleInMemoryIterator{}
 )
 
 type (
@@ -29,13 +31,18 @@ type (
 		store     inMemoryKVStore
 		mutations []mutation
 	}
+
+	simpleInMemoryIterator struct {
+		store  inMemoryKVStore
+		prefix []byte
+	}
 )
 
 func NewInMemoryKVStore() KVStore {
 	return make(inMemoryKVStore)
 }
 
-func NewInMemoryKVStoreWithBatchedWriter() KVStoreWithBatchedWriter {
+func NewInMemoryKVStoreWithBatchedWriter() BatchedUpdatable {
 	return make(inMemoryKVStore)
 }
 
@@ -87,6 +94,25 @@ func (im inMemoryKVStore) BatchedWriter() KVBatchedWriter {
 	return &simpleBatchedMemoryWriter{
 		store:     im,
 		mutations: make([]mutation, 0),
+	}
+}
+
+func (im inMemoryKVStore) Iterator(prefix []byte) KVIterator {
+	return &simpleInMemoryIterator{
+		store:  im,
+		prefix: prefix,
+	}
+}
+
+func (si *simpleInMemoryIterator) Iterate(f func(k []byte, v []byte) bool) {
+	var key []byte
+	for k, v := range si.store {
+		key = []byte(k)
+		if bytes.HasPrefix(key, si.prefix) {
+			if !f(key, v) {
+				return
+			}
+		}
 	}
 }
 
