@@ -35,7 +35,7 @@ func MustInitRoot(store common.KVWriter, m common.CommitmentModel, identity []by
 
 	trieStore := common.MakeWriterPartition(store, PartitionTrieNodes)
 	valueStore := common.MakeWriterPartition(store, PartitionValues)
-	commitNode(trieStore, valueStore, m, n)
+	n.commitNode(trieStore, valueStore, m)
 
 	return n.nodeData.Commitment.Clone()
 }

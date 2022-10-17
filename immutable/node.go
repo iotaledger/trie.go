@@ -32,6 +32,26 @@ func newBufferedNode(n *common.NodeData, triePath []byte) *bufferedNode {
 	return ret
 }
 
+// commitNode re-calculates node commitment and, recursively, its children commitments
+// Normally, the commitNode is called on the root, then
+func (n *bufferedNode) commitNode(triePartition, valuePartition common.KVWriter, m common.CommitmentModel) {
+	childUpdates := make(map[byte]common.VCommitment)
+	for idx, child := range n.uncommittedChildren {
+		if child == nil {
+			childUpdates[idx] = nil
+		} else {
+			child.commitNode(triePartition, valuePartition, m)
+			childUpdates[idx] = child.nodeData.Commitment
+		}
+	}
+	m.UpdateNodeCommitment(n.nodeData, childUpdates, n.terminal, n.pathFragment, !common.IsNil(n.nodeData.Commitment))
+
+	n.mustPersist(triePartition, m)
+	if len(n.value) > 0 {
+		valuePartition.Set(common.AsKey(n.terminal), n.value)
+	}
+}
+
 func (n *bufferedNode) mustPersist(w common.KVWriter, m common.CommitmentModel) {
 	dbKey := common.AsKey(n.nodeData.Commitment)
 	var buf bytes.Buffer

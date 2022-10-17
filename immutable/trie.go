@@ -94,7 +94,7 @@ func (tr *TrieUpdatable) Commit(store common.KVWriter) common.VCommitment {
 	triePartition := common.MakeWriterPartition(store, PartitionTrieNodes)
 	valuePartition := common.MakeWriterPartition(store, PartitionValues)
 
-	commitNode(triePartition, valuePartition, tr.Model(), tr.mutatedRoot)
+	tr.mutatedRoot.commitNode(triePartition, valuePartition, tr.Model())
 	// set uncommitted children in the root to empty -> the GC will collect the whole tree of buffered nodes
 	tr.mutatedRoot.uncommittedChildren = make(map[byte]*bufferedNode)
 
@@ -110,32 +110,6 @@ func (tr *TrieUpdatable) Persist(db common.KVBatchedUpdater) (common.VCommitment
 		return nil, err
 	}
 	return ret, nil
-}
-
-// commitNode re-calculates node commitment and, recursively, its children commitments
-// Child modification marks in 'uncommittedChildren' are updated
-// Return update to the upper commitment. nil mean upper commitment is not updated
-// It calls implementation-specific function UpdateNodeCommitment and passes parameter
-// calcDelta = true if node's commitment can be updated incrementally. The implementation
-// of UpdateNodeCommitment may use this parameter to optimize underlying cryptography
-//
-// commitNode does not commit to the state index
-func commitNode(triePartition, valuePartition common.KVWriter, m common.CommitmentModel, node *bufferedNode) {
-	childUpdates := make(map[byte]common.VCommitment)
-	for idx, child := range node.uncommittedChildren {
-		if child == nil {
-			childUpdates[idx] = nil
-		} else {
-			commitNode(triePartition, valuePartition, m, child)
-			childUpdates[idx] = child.nodeData.Commitment
-		}
-	}
-	m.UpdateNodeCommitment(node.nodeData, childUpdates, node.terminal, node.pathFragment, !common.IsNil(node.nodeData.Commitment))
-
-	node.mustPersist(triePartition, m)
-	if len(node.value) > 0 {
-		valuePartition.Set(common.AsKey(node.terminal), node.value)
-	}
 }
 
 func (tr *TrieUpdatable) newTerminalNode(triePath, pathFragment, value []byte) *bufferedNode {
