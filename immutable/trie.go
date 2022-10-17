@@ -104,7 +104,7 @@ func (tr *TrieUpdatable) Commit(store common.KVWriter) common.VCommitment {
 	return ret
 }
 
-func (tr *TrieUpdatable) Persist(db common.KVBatchedUpdater) (common.VCommitment, error) {
+func (tr *TrieUpdatable) Persist(db common.KVBatchedWriter) (common.VCommitment, error) {
 	ret := tr.Commit(db)
 	if err := db.Commit(); err != nil {
 		return nil, err
