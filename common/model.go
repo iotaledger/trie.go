@@ -86,7 +86,7 @@ func (a PathArity) VectorLength() int {
 	return int(a) + 3
 }
 
-func (a PathArity) IsChildIndex(i int) bool {
+func (a PathArity) IsValidChildIndex(i int) bool {
 	return i <= int(a)
 }
 

@@ -23,7 +23,7 @@ func (m *CommitmentModel) ProofImmutable(key []byte, tr *immutable.TrieReader) *
 			ChildIndex:   int(e.ChildIndex),
 		}
 		if !common.IsNil(e.NodeData.Terminal) {
-			elem.Terminal = e.NodeData.Terminal.Bytes()
+			elem.Terminal, _ = CompressToHashSize(e.NodeData.Terminal.Bytes(), m.hashSize)
 		}
 		isLast := i == len(nodePath)-1
 		for childIndex, childCommitment := range e.NodeData.ChildCommitments {

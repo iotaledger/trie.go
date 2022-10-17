@@ -51,7 +51,7 @@ func (m *CommitmentModel) ProofMut(key []byte, tr mutable.NodeStore) *MerkleProo
 			ChildIndex:   childIndex,
 		}
 		if !common.IsNil(node.Terminal()) {
-			em.Terminal = node.Terminal().Bytes()
+			em.Terminal, _ = CompressToHashSize(node.Terminal().Bytes(), m.hashSize)
 		}
 		for idx, v := range node.ChildCommitments() {
 			if !isLast && int(idx) == childIndex {

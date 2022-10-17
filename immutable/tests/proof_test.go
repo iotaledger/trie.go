@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/iotaledger/trie.go/common"
@@ -79,4 +80,10 @@ func TestProofScenariosBlake2b(t *testing.T) {
 	runScenario([]string{"a", "ab", "a/", "ab/"})
 	runScenario([]string{"a", "ab", "abc", "a/", "ab/"})
 	runScenario(genRnd3())
+
+	longData := make([]string, 0)
+	for _, k := range []string{"a", "ab", "abc", "bca"} {
+		longData = append(longData, k+"/"+strings.Repeat(k, 200))
+	}
+	runScenario(longData)
 }

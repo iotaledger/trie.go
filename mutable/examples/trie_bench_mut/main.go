@@ -259,7 +259,7 @@ func scandbbadger() {
 		must(err)
 
 		tc := proof.Path[len(proof.Path)-1].Terminal
-		tc1, _ := trie_blake2b.CommitToDataRaw(v, model.HashSize())
+		tc1, _ := trie_blake2b.CompressToHashSize(v, model.HashSize())
 		if !bytes.Equal(tc1, tc) {
 			err = xerrors.New("invalid proof: terminal commitment and terminal proof are not equal")
 		}

@@ -35,10 +35,6 @@ const (
 
 var AllHashSize = []HashSize{HashSize160, HashSize256}
 
-func (hs HashSize) MaxCommitmentSize() int {
-	return int(hs) + 1
-}
-
 func (hs HashSize) String() string {
 	switch hs {
 	case HashSize256:
@@ -173,8 +169,8 @@ func (m *CommitmentModel) ForceStoreTerminalWithNode(c common.TCommitment) bool 
 	return m.AlwaysStoreTerminalWithNode() || c.(*terminalCommitment).isCostlyCommitment
 }
 
-// CommitToDataRaw commits to data
-func CommitToDataRaw(data []byte, sz HashSize) ([]byte, bool) {
+// CompressToHashSize hashes data if longer than hash size, otherwise copies it
+func CompressToHashSize(data []byte, sz HashSize) ([]byte, bool) {
 	var ret []byte
 	valueInCommitment := false
 	if len(data) <= int(sz) {
@@ -188,7 +184,7 @@ func CommitToDataRaw(data []byte, sz HashSize) ([]byte, bool) {
 }
 
 func (m *CommitmentModel) commitToData(data []byte) *terminalCommitment {
-	commitmentBytes, isValueInCommitment := CommitToDataRaw(data, m.hashSize)
+	commitmentBytes, isValueInCommitment := CompressToHashSize(data, m.hashSize)
 	return &terminalCommitment{
 		bytes:               commitmentBytes,
 		isValueInCommitment: isValueInCommitment,
@@ -202,7 +198,7 @@ func blakeIt(data []byte, sz HashSize) []byte {
 		ret := common.Blake2b160(data)
 		return ret[:]
 	case HashSize192:
-		panic("24 byte hashing not implemented")
+		panic("24-byte hashing not implemented")
 	case HashSize256:
 		ret := blake2b.Sum256(data)
 		return ret[:]
@@ -218,23 +214,23 @@ func (m *CommitmentModel) makeHashVector(nodeData *common.NodeData) [][]byte {
 		hashes[i] = c.Bytes()
 	}
 	if !common.IsNil(nodeData.Terminal) {
-		hashes[m.arity.TerminalCommitmentIndex()] = nodeData.Terminal.Bytes()
-		//nodeData.Terminal.(*terminalCommitment).bytes
+		// squeeze terminal it into the hash size, if longer than hash size
+		hashes[m.arity.TerminalCommitmentIndex()], _ = CompressToHashSize(nodeData.Terminal.Bytes(), m.hashSize)
 	}
-	pathFragmentCommitmentBytes, _ := CommitToDataRaw(nodeData.PathFragment, m.hashSize)
+	pathFragmentCommitmentBytes, _ := CompressToHashSize(nodeData.PathFragment, m.hashSize)
 	hashes[m.arity.PathFragmentCommitmentIndex()] = pathFragmentCommitmentBytes
 	return hashes
 }
 
 func HashTheVector(hashes [][]byte, arity common.PathArity, sz HashSize) []byte {
-	msz := sz.MaxCommitmentSize()
-	buf := make([]byte, arity.VectorLength()*msz)
+	buf := make([]byte, arity.VectorLength()*int(sz))
 	for i, h := range hashes {
-		if h == nil {
+		common.Assert(len(h) <= int(sz), "len(h)<=int(sz)")
+		if len(h) == 0 {
 			continue
 		}
-		pos := i * msz
-		copy(buf[pos:pos+msz], h)
+		pos := i * int(sz)
+		copy(buf[pos:pos+int(sz)], h)
 	}
 	return blakeIt(buf, sz)
 }
