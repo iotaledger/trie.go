@@ -45,10 +45,13 @@ func (hs HashSize) String() string {
 	panic("wrong hash size")
 }
 
+const terminalCommitmentSizeMaxDefault = 63 // must fit into 6 bits
+
 // CommitmentModel provides commitment common implementation for the 256+ trie
 type CommitmentModel struct {
 	hashSize                       HashSize
 	arity                          common.PathArity
+	terminalCommitmentSizeMax      int
 	valueSizeOptimizationThreshold int
 }
 
@@ -67,11 +70,14 @@ func New(arity common.PathArity, hashSize HashSize, valueSizeOptimizationThresho
 	if len(valueSizeOptimizationThreshold) > 0 {
 		t = valueSizeOptimizationThreshold[0]
 	}
-	return &CommitmentModel{
+	ret := &CommitmentModel{
 		hashSize:                       hashSize,
 		arity:                          arity,
+		terminalCommitmentSizeMax:      terminalCommitmentSizeMaxDefault,
 		valueSizeOptimizationThreshold: t,
 	}
+	common.Assert(ret.terminalCommitmentSizeMax <= 0x3F, "ret.terminalCommitmentSizeMax <= 0x3F")
+	return ret
 }
 
 func (m *CommitmentModel) PathArity() common.PathArity {
@@ -184,7 +190,22 @@ func CompressToHashSize(data []byte, sz HashSize) ([]byte, bool) {
 }
 
 func (m *CommitmentModel) commitToData(data []byte) *terminalCommitment {
-	commitmentBytes, isValueInCommitment := CompressToHashSize(data, m.hashSize)
+	var commitmentBytes []byte
+	var isValueInCommitment bool
+
+	if len(data) > m.terminalCommitmentSizeMax-1 {
+		// taking hash as commitment data for long values, except the first byte is lost from the hash
+		// by skipping first byte, we have commitment bytes no more than hash size and therefore
+		// no need for one more compression upon node commitment. Otherwise, it would be hashed once more
+		commitmentBytes = blakeIt(data, m.hashSize)[1:]
+		isValueInCommitment = false
+	} else {
+		// just cloning bytes. Data always is a commitment to itself
+		commitmentBytes = common.Concat(data)
+		isValueInCommitment = true
+	}
+	common.Assert(len(commitmentBytes) <= m.terminalCommitmentSizeMax-1,
+		"len(commitmentBytes) <= m.terminalCommitmentSizeMax-1")
 	return &terminalCommitment{
 		bytes:               commitmentBytes,
 		isValueInCommitment: isValueInCommitment,
@@ -300,8 +321,8 @@ const (
 )
 
 func (t *terminalCommitment) Write(w io.Writer) error {
-	common.Assert(len(t.bytes) <= 32, "len(t.bytes) <= 32")
 	l := byte(len(t.bytes))
+	common.Assert(l <= l&sizeMask, "l <= l & sizeMask")
 	if t.isCostlyCommitment {
 		l |= costlyCommitmentMask
 	}
@@ -324,10 +345,6 @@ func (t *terminalCommitment) Read(r io.Reader) error {
 	t.isCostlyCommitment = (l & costlyCommitmentMask) != 0
 	t.isValueInCommitment = (l & valueInCommitmentMask) != 0
 	l &= sizeMask
-
-	if l > 32 {
-		return fmt.Errorf("wrong data size")
-	}
 	if l > 0 {
 		t.bytes = make([]byte, l)
 
