@@ -11,16 +11,17 @@ import (
 )
 
 //----------------------------------------------------------------------------
-// inMemoryKVStore is a KVStore implementation. Mostly used for testing
+// InMemoryKVStore is a KVStore implementation. Mostly used for testing
 var (
-	_ KVStore          = inMemoryKVStore{}
-	_ BatchedUpdatable = &inMemoryKVStore{}
+	_ KVStore          = InMemoryKVStore{}
+	_ BatchedUpdatable = InMemoryKVStore{}
+	_ Traversable      = InMemoryKVStore{}
 	_ KVBatchedWriter  = &simpleBatchedMemoryWriter{}
 	_ KVIterator       = &simpleInMemoryIterator{}
 )
 
 type (
-	inMemoryKVStore map[string][]byte
+	InMemoryKVStore map[string][]byte
 
 	mutation struct {
 		key   []byte
@@ -28,34 +29,30 @@ type (
 	}
 
 	simpleBatchedMemoryWriter struct {
-		store     inMemoryKVStore
+		store     InMemoryKVStore
 		mutations []mutation
 	}
 
 	simpleInMemoryIterator struct {
-		store  inMemoryKVStore
+		store  InMemoryKVStore
 		prefix []byte
 	}
 )
 
-func NewInMemoryKVStore() KVStore {
-	return make(inMemoryKVStore)
+func NewInMemoryKVStore() InMemoryKVStore {
+	return make(InMemoryKVStore)
 }
 
-func NewInMemoryKVStoreWithBatchedWriter() BatchedUpdatable {
-	return make(inMemoryKVStore)
-}
-
-func (im inMemoryKVStore) Get(k []byte) []byte {
+func (im InMemoryKVStore) Get(k []byte) []byte {
 	return im[string(k)]
 }
 
-func (im inMemoryKVStore) Has(k []byte) bool {
+func (im InMemoryKVStore) Has(k []byte) bool {
 	_, ok := im[string(k)]
 	return ok
 }
 
-func (im inMemoryKVStore) Iterate(f func(k []byte, v []byte) bool) {
+func (im InMemoryKVStore) Iterate(f func(k []byte, v []byte) bool) {
 	for k, v := range im {
 		if !f([]byte(k), v) {
 			return
@@ -63,7 +60,7 @@ func (im inMemoryKVStore) Iterate(f func(k []byte, v []byte) bool) {
 	}
 }
 
-func (im inMemoryKVStore) Set(k, v []byte) {
+func (im InMemoryKVStore) Set(k, v []byte) {
 	if len(v) != 0 {
 		im[string(k)] = v
 	} else {
@@ -90,14 +87,14 @@ func (bw *simpleBatchedMemoryWriter) Commit() error {
 	return nil
 }
 
-func (im inMemoryKVStore) BatchedWriter() KVBatchedWriter {
+func (im InMemoryKVStore) BatchedWriter() KVBatchedWriter {
 	return &simpleBatchedMemoryWriter{
 		store:     im,
 		mutations: make([]mutation, 0),
 	}
 }
 
-func (im inMemoryKVStore) Iterator(prefix []byte) KVIterator {
+func (im InMemoryKVStore) Iterator(prefix []byte) KVIterator {
 	return &simpleInMemoryIterator{
 		store:  im,
 		prefix: prefix,
