@@ -809,22 +809,27 @@ func TestSnapshot2(t *testing.T) {
 }
 
 func TestDontChangeIdentity(t *testing.T) {
-	m := trie_blake2b.New(common.PathArity16, trie_blake2b.HashSize160)
-	db := common.NewInMemoryKVStore()
-	root1 := func() common.VCommitment {
-		id1 := []byte("id1")
-		return immutable.MustInitRoot(db, m, id1)
-	}()
+	runTest := func(m common.CommitmentModel) {
+		db := common.NewInMemoryKVStore()
+		root1 := func() common.VCommitment {
+			id1 := []byte("id1")
+			return immutable.MustInitRoot(db, m, id1)
+		}()
 
-	id2 := []byte("id2")
-	root2 := func() common.VCommitment {
-		tr, err := immutable.NewTrieUpdatable(m, db, root1)
-		require.NoError(t, err)
-		tr.Update([]byte(""), id2)
-		return tr.Commit(db)
-	}()
-
-	tr, err := immutable.NewTrieReader(m, db, root2)
-	require.NoError(t, err)
-	require.EqualValues(t, "id1", tr.Get([]byte("")))
+		err := common.CatchPanicOrError(func() error {
+			tr, err := immutable.NewTrieUpdatable(m, db, root1)
+			require.NoError(t, err)
+			tr.Update([]byte(""), []byte("new identity"))
+			tr.Commit(db)
+			return nil
+		})
+		common.RequireErrorWith(t, err, "identity of the state can't be changed")
+	}
+	runTest(trie_blake2b.New(common.PathArity256, trie_blake2b.HashSize256))
+	runTest(trie_blake2b.New(common.PathArity256, trie_blake2b.HashSize160))
+	runTest(trie_blake2b.New(common.PathArity16, trie_blake2b.HashSize256))
+	runTest(trie_blake2b.New(common.PathArity16, trie_blake2b.HashSize160))
+	runTest(trie_blake2b.New(common.PathArity2, trie_blake2b.HashSize256))
+	runTest(trie_blake2b.New(common.PathArity2, trie_blake2b.HashSize160))
+	runTest(trie_kzg_bn256.New())
 }

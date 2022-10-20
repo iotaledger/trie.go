@@ -9,10 +9,7 @@ import (
 
 // Update updates TrieUpdatable with the unpackedKey/value. Reorganizes and re-calculates trie, keeps cache consistent
 func (tr *TrieUpdatable) Update(key []byte, value []byte) {
-	if len(key) == 0 {
-		// we never update root identity
-		return
-	}
+	common.Assert(len(key) > 0, "identity of the state can't be changed")
 	unpackedTriePath := common.UnpackBytes(key, tr.PathArity())
 	if len(value) == 0 {
 		tr.delete(unpackedTriePath)
