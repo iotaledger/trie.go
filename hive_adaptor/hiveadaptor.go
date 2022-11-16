@@ -71,6 +71,13 @@ func (kvs *HiveKVStoreAdaptor) Iterate(fun func(k []byte, v []byte) bool) {
 	mustNoErr(err)
 }
 
+func (kvs *HiveKVStoreAdaptor) IterateKeys(fun func(k []byte) bool) {
+	err := kvs.kvs.IterateKeys(kvs.prefix, func(key kvstore.Key) bool {
+		return fun(key[len(kvs.prefix):])
+	})
+	mustNoErr(err)
+}
+
 // HiveBatchedUpdater implements buffering and flush updates in batches, both k/v pairs and trie.
 // Dramatically improves speed
 type HiveBatchedUpdater struct {
