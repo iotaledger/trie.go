@@ -80,9 +80,14 @@ func (tr *TrieReader) Has(key []byte) bool {
 	return found
 }
 
-// Iterate iterates whole trie
+// Iterate iterates all the key/value pairs in the trie
 func (tr *TrieReader) Iterate(f func(k []byte, v []byte) bool) {
-	tr.iteratePrefix(f, nil)
+	tr.iteratePrefix(f, nil, true)
+}
+
+// IterateKeys iterates all the keys in the trie
+func (tr *TrieReader) IterateKeys(f func(k []byte) bool) {
+	tr.iteratePrefix(func(k []byte, v []byte) bool { return f(k) }, nil, false)
 }
 
 // TrieIterator implements common.KVIterator interface for keys in the trie with given prefix
@@ -92,7 +97,11 @@ type TrieIterator struct {
 }
 
 func (ti *TrieIterator) Iterate(fun func(k []byte, v []byte) bool) {
-	ti.tr.iteratePrefix(fun, ti.prefix)
+	ti.tr.iteratePrefix(fun, ti.prefix, true)
+}
+
+func (ti *TrieIterator) IterateKeys(fun func(k []byte) bool) {
+	ti.tr.iteratePrefix(func(k []byte, v []byte) bool { return fun(k) }, ti.prefix, false)
 }
 
 // Iterator returns iterator for the sub-trie
@@ -254,7 +263,7 @@ func (tr *TrieUpdatable) mergeNodeIfNeeded(node *bufferedNode) *bufferedNode {
 
 // iteratePrefix iterates the key/value with keys with prefix.
 // The order of the iteration will be deterministic
-func (tr *TrieReader) iteratePrefix(f func(k []byte, v []byte) bool, prefix []byte) {
+func (tr *TrieReader) iteratePrefix(f func(k []byte, v []byte) bool, prefix []byte, extractValue bool) {
 	var root common.VCommitment
 	var triePath []byte
 	unpackedPrefix := common.UnpackBytes(prefix, tr.Model().PathArity())
@@ -265,20 +274,24 @@ func (tr *TrieReader) iteratePrefix(f func(k []byte, v []byte) bool, prefix []by
 		}
 	})
 	if !common.IsNil(root) {
-		tr.iterate(root, triePath, f)
+		tr.iterate(root, triePath, f, extractValue)
 	}
 }
 
-func (tr *TrieReader) iterate(root common.VCommitment, triePath []byte, fun func(k []byte, v []byte) bool) bool {
+func (tr *TrieReader) iterate(root common.VCommitment, triePath []byte, fun func(k []byte, v []byte) bool, extractValue bool) bool {
 	return tr.iterateNodes(root, triePath, func(nodeKey []byte, n *common.NodeData) bool {
 		if !common.IsNil(n.Terminal) {
 			key, err := common.PackUnpackedBytes(common.Concat(nodeKey, n.PathFragment), tr.Model().PathArity())
-			value, inTheCommitment := n.Terminal.ExtractValue()
-			if !inTheCommitment {
-				value = tr.nodeStore.valueStore.Get(common.AsKey(n.Terminal))
-				common.Assert(len(value) > 0, "can't fetch value. triePath: '%s', data commitment: %s", hex.EncodeToString(key), n.Terminal)
-			}
 			common.AssertNoError(err)
+			var value []byte
+			if extractValue {
+				var inTheCommitment bool
+				value, inTheCommitment = n.Terminal.ExtractValue()
+				if !inTheCommitment {
+					value = tr.nodeStore.valueStore.Get(common.AsKey(n.Terminal))
+					common.Assert(len(value) > 0, "can't fetch value. triePath: '%s', data commitment: %s", hex.EncodeToString(key), n.Terminal)
+				}
+			}
 			if !fun(key, value) {
 				return false
 			}
@@ -295,12 +308,9 @@ func (tr *TrieReader) iterateNodes(root common.VCommitment, rootKey []byte, fun 
 	if !fun(rootKey, n) {
 		return false
 	}
-	for childIndex, childCommitment := range n.ChildCommitments {
-		if !tr.iterateNodes(childCommitment, common.Concat(rootKey, n.PathFragment, childIndex), fun) {
-			return false
-		}
-	}
-	return true
+	return n.IterateChildren(func(childIndex byte, childCommitment common.VCommitment) bool {
+		return tr.iterateNodes(childCommitment, common.Concat(rootKey, n.PathFragment, childIndex), fun)
+	})
 }
 
 // deletePrefix deletes all k/v pairs from the trie with the specified prefix

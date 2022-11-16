@@ -470,6 +470,7 @@ func TestIterate(t *testing.T) {
 
 			trr, err := immutable.NewTrieReader(m, store, root, 0)
 			require.NoError(t, err)
+			var iteratedKeys1 [][]byte
 			trr.Iterate(func(k []byte, v []byte) bool {
 				if traceScenarios {
 					fmt.Printf("---- iter --- '%s': '%s'\n", string(k), string(v))
@@ -481,8 +482,17 @@ func TestIterate(t *testing.T) {
 				} else {
 					require.EqualValues(t, []byte("identity"), v)
 				}
+				iteratedKeys1 = append(iteratedKeys1, k)
 				return true
 			})
+
+			// assert that iteration order is deterministic
+			var iteratedKeys2 [][]byte
+			trr.IterateKeys(func(k []byte) bool {
+				iteratedKeys2 = append(iteratedKeys2, k)
+				return true
+			})
+			require.EqualValues(t, iteratedKeys1, iteratedKeys2)
 		}
 	}
 	{

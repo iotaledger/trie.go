@@ -241,3 +241,15 @@ func (n *NodeData) Read(r io.Reader, model CommitmentModel, arity PathArity, get
 	}
 	return nil
 }
+
+func (n *NodeData) IterateChildren(f func(byte, VCommitment) bool) bool {
+	for i := 0; i < 256; i++ {
+		i := byte(i)
+		if v, ok := n.ChildCommitments[i]; ok {
+			if !f(i, v) {
+				return false
+			}
+		}
+	}
+	return true
+}
