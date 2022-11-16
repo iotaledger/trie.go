@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-//----------------------------------------------------------------------------
+// ----------------------------------------------------------------------------
 // InMemoryKVStore is a KVStore implementation. Mostly used for testing
 var (
 	_ KVStore          = InMemoryKVStore{}
@@ -55,6 +55,14 @@ func (im InMemoryKVStore) Has(k []byte) bool {
 func (im InMemoryKVStore) Iterate(f func(k []byte, v []byte) bool) {
 	for k, v := range im {
 		if !f([]byte(k), v) {
+			return
+		}
+	}
+}
+
+func (im InMemoryKVStore) IterateKeys(f func(k []byte) bool) {
+	for k := range im {
+		if !f([]byte(k)) {
 			return
 		}
 	}
@@ -107,6 +115,18 @@ func (si *simpleInMemoryIterator) Iterate(f func(k []byte, v []byte) bool) {
 		key = []byte(k)
 		if bytes.HasPrefix(key, si.prefix) {
 			if !f(key, v) {
+				return
+			}
+		}
+	}
+}
+
+func (si *simpleInMemoryIterator) IterateKeys(f func(k []byte) bool) {
+	var key []byte
+	for k := range si.store {
+		key = []byte(k)
+		if bytes.HasPrefix(key, si.prefix) {
+			if !f(key) {
 				return
 			}
 		}

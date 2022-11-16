@@ -22,6 +22,7 @@ type KVWriter interface {
 // Order of iteration is NON-DETERMINISTIC in general
 type KVIterator interface {
 	Iterate(func(k, v []byte) bool)
+	IterateKeys(func(k []byte) bool)
 }
 
 // KVBatchedWriter collects mutations in the buffer via Set-s to KVWriter and then flushes (applies) it atomically to DB with Commit
