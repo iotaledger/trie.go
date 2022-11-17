@@ -109,7 +109,7 @@ func writeToFile(tr *trie_kzg_bn2562.TrustedSetup, fname string) {
 			dataStr += " +\n"
 		}
 		res := strings.Replace(ftemplate, "{{HEX DATA}}", dataStr, 1)
-		_, err = fmt.Fprintf(f, res)
+		fmt.Fprint(f, res)
 	}
 }
 

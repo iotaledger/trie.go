@@ -60,7 +60,7 @@ func (n *bufferedNode) mustPersist(w common.KVWriter, m common.CommitmentModel) 
 	w.Set(dbKey, buf.Bytes())
 }
 
-func (n *bufferedNode) isCommitted(m common.CommitmentModel) bool {
+func (n *bufferedNode) isCommitted(m common.CommitmentModel) bool { // nolint:unused	// TODO: use function or delete it
 	if !m.EqualCommitments(n.terminal, n.nodeData.Terminal) {
 		return false
 	}

@@ -202,7 +202,8 @@ func (m *CommitmentModel) UpdateNodeCommitment(mutate *common.NodeData, childUpd
 				// child didn't exist, no need to delete it
 				continue
 			}
-			delta := m.TrustedSetup.Suite.G1().Scalar().Zero()
+			var delta kyber.Scalar
+			//delta := m.TrustedSetup.Suite.G1().Scalar().Zero() // TODO: the value is not used. Remove the line?
 			if childUpd == nil {
 				// deleting child
 				common.Assert(prevC != nil, "prevC != nil")
