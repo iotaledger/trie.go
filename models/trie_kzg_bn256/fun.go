@@ -110,7 +110,7 @@ func (sd *TrustedSetup) verifyVector(vect []kyber.Scalar, c kyber.Point) bool {
 // commitAll return commit to the whole vector and to each of values of it
 // Generate commitment to the vector and proofs to all values.
 // Expensive. Usually used only in tests
-func (sd *TrustedSetup) commitAll(vect []kyber.Scalar) (kyber.Point, []kyber.Point) {
+func (sd *TrustedSetup) commitAll(vect []kyber.Scalar) (kyber.Point, []kyber.Point) { // nolint:unused	// TODO: use function or delete it
 	retC := sd.commit(vect)
 	retPi := make([]kyber.Point, sd.D)
 	for i := range vect {
