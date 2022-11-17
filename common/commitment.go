@@ -19,6 +19,7 @@ type Serializable interface {
 // VCommitment represents interface to the vector commitment. It can be hash, or it can be a curve element
 type VCommitment interface {
 	Clone() VCommitment
+	Equals(VCommitment) bool
 	Serializable
 }
 

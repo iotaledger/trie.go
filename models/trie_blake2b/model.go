@@ -294,6 +294,14 @@ func (v vectorCommitment) Clone() common.VCommitment {
 	return vectorCommitment(ret)
 }
 
+func (v vectorCommitment) Equals(other common.VCommitment) bool {
+	o, ok := other.(vectorCommitment)
+	if !ok {
+		return false
+	}
+	return bytes.Equal(v, o)
+}
+
 func (v vectorCommitment) Update(delta common.VCommitment) {
 	m, ok := delta.(vectorCommitment)
 	if !ok {
